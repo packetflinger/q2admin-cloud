@@ -1,6 +1,8 @@
 package main
 
 import (
+    "crypto/aes"
+    "crypto/cipher"
     "crypto/rand"
     "crypto/rsa"
     "crypto/sha256"
@@ -126,4 +128,20 @@ func RandomBytes(length int) []byte {
     }
 
     return b
+}
+
+func SymmetricDecrypt(key []byte, nonce []byte, ciphertext []byte) []byte{
+    block, _ := aes.NewCipher(key)
+    gcm, _ := cipher.NewGCM(block)
+
+    plaintext, _ := gcm.Open(nil, nonce, ciphertext, nil)
+    return plaintext
+}
+
+func SymmetricEncrypt(key []byte, nonce []byte, plaintext []byte) []byte {
+    block, _ := aes.NewCipher(key)
+    gcm, _ := cipher.NewGCM(block)
+
+    ciphertext := gcm.Seal(nil, nonce, plaintext, nil)
+    return ciphertext
 }
