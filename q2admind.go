@@ -100,12 +100,10 @@ func main() {
 
 func init() {
     // testing stuff
-    priv, _ := LoadPrivateKey("private.pem")
-
-    plain := "super secret"
-    sig := Sign(priv, []byte(plain))
-    fmt.Println(sig)
-
-    fmt.Println(VerifySignature(&priv.PublicKey, []byte(plain), sig))
+    public, err := LoadPublicKey("public.pem")
+    if err != nil {
+        fmt.Println(err)
+    }
+    fmt.Println(public)
     os.Exit(1)
 }

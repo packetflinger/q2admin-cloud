@@ -70,26 +70,39 @@ func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
     priv, err := os.ReadFile(keyfile)
     privPem, _ := pem.Decode(priv)
 
-	if privPem.Type != "RSA PRIVATE KEY" {
-		return nil, errors.New("Not a private key file")
-	}
+    if privPem.Type != "RSA PRIVATE KEY" {
+        return nil, errors.New("Not a private key file")
+    }
 
     var parsedKey interface{}
-	if parsedKey, err = x509.ParsePKCS1PrivateKey(privPem.Bytes); err != nil {
-		if parsedKey, err = x509.ParsePKCS8PrivateKey(privPem.Bytes); err != nil { // note this returns type `interface{}`
+    if parsedKey, err = x509.ParsePKCS1PrivateKey(privPem.Bytes); err != nil {
+        if parsedKey, err = x509.ParsePKCS8PrivateKey(privPem.Bytes); err != nil { // note this returns type `interface{}`
             return nil, errors.New("Unable to parse private key file")
-		}
-	}
+        }
+    }
 
-	var privateKey *rsa.PrivateKey
-	var ok bool
-	privateKey, ok = parsedKey.(*rsa.PrivateKey)
+    var privateKey *rsa.PrivateKey
+    var ok bool
+    privateKey, ok = parsedKey.(*rsa.PrivateKey)
 
     if ok {
         return privateKey, nil
     }
 
     return nil, errors.New("Something went wrong")
+}
+
+func LoadPublicKey(keyfile string) (*rsa.PublicKey, error) {
+    pub, _ := os.ReadFile(keyfile)
+    pubPem, _ := pem.Decode(pub)
+    //fmt.Println(pubPem)
+    if pubPem.Type != "PUBLIC KEY" {
+        return nil, errors.New("Not a public key file")
+    }
+
+    public, _ := x509.ParsePKIXPublicKey(pubPem.Bytes)
+
+    return public.(*rsa.PublicKey), nil
 }
 
 func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) []byte {
