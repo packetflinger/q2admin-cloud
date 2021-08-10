@@ -117,3 +117,13 @@ func PublicEncrypt(key *rsa.PublicKey, plaintext []byte) []byte {
 
     return encryptedBytes
 }
+
+func RandomBytes(length int) []byte {
+    b := make([]byte, length)
+    _, err := rand.Read(b)
+    if err != nil {
+        return nil
+    }
+
+    return b
+}
