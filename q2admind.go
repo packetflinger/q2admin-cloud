@@ -95,16 +95,19 @@ func main() {
 
 func init() {
 
-    priv, _ := LoadPrivateKey("private.pem")
-    pub := priv.PublicKey
+    //priv, _ := LoadPrivateKey("private.pem")
+    //pub := priv.PublicKey
 
-    secret := "This is top secret"
-    cipher := PublicEncrypt(&pub, []byte(secret))
+    key := RandomBytes(16)
+    nonce := RandomBytes(12)
 
+    plain := []byte("Super Secret")
+
+    cipher := SymmetricEncrypt(key, nonce, plain)
     fmt.Println(cipher)
 
-    plain := PrivateDecrypt(priv, cipher)
-    fmt.Println(string(plain))
+    plaintext := SymmetricDecrypt(key, nonce, cipher)
+    fmt.Println(string(plaintext))
 
     os.Exit(1)
 }
