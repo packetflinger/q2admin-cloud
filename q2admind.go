@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+    "encoding/binary"
+    "bytes"
 )
 
 type MessageBuffer struct {
@@ -92,5 +94,56 @@ func main() {
 }
 
 func init() {
+    data := []byte{0x60,0x05,0x00,0x00,0x0C,0x22,0x00,0x00,0x00,0xCD,0x62,0xF0,0x0A,0x01,0x6F,0x70,0x65,0x6E,0x74,0x64,0x6D,0x00}
+    //var msg MessageBuffer
+    //msg.buffer = data
+    //msg := new(MessageBuffer{buffer:data, index:0, length:len(data)})
+    fmt.Printf("Long value: %d\n", ReadLong(data[4:]))
+    fmt.Printf("Short value: %d\n", ReadShort(data[9:]))
+    fmt.Printf("Byte value: %d\n", ReadByte(data[11:]))
+    fmt.Printf("String value: %s\n", ReadString(data[14:]))
 
+    os.Exit(1)
+}
+
+func ReadString(d []byte) string {
+    var buffer bytes.Buffer
+
+    // find the next null (terminates the string)
+    for i:=0; d[i]!=0; i++ {
+        buffer.WriteString(string(d[i]))
+    }
+
+    return buffer.String()
+}
+
+func ReadLong(d []byte) int32 {
+    var tmp struct {
+        Value int32
+    }
+
+    r := bytes.NewReader(d)
+    if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
+        fmt.Println("binary.Read failed:", err)
+    }
+
+    return tmp.Value
+}
+
+func ReadShort(d []byte) int16 {
+    var tmp struct {
+        Value int16
+    }
+
+    r := bytes.NewReader(d)
+    if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
+        fmt.Println("binary.Read failed:", err)
+    }
+
+    return tmp.Value
+}
+
+// for consistency
+func ReadByte(d []byte) byte {
+    return byte(d[0])
 }
