@@ -1,14 +1,15 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"math/rand"
-	"net"
-	"os"
-	"strconv"
-	"strings"
-	"time"
+    "bufio"
+    "fmt"
+    "math/rand"
+    "net"
+    "os"
+    "crypto/rsa"
+    "strconv"
+    "strings"
+    "time"
 )
 
 // use a custom buffer struct to keep track of where
@@ -44,6 +45,10 @@ type Server struct {
 	connection *net.Conn
 	players    []Player
 	message    MessageBuffer
+    encrypted  bool
+    publickey  *rsa.PublicKey
+    aeskey     []byte          // 16 (128bit)
+    nonce      []byte          // 12 for gcm
 }
 
 func handleConnection(c net.Conn) {
@@ -94,20 +99,13 @@ func main() {
 }
 
 func init() {
+    // testing stuff
+    priv, _ := LoadPrivateKey("private.pem")
 
-    //priv, _ := LoadPrivateKey("private.pem")
-    //pub := priv.PublicKey
+    plain := "super secret"
+    sig := Sign(priv, []byte(plain))
+    fmt.Println(sig)
 
-    key := RandomBytes(16)
-    nonce := RandomBytes(12)
-
-    plain := []byte("Super Secret")
-
-    cipher := SymmetricEncrypt(key, nonce, plain)
-    fmt.Println(cipher)
-
-    plaintext := SymmetricDecrypt(key, nonce, cipher)
-    fmt.Println(string(plaintext))
-
+    fmt.Println(VerifySignature(&priv.PublicKey, []byte(plain), sig))
     os.Exit(1)
 }

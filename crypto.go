@@ -130,6 +130,16 @@ func RandomBytes(length int) []byte {
     return b
 }
 
+func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
+    hash := sha256.New()
+    _, _ = hash.Write(plaintext)
+
+    checksum := hash.Sum(nil)
+
+    signature, _ := rsa.SignPSS(rand.Reader, key, 5, checksum, nil)
+    return signature
+}
+
 func SymmetricDecrypt(key []byte, nonce []byte, ciphertext []byte) []byte{
     block, _ := aes.NewCipher(key)
     gcm, _ := cipher.NewGCM(block)
@@ -144,4 +154,18 @@ func SymmetricEncrypt(key []byte, nonce []byte, plaintext []byte) []byte {
 
     ciphertext := gcm.Seal(nil, nonce, plaintext, nil)
     return ciphertext
+}
+
+func VerifySignature(key *rsa.PublicKey, plaintext []byte, sig []byte) bool {
+    hash := sha256.New()
+    temp := plaintext
+    _, _ = hash.Write(temp)
+    checksum := hash.Sum(nil)
+    err := rsa.VerifyPSS(key, 5, checksum, sig, nil)
+
+    if err == nil {
+        return true
+    }
+
+    return false
 }
