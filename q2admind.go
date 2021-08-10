@@ -94,25 +94,17 @@ func main() {
 }
 
 func init() {
-    data := []byte{0x60,0x05,0x00,0x00,0x0C,0x22,0x00,0x00,0x00,0xCD,0x62,0xF0,0x0A,0x01,0x6F,0x70,0x65,0x6E,0x74,0x64,0x6D,0x00}
-    var msg MessageBuffer
-    msg.buffer = data
 
-    fmt.Printf("Long value: %d\n", ReadLong(&msg))
+    priv, _ := LoadPrivateKey("private.pem")
+    pub := priv.PublicKey
 
-    var msg2 MessageBuffer
-    //WriteLong(&msg2, 1376)
-    WriteShort(&msg2, 8716)
-    WriteString(&msg2, "openra2")
-    WriteLong(&msg2, 27910)
+    secret := "This is top secret"
+    cipher := PublicEncrypt(&pub, []byte(secret))
 
-    fmt.Println(msg2)
-    fmt.Printf("% x\n", msg2.buffer)
-    //fmt.Printf("Long value: %d\n", ReadLong(&msg))
-    //fmt.Printf("Long value: %d\n", ReadLong(&msg))
-    //fmt.Printf("Short value: %d\n", ReadShort(&msg))
-    //fmt.Println(ReadData(&msg, 14))
-    //fmt.Printf("String value: %s\n", ReadString(&msg))
+    fmt.Println(cipher)
+
+    plain := PrivateDecrypt(priv, cipher)
+    fmt.Println(string(plain))
 
     os.Exit(1)
 }
