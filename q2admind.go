@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-    "encoding/binary"
-    "bytes"
 )
 
 // use a custom buffer struct to keep track of where
@@ -108,58 +106,4 @@ func init() {
     fmt.Printf("String value: %s\n", ReadString(&msg))
 
     os.Exit(1)
-}
-
-// basically just grab a subsection of the buffer
-func ReadData(msg *MessageBuffer, length int32) []byte {
-    start := msg.index
-    msg.index += length
-    return msg.buffer[start:msg.index]
-}
-
-func ReadString(msg *MessageBuffer) string {
-    var buffer bytes.Buffer
-
-    // find the next null (terminates the string)
-    for i:=0; msg.buffer[msg.index]!=0; i++ {
-        buffer.WriteString(string(msg.buffer[msg.index]))
-        msg.index++
-    }
-
-    return buffer.String()
-}
-
-func ReadLong(msg *MessageBuffer) int32 {
-    var tmp struct {
-        Value int32
-    }
-
-    r := bytes.NewReader(msg.buffer[msg.index:])
-    if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
-        fmt.Println("binary.Read failed:", err)
-    }
-
-    msg.index += 4
-    return tmp.Value
-}
-
-func ReadShort(msg *MessageBuffer) int16 {
-    var tmp struct {
-        Value int16
-    }
-
-    r := bytes.NewReader(msg.buffer[msg.index:])
-    if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
-        fmt.Println("binary.Read failed:", err)
-    }
-
-    msg.index += 2
-    return tmp.Value
-}
-
-// for consistency
-func ReadByte(msg *MessageBuffer) byte {
-    val := byte(msg.buffer[msg.index])
-    msg.index++
-    return val
 }
