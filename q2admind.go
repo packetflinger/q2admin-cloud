@@ -98,12 +98,21 @@ func init() {
     var msg MessageBuffer
     msg.buffer = data
 
-    //fmt.Printf("Long value: %d\n", ReadLong(&msg))
+    fmt.Printf("Long value: %d\n", ReadLong(&msg))
+
+    var msg2 MessageBuffer
+    //WriteLong(&msg2, 1376)
+    WriteShort(&msg2, 8716)
+    WriteString(&msg2, "openra2")
+    WriteLong(&msg2, 27910)
+
+    fmt.Println(msg2)
+    fmt.Printf("% x\n", msg2.buffer)
     //fmt.Printf("Long value: %d\n", ReadLong(&msg))
     //fmt.Printf("Long value: %d\n", ReadLong(&msg))
     //fmt.Printf("Short value: %d\n", ReadShort(&msg))
-    fmt.Println(ReadData(&msg, 14))
-    fmt.Printf("String value: %s\n", ReadString(&msg))
+    //fmt.Println(ReadData(&msg, 14))
+    //fmt.Printf("String value: %s\n", ReadString(&msg))
 
     os.Exit(1)
 }
