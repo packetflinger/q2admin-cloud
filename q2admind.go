@@ -15,20 +15,20 @@ import (
 // use a custom buffer struct to keep track of where
 // we are in the stream of bytes internally
 type MessageBuffer struct {
-	buffer []byte
-	index  int32
-	length int32 // maybe not needed
+    buffer []byte
+    index  int32
+    length int32 // maybe not needed
 }
 
 type Player struct {
-	clientid     int8
-	name         string
-	userinfo     string
-	frags        int16
-	deaths       int16
-	suicides     int16
-	teleports    int16
-	lastteleport int32
+    clientid     int8
+    name         string
+    userinfo     string
+    frags        int16
+    deaths       int16
+    suicides     int16
+    teleports    int16
+    lastteleport int32
 }
 
 // this is a Quake 2 Gameserver, and also a client to us
@@ -53,50 +53,50 @@ type Server struct {
 }
 
 func handleConnection(c net.Conn) {
-	fmt.Printf("Serving %s\n", c.RemoteAddr().String())
-	for {
-		netData, err := bufio.NewReader(c).ReadString('\n')
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+    fmt.Printf("Serving %s\n", c.RemoteAddr().String())
+    for {
+        netData, err := bufio.NewReader(c).ReadString('\n')
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
 
-		temp := strings.TrimSpace(string(netData))
-		if temp == "STOP" {
-			break
-		}
+        temp := strings.TrimSpace(string(netData))
+        if temp == "STOP" {
+            break
+        }
 
-		result := strconv.Itoa(rand.Intn(100)) + "\n"
-		c.Write([]byte(string(result)))
-	}
-	c.Close()
+        result := strconv.Itoa(rand.Intn(100)) + "\n"
+        c.Write([]byte(string(result)))
+    }
+    c.Close()
 }
 
 func main() {
-	arguments := os.Args
-	if len(arguments) == 1 {
-		fmt.Println("Please provide a port number!")
-		return
-	}
+    arguments := os.Args
+    if len(arguments) == 1 {
+        fmt.Println("Please provide a port number!")
+        return
+    }
 
-	port := ":" + arguments[1]
-	listener, err := net.Listen("tcp", port) // v4 + v6
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer listener.Close()
+    port := ":" + arguments[1]
+    listener, err := net.Listen("tcp", port) // v4 + v6
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+    defer listener.Close()
 
-	rand.Seed(time.Now().Unix())
+    rand.Seed(time.Now().Unix())
 
-	for {
-		c, err := listener.Accept()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		go handleConnection(c)
-	}
+    for {
+        c, err := listener.Accept()
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
+        go handleConnection(c)
+    }
 }
 
 func init() {
