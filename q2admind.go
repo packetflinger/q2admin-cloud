@@ -33,18 +33,19 @@ type Player struct {
 
 // this is a Quake 2 Gameserver, and also a client to us
 type Server struct {
-	id         int32 // this is the database index
-	key        int32
-	index      int32
-	version    int32 // what version are we running
-	ipaddress  string
-	port       int16 // default 27910
-	connected  bool
-	currentmap string
-	enabled    bool
-	connection *net.Conn
-	players    []Player
-	message    MessageBuffer
+    id         int32 // this is the database index
+    key        int32
+    index      int32
+    version    int32 // what version are we running
+    name       string
+    ipaddress  string
+    port       int16 // default 27910
+    connected  bool
+    currentmap string
+    enabled    bool
+    connection *net.Conn
+    players    []Player
+    message    MessageBuffer
     encrypted  bool
     publickey  *rsa.PublicKey
     aeskey     []byte          // 16 (128bit)
