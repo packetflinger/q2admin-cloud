@@ -2,7 +2,9 @@ package main
 
 import (
     "bufio"
+    "encoding/json"
     "fmt"
+    "log"
     "math/rand"
     "net"
     "os"
@@ -52,6 +54,17 @@ type Server struct {
     nonce      []byte          // 12 for gcm
 }
 
+// structure of the config file
+type Config struct {
+    Address string
+    Port int
+    Database   string
+    Privatekey string
+    APIPort    int
+}
+
+var config Config
+
 var Servers = []Server {
     {id: 1, key:1234, name: "dm", ipaddress: "107.174.230.210", port: 27910, enabled: true},
     {id: 2, key:2345, name: "dmx", ipaddress: "107.174.230.210", port: 27911, enabled: true},
@@ -80,21 +93,13 @@ func handleConnection(c net.Conn) {
 }
 
 func main() {
-    arguments := os.Args
-    if len(arguments) == 1 {
-        fmt.Println("Please provide a port number!")
-        return
-    }
-
-    port := ":" + arguments[1]
+    port := fmt.Sprintf("%s:%d", config.Address, config.Port)
     listener, err := net.Listen("tcp", port) // v4 + v6
     if err != nil {
         fmt.Println(err)
         return
     }
     defer listener.Close()
-
-    rand.Seed(time.Now().Unix())
 
     for {
         c, err := listener.Accept()
@@ -107,14 +112,32 @@ func main() {
 }
 
 func init() {
-    // testing stuff
+    configfile := "q2a.json" // override with cli arg
+    if len(os.Args) > 1 {
+        configfile = os.Args[1]
+    }
+
+    confjson, err := os.ReadFile(configfile)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    err = json.Unmarshal(confjson, &config)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    rand.Seed(time.Now().Unix())
+    // testing stuffb
     //public, err := LoadPublicKey("public.pem")
     //if err != nil {
     //    fmt.Println(err)
     //}
     //fmt.Println(public)
     //os.Exit(1)
+    /*
     for _, srv := range(Servers) {
         fmt.Printf("%d - %s - %s:%d\n", srv.id, srv.name, srv.ipaddress, srv.port)
     }
+    */
 }
