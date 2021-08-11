@@ -52,6 +52,13 @@ type Server struct {
     nonce      []byte          // 12 for gcm
 }
 
+var Servers = []Server {
+    {id: 1, key:1234, name: "dm", ipaddress: "107.174.230.210", port: 27910, enabled: true},
+    {id: 2, key:2345, name: "dmx", ipaddress: "107.174.230.210", port: 27911, enabled: true},
+    {id: 3, key:4567, name: "tourney", ipaddress: "107.174.230.210", port: 27912, enabled: true},
+    {id: 4, key:5678, name: "tourney2", ipaddress: "107.174.230.210", port: 27913, enabled: true},
+}
+
 func handleConnection(c net.Conn) {
     fmt.Printf("Serving %s\n", c.RemoteAddr().String())
     for {
@@ -101,10 +108,13 @@ func main() {
 
 func init() {
     // testing stuff
-    public, err := LoadPublicKey("public.pem")
-    if err != nil {
-        fmt.Println(err)
+    //public, err := LoadPublicKey("public.pem")
+    //if err != nil {
+    //    fmt.Println(err)
+    //}
+    //fmt.Println(public)
+    //os.Exit(1)
+    for _, srv := range(Servers) {
+        fmt.Printf("%d - %s - %s:%d\n", srv.id, srv.name, srv.ipaddress, srv.port)
     }
-    fmt.Println(public)
-    os.Exit(1)
 }
