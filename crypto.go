@@ -95,14 +95,18 @@ func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
 func LoadPublicKey(keyfile string) (*rsa.PublicKey, error) {
     pub, _ := os.ReadFile(keyfile)
     pubPem, _ := pem.Decode(pub)
-    //fmt.Println(pubPem)
-    if pubPem.Type != "PUBLIC KEY" {
-        return nil, errors.New("Not a public key file")
+
+    if pubPem.Type == "PUBLIC KEY" {
+        public, _ := x509.ParsePKIXPublicKey(pubPem.Bytes)
+        return public.(*rsa.PublicKey), nil
     }
 
-    public, _ := x509.ParsePKIXPublicKey(pubPem.Bytes)
+    if pubPem.Type == "RSA PUBLIC KEY" {
+        public, _ := x509.ParsePKCS1PublicKey(pubPem.Bytes)
+        return public, nil
+    }
 
-    return public.(*rsa.PublicKey), nil
+    return nil, errors.New("Not a public key file")
 }
 
 func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) []byte {
