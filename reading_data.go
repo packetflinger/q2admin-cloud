@@ -9,7 +9,7 @@ import (
 /**
  * basically just grab a subsection of the buffer
  */
-func ReadData(msg *MessageBuffer, length int32) []byte {
+func ReadData(msg *MessageBuffer, length int) []byte {
     start := msg.index
     msg.index += length
     return msg.buffer[start:msg.index]
