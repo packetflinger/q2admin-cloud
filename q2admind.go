@@ -212,17 +212,12 @@ func handleConnection(c net.Conn) {
         log.Printf("Loading public key: %s\n", err.Error())
     }
 
-    // no, we have to sign this data instead
-    //challengeCipher := PublicEncrypt(server.publickey, server.nonce)
-    //fmt.Printf("Client Nonce:\n%s\n\n", hex.Dump(server.nonce))
     challengeCipher := Sign(q2a.privatekey, server.nonce)
     WriteByte(SCMDHelloAck, &server.messageout)
     WriteShort(len(challengeCipher), &server.messageout)
     WriteData(challengeCipher, &server.messageout)
 
-    //fmt.Printf("Sending:\n%s\n\n", hex.Dump(server.messageout.buffer))
-
-    /**b
+    /**
      * if client requests encrypted transit, encrypt the session key/iv
      * with the client's public key to keep it confidential
      */
@@ -304,23 +299,6 @@ func main() {
 }
 
 func init() {
-    /*
-    priv, err := LoadPrivateKey("private-1628817495.pem")
-    pub, err := LoadPublicKey("public-1628817495.pem")
-    clear := RandomBytes(16)
-    sig := Sign(priv, clear)
-    ok := VerifySignature(pub, clear, sig)
-    fmt.Printf("%s\n\n", hex.Dump(clear))
-    fmt.Printf("%s\n", hex.Dump(sig))
-    fmt.Println(ok)
-    os.Exit(1)
-    */
-
-    //pubkey, err := LoadPublicKey("public-1628712203.pem")
-    //pubkey, err := LoadPublicKey("private.pem")
-    //fmt.Println(pubkey)
-    //os.Exit(1)
-
     configfile := "q2a.json" // override with cli arg
     if len(os.Args) > 1 {
         configfile = os.Args[1]
