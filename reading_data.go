@@ -23,6 +23,11 @@ func ReadString(msg *MessageBuffer) string {
 
     // find the next null (terminates the string)
     for i:=0; msg.buffer[msg.index]!=0; i++ {
+        // we hit the end without finding a null
+        if msg.index == len(msg.buffer) {
+            break;
+        }
+
         buffer.WriteString(string(msg.buffer[msg.index]))
         msg.index++
     }
