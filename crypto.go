@@ -8,6 +8,7 @@ import (
     "crypto/sha256"
     "crypto/x509"
     "encoding/pem"
+    //"encoding/hex"
     "errors"
     "fmt"
     "os"
@@ -153,7 +154,13 @@ func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
 
     checksum := hash.Sum(nil)
 
-    signature, _ := rsa.SignPSS(rand.Reader, key, 5, checksum, nil)
+    //fmt.Printf("Digest:\n%s\n\n", hex.Dump(checksum))
+
+    //signature, _ := rsa.SignPSS(rand.Reader, key, 5, checksum, nil)
+    signature, err := rsa.SignPKCS1v15(rand.Reader, key, 5, checksum)
+    if err != nil {
+        fmt.Println(err)
+    }
     return signature
 }
 
@@ -178,11 +185,22 @@ func VerifySignature(key *rsa.PublicKey, plaintext []byte, sig []byte) bool {
     temp := plaintext
     _, _ = hash.Write(temp)
     checksum := hash.Sum(nil)
-    err := rsa.VerifyPSS(key, 5, checksum, sig, nil)
+    //fmt.Printf("Digest:\n%s\n\n", hex.Dump(checksum))
+    //fmt.Printf("Signature:\n%s\n\n", hex.Dump(sig))
+    //err := rsa.VerifyPSS(key, 5, checksum, sig, nil)
+    err := rsa.VerifyPKCS1v15(key, 5, checksum, sig)
 
     if err == nil {
         return true
     }
 
+    fmt.Println(err)
     return false
+}
+
+func DigestSHA256(input []byte) []byte {
+    hash := sha256.New()
+    _, _ = hash.Write(input)
+    checksum := hash.Sum(nil)
+    return checksum
 }
