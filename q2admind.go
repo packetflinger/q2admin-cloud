@@ -2,7 +2,7 @@ package main
 
 import (
     //"bufio"
-    "encoding/hex"
+    //"encoding/hex"
     "encoding/json"
     "errors"
     "fmt"
@@ -12,7 +12,7 @@ import (
     "os"
     "crypto/rsa"
     //"strconv"
-    //"strings"
+    "strings"
     "time"
 )
 
@@ -121,19 +121,99 @@ func clearmsg(msg *MessageBuffer) {
     msg.length = 0
 }
 
-func parseMessage(msg *MessageBuffer) {
-    /*
+/**
+ * Take a "/"" delimited string of userinfo and return
+ * a key/value map
+ */
+func UserinfoMap(ui string) (map[string]string) {
+    data := strings.Split(ui[1:], "\\")  // ui should start with /
+    info := make(map[string]string)
+    for i:=0; i<len(data); i+=2 {
+        info[data[i]] = data[i+1]
+    }
+
+    // special case: split the IP value into IP and Port
+    ip := info["ip"]
+    ipport := strings.Split(ip, ":")
+    info["port"] = ipport[1]
+    info["ip"] = ipport[0]
+
+    return info
+}
+
+func ParseMessage(srv *Server) {
+    msg := &srv.message
     for {
         if msg.index >= len(msg.buffer) {
             break
         }
 
         switch b := ReadByte(msg); b {
-        case CMDHello:
-            //parseHello(msg)
+        case CMDPing:
+            Pong(srv)
+
+        case CMDPrint:
+            ParsePrint(srv)
+
+        case CMDMap:
+            ParseMap(srv)
+
+        case CMDPlayerList:
+            ParsePlayerlist(srv)
+
+        case CMDConnect:
+            ParseConnect(srv)
+
+        case CMDDisconnect:
+            ParseDisconnect(srv)
         }
     }
-    */
+}
+
+/**
+ * Received a ping from a client, send a pong to show we're alive
+ */
+func Pong(srv *Server) {
+    log.Printf("[%s/PING]\n", srv.name)
+    WriteByte(SCMDPong, &srv.messageout)
+}
+
+func ParsePrint(srv *Server) {
+    level := ReadByte(&srv.message)
+    text := ReadString(&srv.message)
+    log.Printf("[%s/PRINT] (%d) %s\n", srv.name, level, text)
+}
+
+func ParseConnect(srv *Server) {
+    clientnum := ReadByte(&srv.message)
+    userinfo := ReadString(&srv.message)
+    info := UserinfoMap(userinfo)
+    log.Printf("[%s/CONNECT] (%d) %s - %s\n", srv.name, clientnum, info["name"], info["ip"])
+}
+
+func ParseDisconnect(srv *Server) {
+    clientnum := ReadByte(&srv.message)
+    log.Printf("[%s/DISCONNECT] (%d)\n", srv.name, clientnum)
+}
+
+func ParseMap(srv *Server) {
+    mapname := ReadString(&srv.message)
+    srv.currentmap = mapname
+    log.Printf("[%s/MAP] %s\n", srv.name, srv.currentmap)
+}
+
+func ParsePlayerlist(srv *Server) {
+    count := ReadByte(&srv.message)
+    log.Printf("[%s/PLAYERLIST] %d\n", srv.name, count)
+    for i:=0; i<int(count); i++ {
+        ParsePlayer(srv)
+    }
+}
+
+func ParsePlayer(srv *Server) {
+    clientnum := ReadByte(&srv.message)
+    userinfo := ReadString(&srv.message)
+    log.Printf("[%s/PLAYER] (%d) %s\n", srv.name, clientnum, userinfo)
 }
 
 /**
@@ -150,21 +230,29 @@ func findserver(lookup int) (*Server, error) {
     return nil, errors.New("Unknown server")
 }
 
+func SendMessages(srv *Server) {
+    if srv.messageout.length > 0 {
+        //fmt.Printf("Sending\n%s\n\n", hex.Dump(srv.messageout.buffer))
+        (*srv.connection).Write(srv.messageout.buffer)
+        clearmsg(&srv.messageout)
+    }
+}
+
 /**
  * Setup the connection
  * The first message sent should identify the game server
  * and trigger the authentication process
  */
 func handleConnection(c net.Conn) {
-    fmt.Printf("Serving %s\n", c.RemoteAddr().String())
+    log.Printf("Serving %s\n", c.RemoteAddr().String())
 
     input := make([]byte, 5000)
     var msg MessageBuffer
 
-    bytesread, _ := c.Read(input)
+    _, _ = c.Read(input)
     msg.buffer = input
 
-    fmt.Printf("Read Input:\n%s\n\n", hex.Dump(input[0:bytesread]))
+    //fmt.Printf("Read Input:\n%s\n\n", hex.Dump(input[0:bytesread]))
 
     magic := ReadLong(&msg)
     if magic != 1128346193 {
@@ -233,7 +321,8 @@ func handleConnection(c net.Conn) {
     server.challenge = chal
     WriteData(server.challenge, &server.messageout)
 
-    c.Write(server.messageout.buffer)
+    //c.Write(server.messageout.buffer)
+    SendMessages(server)
 
     // read the client signature
     size, _ := c.Read(input)
@@ -252,14 +341,18 @@ func handleConnection(c net.Conn) {
     verified := VerifySignature(server.publickey, server.challenge, clientSignature)
 
     if verified {
-        fmt.Printf("%s signature verified\n", server.name)
+        log.Printf("%s signature verified\n", server.name)
     } else {
-        fmt.Printf("%s signature verifcation failed...", server.name)
+        log.Printf("%s signature verifcation failed...", server.name)
         c.Close()
         return
     }
 
+    WriteByte(SCMDTrusted, &server.messageout)
+    SendMessages(server)
+
     for {
+        input := make([]byte, 5000)
         size, err := c.Read(input)
         if err != nil {
             log.Printf(
@@ -269,12 +362,13 @@ func handleConnection(c net.Conn) {
             break;
         }
 
-        msg.buffer = input
-        msg.index = 0
-        msg.length = size
+        server.message.buffer = input
+        server.message.index = 0
+        server.message.length = size
 
-        fmt.Printf("Read:\n%s\n\n", hex.Dump(input[0:size]))
-        //parseMessage(&msgbuf)
+        //fmt.Printf("Read:\n%s\n\n", hex.Dump(input[:size]))
+        ParseMessage(server)
+        SendMessages(server)
     }
     c.Close()
 }
