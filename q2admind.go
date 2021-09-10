@@ -2,7 +2,7 @@ package main
 
 import (
     //"bufio"
-    //"encoding/hex"
+    "encoding/hex"
     "encoding/json"
     "errors"
     "fmt"
@@ -27,19 +27,19 @@ type MessageBuffer struct {
 }
 
 type Player struct {
-    clientid     int
-    name         string
-    userinfo     string
-    frags        int
-    deaths       int
-    suicides     int
-    teleports    int
-    lastteleport int
-    invites int
-    lastinvite int
-    ip string
-    port int
-    fov int
+    clientid        int
+    name            string
+    userinfo        string
+    frags           int
+    deaths          int
+    suicides        int
+    teleports       int
+    lastteleport    int
+    invites         int
+    lastinvite      int
+    ip              string
+    port            int
+    fov             int
 }
 
 // this is a Quake 2 Gameserver, and also a client to us
@@ -73,11 +73,12 @@ type AdminServer struct {
 
 // structure of the config file
 type Config struct {
-    Address string
-    Port int
-    Database   string
-    PrivateKey string
-    APIPort    int
+    Address     string
+    Port        int
+    Database    string
+    PrivateKey  string
+    APIPort     int
+    Debug       int
 }
 
 var config Config
@@ -126,6 +127,13 @@ const (
     PCMDReport
 )
 
+const (
+    PRINT_LOW = iota    // pickups
+    PRINT_MEDIUM        // obituaries (white/grey, no sound)
+    PRINT_HIGH          // important stuff
+    PRINT_CHAT          // highlighted, sound
+)
+
 var servers = []Server {
     {id: 1, key:1234, name: "dm", ipaddress: "107.174.230.210", port: 27910, enabled: true},
     {id: 2, key:2345, name: "dmx", ipaddress: "107.174.230.210", port: 27911, enabled: true},
@@ -134,7 +142,7 @@ var servers = []Server {
 }
 
 func clearmsg(msg *MessageBuffer) {
-    msg.buffer = []byte{0x00}
+    msg.buffer = nil
     msg.index = 0
     msg.length = 0
 }
@@ -159,6 +167,22 @@ func removeplayer(players []Player, cl int) ([]Player){
     }
 
     return append(players[:index], players[index+1:]...)
+}
+
+func SayPlayer(srv *Server, client int, level int, text string) {
+    WriteByte(SCMDSayClient, &srv.messageout)
+    WriteByte(byte(client), &srv.messageout)
+    WriteByte(byte(level), &srv.messageout)
+    WriteString(text, &srv.messageout)
+}
+
+func SayEveryone(srv *Server, level int, text string) {
+    for _, p := range srv.players {
+        WriteByte(SCMDSayClient, &srv.messageout)
+        WriteByte(byte(p.clientid), &srv.messageout)
+        WriteByte(byte(level), &srv.messageout)
+        WriteString(text, &srv.messageout)
+    }
 }
 
 /**
@@ -288,16 +312,19 @@ func Teleport(srv *Server) {
     dest := ReadString(&srv.message)
     p := findplayer(srv.players, int(cl))
     log.Printf("[%s/TELEPORT/%s] %s\n", srv.name, p.name, dest)
-    
+
     txt := "Sorry, teleport command is still under construction\n"
-    WriteByte(SCMDSayClient, &srv.messageout)
-    WriteByte(cl, &srv.messageout)
-    WriteByte(1, &srv.messageout)
-    WriteString(txt, &srv.messageout)
+    SayPlayer(srv, int(cl), PRINT_HIGH, txt)
 }
 
 func Invite(srv *Server) {
+    cl := ReadByte(&srv.message)
+    text := ReadString(&srv.message)
+    p := findplayer(srv.players, int(cl))
+    log.Printf("[%s/INVITE/%s] %s\n", srv.name, p.name, text)
 
+    txt := "Sorry, INVITE command is currently under construction\n"
+    SayPlayer(srv, int(cl), PRINT_HIGH, txt)
 }
 
 /**
@@ -316,7 +343,9 @@ func findserver(lookup int) (*Server, error) {
 
 func SendMessages(srv *Server) {
     if srv.messageout.length > 0 {
-        //fmt.Printf("Sending\n%s\n\n", hex.Dump(srv.messageout.buffer))
+        if config.Debug == 1 {
+            fmt.Printf("Sending\n%s\n\n", hex.Dump(srv.messageout.buffer))
+        }
         (*srv.connection).Write(srv.messageout.buffer)
         clearmsg(&srv.messageout)
     }
