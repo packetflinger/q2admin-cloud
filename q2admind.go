@@ -325,13 +325,33 @@ func Invite(srv *Server) {
 
     //txt := "Sorry, INVITE command is currently under construction\n"
     //SayPlayer(srv, int(cl), PRINT_HIGH, txt)
-    StuffPlayer(srv, int(cl), "say this better work")
+    //StuffPlayer(srv, int(cl), "say this better work")
+    MutePlayer(srv, p.clientid, 15)
 }
 
+/**
+ * Force a player to do a command
+ */
 func StuffPlayer(srv *Server, cl int, cmd string) {
     stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", cl, cmd)
     WriteByte(SCMDCommand, &srv.messageout)
     WriteString(stuffcmd, &srv.messageout)
+}
+
+/**
+ * Temporarily prevent the player from talking
+ * using a negative number of seconds makes it
+ * permanent.
+ */
+func MutePlayer(srv *Server, cl int, seconds int) {
+    cmd := ""
+    if seconds < 0 {
+        cmd = fmt.Sprintf("sv !mute CL %d PERM\n", cl)
+    } else {
+        cmd = fmt.Sprintf("sv !mute CL %d %d", cl, seconds)
+    }
+    WriteByte(SCMDCommand, &srv.messageout)
+    WriteString(cmd, &srv.messageout)
 }
 
 /**
