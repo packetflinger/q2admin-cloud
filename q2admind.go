@@ -11,7 +11,7 @@ import (
     "net"
     "os"
     "crypto/rsa"
-    //"strconv"
+    "strconv"
     "strings"
     "time"
 )
@@ -35,6 +35,11 @@ type Player struct {
     suicides     int
     teleports    int
     lastteleport int
+    invites int
+    lastinvite int
+    ip string
+    port int
+    fov int
 }
 
 // this is a Quake 2 Gameserver, and also a client to us
@@ -78,6 +83,9 @@ type Config struct {
 var config Config
 var q2a AdminServer
 
+/**
+ * Commands sent from the Q2 server to us
+ */
 const (
     _ = iota
     CMDHello
@@ -95,6 +103,9 @@ const (
     CMDAuth
 )
 
+/**
+ * Commands we send back to the Q2 server
+ */
 const (
     _ = iota
     SCMDHelloAck
@@ -119,6 +130,18 @@ func clearmsg(msg *MessageBuffer) {
     msg.buffer = []byte{0x00}
     msg.index = 0
     msg.length = 0
+}
+
+func removeplayer(players []Player, cl int) ([]Player){
+    var index int
+    for i, pl := range players {
+        if pl.clientid == cl {
+            index = i
+            break
+        }
+    }
+
+    return append(players[:index], players[index+1:]...)
 }
 
 /**
@@ -188,11 +211,24 @@ func ParseConnect(srv *Server) {
     clientnum := ReadByte(&srv.message)
     userinfo := ReadString(&srv.message)
     info := UserinfoMap(userinfo)
+    port, _ := strconv.Atoi(info["port"])
+    fov, _ := strconv.Atoi(info["fov"])
+    newplayer := Player{
+        clientid: int(clientnum),
+        userinfo: userinfo,
+        name: info["name"],
+        ip: info["ip"],
+        port: port,
+        fov: fov,
+    }
+
+    srv.players = append(srv.players, newplayer)
     log.Printf("[%s/CONNECT] (%d) %s - %s\n", srv.name, clientnum, info["name"], info["ip"])
 }
 
 func ParseDisconnect(srv *Server) {
     clientnum := ReadByte(&srv.message)
+    srv.players = removeplayer(srv.players, int(clientnum))
     log.Printf("[%s/DISCONNECT] (%d)\n", srv.name, clientnum)
 }
 
