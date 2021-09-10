@@ -323,8 +323,15 @@ func Invite(srv *Server) {
     p := findplayer(srv.players, int(cl))
     log.Printf("[%s/INVITE/%s] %s\n", srv.name, p.name, text)
 
-    txt := "Sorry, INVITE command is currently under construction\n"
-    SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+    //txt := "Sorry, INVITE command is currently under construction\n"
+    //SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+    StuffPlayer(srv, int(cl), "say this better work")
+}
+
+func StuffPlayer(srv *Server, cl int, cmd string) {
+    stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", cl, cmd)
+    WriteByte(SCMDCommand, &srv.messageout)
+    WriteString(stuffcmd, &srv.messageout)
 }
 
 /**
