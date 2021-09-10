@@ -111,12 +111,19 @@ const (
     SCMDHelloAck
     SCMDError
     SCMDPong
-    SCMDComand
+    SCMDCommand
     SCMDSayClient
     SCMDSayAll
     SCMDAuth
     SCMDTrusted
     SCMDKey
+)
+
+const (
+    PCMDTeleport = iota
+    PCMDInvite
+    PCMDWhois
+    PCMDReport
 )
 
 var servers = []Server {
@@ -130,6 +137,16 @@ func clearmsg(msg *MessageBuffer) {
     msg.buffer = []byte{0x00}
     msg.index = 0
     msg.length = 0
+}
+
+func findplayer(players []Player, cl int) *Player{
+    for _, p := range players {
+        if p.clientid == cl {
+            return &p
+        }
+    }
+
+    return nil
 }
 
 func removeplayer(players []Player, cl int) ([]Player){
@@ -189,6 +206,9 @@ func ParseMessage(srv *Server) {
 
         case CMDDisconnect:
             ParseDisconnect(srv)
+
+        case CMDCommand:
+            ParseCommand(srv)
         }
     }
 }
@@ -250,6 +270,34 @@ func ParsePlayer(srv *Server) {
     clientnum := ReadByte(&srv.message)
     userinfo := ReadString(&srv.message)
     log.Printf("[%s/PLAYER] (%d) %s\n", srv.name, clientnum, userinfo)
+}
+
+func ParseCommand(srv *Server) {
+    cmd := ReadByte(&srv.message)
+    switch cmd {
+    case PCMDTeleport:
+        Teleport(srv)
+
+    case PCMDInvite:
+        Invite(srv)
+    }
+}
+
+func Teleport(srv *Server) {
+    cl := ReadByte(&srv.message)
+    dest := ReadString(&srv.message)
+    p := findplayer(srv.players, int(cl))
+    log.Printf("[%s/TELEPORT/%s] %s\n", srv.name, p.name, dest)
+    
+    txt := "Sorry, teleport command is still under construction\n"
+    WriteByte(SCMDSayClient, &srv.messageout)
+    WriteByte(cl, &srv.messageout)
+    WriteByte(1, &srv.messageout)
+    WriteString(txt, &srv.messageout)
+}
+
+func Invite(srv *Server) {
+
 }
 
 /**
