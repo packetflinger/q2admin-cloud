@@ -233,8 +233,20 @@ func ParseMessage(srv *Server) {
 
         case CMDCommand:
             ParseCommand(srv)
+
+        case CMDFrag:
+            ParseFrag(srv)
         }
     }
+}
+
+func ParseFrag(srv *Server) {
+    v := ReadByte(&srv.message)
+    a := ReadByte(&srv.message)
+
+    //victim := findplayer(srv.players, int(v))
+
+    log.Printf("[%s/FRAG] %d > %d\n", srv.name, a, v)
 }
 
 /**
