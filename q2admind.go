@@ -11,7 +11,6 @@ import (
     "net"
     "os"
     "crypto/rsa"
-    "strconv"
     "strings"
     "time"
 )
@@ -56,6 +55,7 @@ type Server struct {
     enabled    bool
     connection *net.Conn
     players    []Player
+    maxplayers int
     message    MessageBuffer
     messageout MessageBuffer
     encrypted  bool
@@ -76,6 +76,7 @@ type Config struct {
     Address     string
     Port        int
     Database    string
+    DBString    string
     PrivateKey  string
     APIPort     int
     Debug       int
@@ -205,119 +206,7 @@ func UserinfoMap(ui string) (map[string]string) {
     return info
 }
 
-func ParseMessage(srv *Server) {
-    msg := &srv.message
-    for {
-        if msg.index >= len(msg.buffer) {
-            break
-        }
 
-        switch b := ReadByte(msg); b {
-        case CMDPing:
-            Pong(srv)
-
-        case CMDPrint:
-            ParsePrint(srv)
-
-        case CMDMap:
-            ParseMap(srv)
-
-        case CMDPlayerList:
-            ParsePlayerlist(srv)
-
-        case CMDConnect:
-            ParseConnect(srv)
-
-        case CMDDisconnect:
-            ParseDisconnect(srv)
-
-        case CMDCommand:
-            ParseCommand(srv)
-
-        case CMDFrag:
-            ParseFrag(srv)
-        }
-    }
-}
-
-func ParseFrag(srv *Server) {
-    v := ReadByte(&srv.message)
-    a := ReadByte(&srv.message)
-
-    //victim := findplayer(srv.players, int(v))
-
-    log.Printf("[%s/FRAG] %d > %d\n", srv.name, a, v)
-}
-
-/**
- * Received a ping from a client, send a pong to show we're alive
- */
-func Pong(srv *Server) {
-    log.Printf("[%s/PING]\n", srv.name)
-    WriteByte(SCMDPong, &srv.messageout)
-}
-
-func ParsePrint(srv *Server) {
-    level := ReadByte(&srv.message)
-    text := ReadString(&srv.message)
-    log.Printf("[%s/PRINT] (%d) %s\n", srv.name, level, text)
-}
-
-func ParseConnect(srv *Server) {
-    clientnum := ReadByte(&srv.message)
-    userinfo := ReadString(&srv.message)
-    info := UserinfoMap(userinfo)
-    port, _ := strconv.Atoi(info["port"])
-    fov, _ := strconv.Atoi(info["fov"])
-    newplayer := Player{
-        clientid: int(clientnum),
-        userinfo: userinfo,
-        name: info["name"],
-        ip: info["ip"],
-        port: port,
-        fov: fov,
-    }
-
-    srv.players = append(srv.players, newplayer)
-    log.Printf("[%s/CONNECT] (%d) %s - %s\n", srv.name, clientnum, info["name"], info["ip"])
-}
-
-func ParseDisconnect(srv *Server) {
-    clientnum := ReadByte(&srv.message)
-    srv.players = removeplayer(srv.players, int(clientnum))
-    log.Printf("[%s/DISCONNECT] (%d)\n", srv.name, clientnum)
-}
-
-func ParseMap(srv *Server) {
-    mapname := ReadString(&srv.message)
-    srv.currentmap = mapname
-    log.Printf("[%s/MAP] %s\n", srv.name, srv.currentmap)
-}
-
-func ParsePlayerlist(srv *Server) {
-    count := ReadByte(&srv.message)
-    log.Printf("[%s/PLAYERLIST] %d\n", srv.name, count)
-    for i:=0; i<int(count); i++ {
-        ParsePlayer(srv)
-    }
-}
-
-func ParsePlayer(srv *Server) {
-    clientnum := ReadByte(&srv.message)
-    userinfo := ReadString(&srv.message)
-    log.Printf("[%s/PLAYER] (%d) %s\n", srv.name, clientnum, userinfo)
-}
-
-func ParseCommand(srv *Server) {
-    cmd := ReadByte(&srv.message)
-    switch cmd {
-    case PCMDTeleport:
-        Teleport(srv)
-
-    case PCMDInvite:
-        Invite(srv)
-    }
-}
 
 func Teleport(srv *Server) {
     cl := ReadByte(&srv.message)
@@ -371,9 +260,9 @@ func MutePlayer(srv *Server, cl int, seconds int) {
  * ID, get a pointer to it
  */
 func findserver(lookup int) (*Server, error) {
-    for _, srv := range(servers) {
+    for i, srv := range(servers) {
         if srv.key == lookup {
-            return &srv, nil
+            return &servers[i], nil
         }
     }
 
@@ -418,7 +307,7 @@ func handleConnection(c net.Conn) {
     key := ReadLong(&msg)
     ver := ReadLong(&msg)
     port := ReadShort(&msg)
-    _ = ReadByte(&msg) // max players
+    maxplayers := ReadByte(&msg) // max players
     enc := ReadByte(&msg)
     nonce := ReadData(&msg, 16)
 
@@ -443,6 +332,8 @@ func handleConnection(c net.Conn) {
     server.nonce = nonce
     server.connection = &c
     server.connected = true
+    server.version = int(ver)
+    server.maxplayers = int(maxplayers)
     keyname := fmt.Sprintf("keys/%d.pem", key)
 
     log.Printf("Trying to load public key: %s\n", keyname)
@@ -522,6 +413,8 @@ func handleConnection(c net.Conn) {
         ParseMessage(server)
         SendMessages(server)
     }
+
+    server.connected = false
     c.Close()
 }
 
@@ -532,7 +425,10 @@ func main() {
         fmt.Println(err)
         return
     }
+
     defer listener.Close()
+
+    go RunHTTPServer()
 
     for {
         c, err := listener.Accept()
