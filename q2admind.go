@@ -220,7 +220,14 @@ func findserver(lookup int) (*Server, error) {
     return nil, errors.New("Unknown server")
 }
 
+/**
+ * Send all messages in the outgoing queue to the gameserver
+ */
 func SendMessages(srv *Server) {
+    if !srv.connected {
+        return;
+    }
+
     if srv.messageout.length > 0 {
         if config.Debug == 1 {
             fmt.Printf("Sending\n%s\n\n", hex.Dump(srv.messageout.buffer))
