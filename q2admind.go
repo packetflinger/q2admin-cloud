@@ -63,6 +63,7 @@ type Server struct {
     aeskey     []byte          // 16 (128bit)
     nonce      []byte          // 12 for gcm
     challenge  []byte
+    bans       []Ban
 }
 
 // "this" admin server
