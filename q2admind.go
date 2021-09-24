@@ -420,4 +420,6 @@ func init() {
     pubkey := privkey.Public().(*rsa.PublicKey)
     q2a.privatekey = privkey
     q2a.publickey = pubkey
+
+    LoadGlobalBans()
 }
