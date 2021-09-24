@@ -62,3 +62,12 @@ func MutePlayer(srv *Server, cl int, seconds int) {
     WriteByte(SCMDCommand, &srv.messageout)
     WriteString(cmd, &srv.messageout)
 }
+
+/**
+ *
+ */
+func KickPlayer(srv *Server, cl int) {
+    cmd := fmt.Sprintf("kick %d", cl)
+    WriteByte(SCMDCommand, &srv.messageout)
+    WriteString(cmd, &srv.messageout)
+}

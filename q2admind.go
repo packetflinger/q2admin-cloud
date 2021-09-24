@@ -350,6 +350,7 @@ func handleConnection(c net.Conn) {
         return
     }
 
+    LoadBans(server)
     WriteByte(SCMDTrusted, &server.messageout)
     SendMessages(server)
 
@@ -387,6 +388,8 @@ func main() {
 
     defer listener.Close()
 
+    log.Printf("Listening for gameservers on %s\n", port)
+
     go RunHTTPServer()
 
     for {
@@ -405,6 +408,7 @@ func init() {
         configfile = os.Args[1]
     }
 
+    log.Printf("Loading config from %s\n", configfile)
     confjson, err := os.ReadFile(configfile)
     if err != nil {
         log.Fatal(err)

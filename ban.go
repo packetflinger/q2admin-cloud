@@ -5,6 +5,7 @@ import (
     "fmt"
     "io"
     "log"
+    "net"
     "os"
     "strings"
 )
@@ -16,16 +17,25 @@ type Ban struct {
     description string
 }
 
+const (
+    NotBanned = iota    // no ban matches
+    Banned              // explicity banned
+    Allowed             // a ban matches, but criteria allows
+)
+
 var globalbans []Ban
 
 /**
- * Parse ban files loading records into memory
+ * Parse ban files loading records into memory.
+ * Runs at startup
  */
 func LoadGlobalBans() {
     banfile := "bans/global.csv"
+    log.Printf("Loading global banlist from %s\n", banfile)
     bandata, err := os.ReadFile(banfile)
     if err != nil {
-        log.Fatal(err)
+        log.Println("Problems loading banlist: ", err)
+        return
     }
 
     r := csv.NewReader(strings.NewReader(string(bandata)))
@@ -39,13 +49,71 @@ func LoadGlobalBans() {
 			log.Fatal(err)
 		}
 
-        ban := Ban{
+        ban := Ban {
             address: record[0],
             description: record[2],
         }
 
         globalbans = append(globalbans, ban)
 	}
+}
 
-    fmt.Println(globalbans)
+/**
+ * Load gameserver local banlist
+ * Happens after gameserver connects and authenticates
+ */
+func LoadBans(srv *Server) {
+    banfile := fmt.Sprintf("bans/%s.csv", srv.name)
+    log.Printf("Loading server-level banlist from %s\n", banfile)
+
+    bandata, err := os.ReadFile(banfile)
+    if err != nil {
+        log.Println("Problems loading banlist: ", err)
+        return
+    }
+
+    r := csv.NewReader(strings.NewReader(string(bandata)))
+    for {
+        r.Comment = '#'
+		record, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+        ban := Ban {
+            address: record[0],
+            description: record[2],
+        }
+
+        srv.bans = append(srv.bans, ban)
+	}
+}
+
+/**
+ *
+ */
+func CheckForBan(banlist *[]Ban, ip string) int {
+    ipaddr, _, err := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
+    if err != nil {
+        log.Println("Converting IP: ", err)
+        return NotBanned
+    }
+
+    for _, ban := range *banlist {
+        _, net, err := net.ParseCIDR(ban.address)
+        if err != nil {
+            log.Println("Ban lookup: ", err)
+            continue
+        }
+
+        if net.Contains(ipaddr) {
+            log.Printf("%s is BANNED\n", ip)
+            return Banned
+        }
+    }
+
+    return NotBanned
 }

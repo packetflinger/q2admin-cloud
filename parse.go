@@ -97,6 +97,19 @@ func ParseConnect(srv *Server) {
 
     srv.players = append(srv.players, newplayer)
     log.Printf("[%s/CONNECT] (%d) %s - %s\n", srv.name, clientnum, info["name"], info["ip"])
+
+    // global
+    if CheckForBan(&globalbans, newplayer.ip) == Banned {
+        SayPlayer(srv, int(clientnum), PRINT_CHAT, "Your IP matches a globally banned netblock\n")
+        KickPlayer(srv, int(clientnum))
+        return
+    }
+
+    // local
+    if CheckForBan(&srv.bans, newplayer.ip) == Banned {
+        SayPlayer(srv, int(clientnum), PRINT_CHAT, "Your IP matches a locally banned netblock\n")
+        KickPlayer(srv, int(clientnum))
+    }
 }
 
 /**
