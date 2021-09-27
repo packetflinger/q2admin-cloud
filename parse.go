@@ -1,6 +1,7 @@
 package main
 
 import (
+    "fmt"
     "log"
     "strconv"
 )
@@ -99,15 +100,25 @@ func ParseConnect(srv *Server) {
     log.Printf("[%s/CONNECT] (%d) %s - %s\n", srv.name, clientnum, info["name"], info["ip"])
 
     // global
-    if CheckForBan(&globalbans, newplayer.ip) == Banned {
-        SayPlayer(srv, int(clientnum), PRINT_CHAT, "Your IP matches a globally banned netblock\n")
+    if isbanned, msg := CheckForBan(&globalbans, newplayer.ip); isbanned == Banned {
+        SayPlayer(
+            srv,
+            int(clientnum),
+            PRINT_CHAT,
+            fmt.Sprintf("Your IP matches a globally banned netblock: %s\n", msg),
+        )
         KickPlayer(srv, int(clientnum))
         return
     }
 
     // local
-    if CheckForBan(&srv.bans, newplayer.ip) == Banned {
-        SayPlayer(srv, int(clientnum), PRINT_CHAT, "Your IP matches a locally banned netblock\n")
+    if isbanned, msg := CheckForBan(&srv.bans, newplayer.ip); isbanned == Banned {
+        SayPlayer(
+            srv,
+            int(clientnum),
+            PRINT_CHAT,
+            fmt.Sprintf("Your IP matches a locally banned netblock: %s\n", msg),
+        )
         KickPlayer(srv, int(clientnum))
     }
 }

@@ -95,11 +95,11 @@ func LoadBans(srv *Server) {
 /**
  *
  */
-func CheckForBan(banlist *[]Ban, ip string) int {
+func CheckForBan(banlist *[]Ban, ip string) (int, string) {
     ipaddr, _, err := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
     if err != nil {
         log.Println("Converting IP: ", err)
-        return NotBanned
+        return NotBanned, ""
     }
 
     for _, ban := range *banlist {
@@ -111,9 +111,9 @@ func CheckForBan(banlist *[]Ban, ip string) int {
 
         if net.Contains(ipaddr) {
             log.Printf("%s is BANNED\n", ip)
-            return Banned
+            return Banned, ban.description
         }
     }
 
-    return NotBanned
+    return NotBanned, ""
 }
