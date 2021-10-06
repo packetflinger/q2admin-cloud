@@ -2,10 +2,12 @@ package main
 
 import (
     "fmt"
+    "log"
     "net/http"
 )
 
 func RunHTTPServer() {
+    port := ":27999"
     //fs := http.FileServer(http.Dir("static/"))
     //http.Handle("/static/", http.StripPrefix("/static/", fs))
     http.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
@@ -17,5 +19,6 @@ func RunHTTPServer() {
         fmt.Fprintf(w, "")
     })
 
-    http.ListenAndServe(":27999", nil)
+    log.Printf("Listening for web requests on %s\n", port)
+    http.ListenAndServe(port, nil)
 }
