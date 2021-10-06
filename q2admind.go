@@ -59,6 +59,7 @@ type Server struct {
     message    MessageBuffer
     messageout MessageBuffer
     encrypted  bool
+    havekeys   bool
     publickey  *rsa.PublicKey
     aeskey     []byte          // 16 (128bit)
     nonce      []byte          // 12 for gcm
@@ -227,6 +228,18 @@ func findserver(lookup int) (*Server, error) {
 func SendMessages(srv *Server) {
     if !srv.connected {
         return;
+    }
+
+    // key have been exchanged, encrypt the message
+    if srv.havekeys && srv.encrypted {
+        cipher := SymmetricEncrypt(
+            srv.aeskey,
+            srv.aesiv,
+            srv.messageout.buffer[:srv.messageout.length])
+
+        clearmsg(&srv.messageout)
+        srv.messageout.buffer = cipher
+        srv.messageout.length = len(cipher)
     }
 
     if srv.messageout.length > 0 {
