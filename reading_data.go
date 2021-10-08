@@ -32,6 +32,7 @@ func ReadString(msg *MessageBuffer) string {
         msg.index++
     }
 
+    msg.index++
     return buffer.String()
 }
 
