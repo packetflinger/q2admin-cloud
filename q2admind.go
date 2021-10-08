@@ -2,6 +2,7 @@ package main
 
 import (
     //"bufio"
+    "database/sql"
     "encoding/hex"
     "encoding/json"
     "errors"
@@ -86,6 +87,7 @@ type Config struct {
 
 var config Config
 var q2a AdminServer
+var db *sql.DB
 
 /**
  * Commands sent from the Q2 server to us
