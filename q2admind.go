@@ -44,7 +44,8 @@ type Player struct {
 // this is a Quake 2 Gameserver, and also a client to us
 type Server struct {
     id         int // this is the database index
-    key        int
+    uuid       string
+    owner      int
     index      int
     version    int // what version are we running
     name       string
@@ -62,8 +63,7 @@ type Server struct {
     havekeys   bool
     publickey  *rsa.PublicKey
     aeskey     []byte          // 16 (128bit)
-    nonce      []byte          // 12 for gcm
-    challenge  []byte
+    aesiv      []byte
     bans       []Ban
 }
 
@@ -137,12 +137,16 @@ const (
     PRINT_CHAT          // highlighted, sound
 )
 
+/*
 var servers = []Server {
     {id: 1, key:1234, name: "dm", ipaddress: "107.174.230.210", port: 27910, enabled: true},
     {id: 2, key:2345, name: "dmx", ipaddress: "107.174.230.210", port: 27911, enabled: true},
     {id: 3, key:4567, name: "tourney", ipaddress: "107.174.230.210", port: 27912, enabled: true},
     {id: 4, key:5678, name: "tourney2", ipaddress: "107.174.230.210", port: 27913, enabled: true},
 }
+*/
+
+var servers = []Server{}
 
 func clearmsg(msg *MessageBuffer) {
     msg.buffer = nil
@@ -212,9 +216,9 @@ func UserinfoMap(ui string) (map[string]string) {
  * Locate the struct of the server for a particular
  * ID, get a pointer to it
  */
-func findserver(lookup int) (*Server, error) {
+func findserver(lookup string) (*Server, error) {
     for i, srv := range(servers) {
-        if srv.key == lookup {
+        if srv.uuid == lookup {
             return &servers[i], nil
         }
     }
@@ -276,21 +280,20 @@ func handleConnection(c net.Conn) {
     log.Println("Magic value accepted")
 
     _ = ReadByte(&msg) // should be CMDHello
-    key := ReadLong(&msg)
+    uuid := ReadString(&msg)
     ver := ReadLong(&msg)
     port := ReadShort(&msg)
-    maxplayers := ReadByte(&msg) // max players
+    maxplayers := ReadByte(&msg)
     enc := ReadByte(&msg)
-    nonce := ReadData(&msg, 16)
+    clNonce := ReadData(&msg, 16)
 
     if ver < versionRequired {
-        // write an error, close, return
         c.Close()
         return
     }
     log.Println("Running acceptable version")
 
-    server, err := findserver(int(key))
+    server, err := findserver(uuid)
     if err != nil {
         // write an error, close socket, returns
         log.Println(err)
@@ -301,21 +304,20 @@ func handleConnection(c net.Conn) {
 
     server.port = int(port)
     server.encrypted = int(enc) == 1    // stupid bool conversion
-    server.nonce = nonce
     server.connection = &c
     server.connected = true
     server.version = int(ver)
     server.maxplayers = int(maxplayers)
-    keyname := fmt.Sprintf("keys/%d.pem", key)
+    keyname := fmt.Sprintf("keys/%s.pem", uuid)
 
-    log.Printf("Trying to load public key: %s\n", keyname)
+    log.Printf("Loading public key: %s\n", keyname)
     pubkey, err := LoadPublicKey(keyname)
     server.publickey = pubkey
     if err != nil {
         log.Printf("Loading public key: %s\n", err.Error())
     }
 
-    challengeCipher := Sign(q2a.privatekey, server.nonce)
+    challengeCipher := Sign(q2a.privatekey, clNonce)
     WriteByte(SCMDHelloAck, &server.messageout)
     WriteShort(len(challengeCipher), &server.messageout)
     WriteData(challengeCipher, &server.messageout)
@@ -332,9 +334,8 @@ func handleConnection(c net.Conn) {
         WriteData(aescipher, &server.messageout)
     }
 
-    chal := RandomBytes(16)
-    server.challenge = chal
-    WriteData(server.challenge, &server.messageout)
+    svchallenge := RandomBytes(16)
+    WriteData(svchallenge, &server.messageout)
 
     //c.Write(server.messageout.buffer)
     SendMessages(server)
@@ -353,7 +354,7 @@ func handleConnection(c net.Conn) {
 
     sigsize := ReadShort(&msg)
     clientSignature := ReadData(&msg, int(sigsize))
-    verified := VerifySignature(server.publickey, server.challenge, clientSignature)
+    verified := VerifySignature(server.publickey, svchallenge, clientSignature)
 
     if verified {
         log.Printf("%s signature verified\n", server.name)
@@ -440,4 +441,33 @@ func init() {
     q2a.publickey = pubkey
 
     LoadGlobalBans()
+
+    type User struct{
+        UUID string
+        Email string
+    }
+
+    db := DatabaseConnect()
+
+    log.Println("Loading servers:")
+    servers = LoadServers(db)
+    for _, s := range servers {
+        log.Printf("  %s - %s:%d (%s)", s.name, s.ipaddress, s.port, s.uuid)
+    }
+    /*
+    defer db.Close()
+
+    sql := "SELECT uuid, email FROM user"
+    r, err := db.Query(sql)
+    var user User
+
+    for r.Next() {
+        err = r.Scan(&user.UUID, &user.Email)
+        if err != nil {
+            panic(err)
+        }
+    }
+
+    log.Println(user)
+    */
 }
