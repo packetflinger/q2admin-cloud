@@ -148,19 +148,23 @@ func RandomBytes(length int) []byte {
     return b
 }
 
+/**
+ * Hash the plaintext, encrypt the resulting digest with our private key.
+ * Only our public key can decrypt, proving it's really us
+ */
 func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
     hash := sha256.New()
     _, _ = hash.Write(plaintext)
 
     checksum := hash.Sum(nil)
 
-    //fmt.Printf("Digest:\n%s\n\n", hex.Dump(checksum))
-
     //signature, _ := rsa.SignPSS(rand.Reader, key, 5, checksum, nil)
     signature, err := rsa.SignPKCS1v15(rand.Reader, key, 5, checksum)
     if err != nil {
         fmt.Println(err)
     }
+
+    //fmt.Printf("Signature:\n\n%s\n", hex.Dump(signature))
     return signature
 }
 
