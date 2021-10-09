@@ -1,6 +1,7 @@
 package main
 
 import (
+    "errors"
     "fmt"
     "log"
 )
@@ -17,8 +18,36 @@ func Teleport(srv *Server) {
     p := findplayer(srv.players, int(cl))
     log.Printf("[%s/TELEPORT/%s] %s\n", srv.name, p.name, dest)
 
-    txt := "Sorry, teleport command is still under construction\n"
-    SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+    if dest == "" {
+        txt := "Sorry, teleport command is still under construction\n"
+        SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+        return
+    }
+
+    newserver, err := FindTeleportDestination(dest)
+    if err != nil {
+        log.Println("warning,", err)
+        SayPlayer(srv, int(cl), PRINT_HIGH, "Unknown destination\n")
+    } else {
+        st := fmt.Sprintf("connect %s\n", newserver)
+        StuffPlayer(srv, int(cl), st)
+    }
+
+    txt := fmt.Sprintf("TELEPORT [%d] %s", cl, p.name)
+    LogEventToDatabase(srv.id, LogTypeCommand, txt)
+}
+
+/**
+ * Resolve a teleport name to an ip:port
+ */
+func FindTeleportDestination(dest string) (string, error){
+    for _, s := range servers {
+        if s.name == dest {
+            return fmt.Sprintf("%s:%d", s.ipaddress, s.port), nil
+        }
+    }
+
+    return "", errors.New("unknown destination")
 }
 
 /**
@@ -61,6 +90,9 @@ func MutePlayer(srv *Server, cl int, seconds int) {
     }
     WriteByte(SCMDCommand, &srv.messageout)
     WriteString(cmd, &srv.messageout)
+
+    txt := fmt.Sprintf("MUTE [%d] was muted")
+    LogEventToDatabase(srv.id, LogTypeCommand, txt)
 }
 
 /**
@@ -70,4 +102,7 @@ func KickPlayer(srv *Server, cl int) {
     cmd := fmt.Sprintf("kick %d", cl)
     WriteByte(SCMDCommand, &srv.messageout)
     WriteString(cmd, &srv.messageout)
+
+    txt := fmt.Sprintf("KICK [%d] was kicked", cl)
+    LogEventToDatabase(srv.id, LogTypeCommand, txt)
 }
