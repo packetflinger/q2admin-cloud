@@ -16,7 +16,13 @@ import (
     "time"
 )
 
-const versionRequired = 200
+const (
+    versionRequired =  200
+    challengeLength =  16     // bytes
+    AESBlockLength =   16
+    AESIVLength =      12
+)
+
 
 // use a custom buffer struct to keep track of where
 // we are in the stream of bytes internally
@@ -137,6 +143,15 @@ const (
     PRINT_MEDIUM        // obituaries (white/grey, no sound)
     PRINT_HIGH          // important stuff
     PRINT_CHAT          // highlighted, sound
+)
+
+const (
+    LogTypePrint = iota
+    LogTypeJoin
+    LogTypePart
+    LogTypeConnect
+    LogTypeDisconnect
+    LogTypeCommand
 )
 
 /*
@@ -287,7 +302,7 @@ func handleConnection(c net.Conn) {
     port := ReadShort(&msg)
     maxplayers := ReadByte(&msg)
     enc := ReadByte(&msg)
-    clNonce := ReadData(&msg, 16)
+    clNonce := ReadData(&msg, challengeLength)
 
     if ver < versionRequired {
         c.Close()
@@ -329,14 +344,14 @@ func handleConnection(c net.Conn) {
      * with the client's public key to keep it confidential
      */
     if server.encrypted {
-        aeskey := RandomBytes(16)
-        aesiv := RandomBytes(16)
+        aeskey := RandomBytes(AESBlockLength)
+        aesiv := RandomBytes(AESIVLength)
         blob := append(aeskey, aesiv...)
         aescipher := PublicEncrypt(server.publickey, blob)
         WriteData(aescipher, &server.messageout)
     }
 
-    svchallenge := RandomBytes(16)
+    svchallenge := RandomBytes(challengeLength)
     WriteData(svchallenge, &server.messageout)
 
     //c.Write(server.messageout.buffer)
@@ -444,32 +459,11 @@ func init() {
 
     LoadGlobalBans()
 
-    type User struct{
-        UUID string
-        Email string
-    }
-
-    db := DatabaseConnect()
+    db = DatabaseConnect()
 
     log.Println("Loading servers:")
     servers = LoadServers(db)
     for _, s := range servers {
         log.Printf("  %s - %s:%d (%s)", s.name, s.ipaddress, s.port, s.uuid)
     }
-    /*
-    defer db.Close()
-
-    sql := "SELECT uuid, email FROM user"
-    r, err := db.Query(sql)
-    var user User
-
-    for r.Next() {
-        err = r.Scan(&user.UUID, &user.Email)
-        if err != nil {
-            panic(err)
-        }
-    }
-
-    log.Println(user)
-    */
 }

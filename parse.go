@@ -76,6 +76,12 @@ func ParsePrint(srv *Server) {
     level := ReadByte(&srv.message)
     text := ReadString(&srv.message)
     log.Printf("[%s/PRINT] (%d) %s\n", srv.name, level, text)
+
+    sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,NOW())"
+    _, err := db.Query(sql, srv.id, LogTypePrint, text)
+    if err != nil {
+        log.Println(err)
+    }
 }
 
 /**
@@ -97,7 +103,10 @@ func ParseConnect(srv *Server) {
     }
 
     srv.players = append(srv.players, newplayer)
-    log.Printf("[%s/CONNECT] (%d) %s - %s\n", srv.name, clientnum, info["name"], info["ip"])
+
+    txt := fmt.Sprintf("CONNECT [%d] %s (%s)", clientnum, info["name"], info["ip"])
+    log.Printf("%s\n", txt)
+    LogEventToDatabase(srv.id, LogTypeJoin, txt)
 
     // global
     if isbanned, msg := CheckForBan(&globalbans, newplayer.ip); isbanned == Banned {
