@@ -4,6 +4,7 @@ import (
     "errors"
     "fmt"
     "log"
+    "time"
 )
 
 /**
@@ -16,15 +17,28 @@ func Teleport(srv *Server) {
     cl := ReadByte(&srv.message)
     dest := ReadString(&srv.message)
     p := findplayer(srv.players, int(cl))
+
+    now := time.Now().Unix()
     log.Printf("[%s/TELEPORT/%s] %s\n", srv.name, p.name, dest)
 
     if dest == "" {
+        listtime := now - p.lastteleportlist
+        if listtime < 30 {
+            txt := fmt.Sprintf("You can't list teleport destinations for %d more seconds\n", 30 - listtime)
+            SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+            return
+        }
+
+        p.lastteleportlist = now
         txt := "Sorry, teleport command is still under construction\n"
         SayPlayer(srv, int(cl), PRINT_HIGH, txt)
         return
     }
 
     newserver, err := FindTeleportDestination(dest)
+    p.lastteleport = now
+    p.teleports++
+
     if err != nil {
         log.Println("warning,", err)
         SayPlayer(srv, int(cl), PRINT_HIGH, "Unknown destination\n")
