@@ -33,19 +33,20 @@ type MessageBuffer struct {
 }
 
 type Player struct {
-    clientid        int
-    name            string
-    userinfo        string
-    frags           int
-    deaths          int
-    suicides        int
-    teleports       int
-    lastteleport    int
-    invites         int
-    lastinvite      int
-    ip              string
-    port            int
-    fov             int
+    clientid         int
+    name             string
+    userinfo         string
+    frags            int
+    deaths           int
+    suicides         int
+    teleports        int
+    lastteleport     int64    // actually going
+    lastteleportlist int64    // viewing the big list of destinations
+    invites          int
+    lastinvite       int64
+    ip               string
+    port             int
+    fov              int
 }
 
 // this is a Quake 2 Gameserver, and also a client to us
