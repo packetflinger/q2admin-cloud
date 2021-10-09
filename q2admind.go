@@ -173,9 +173,9 @@ func clearmsg(msg *MessageBuffer) {
 }
 
 func findplayer(players []Player, cl int) *Player{
-    for _, p := range players {
+    for i, p := range players {
         if p.clientid == cl {
-            return &p
+            return &players[i]
         }
     }
 
