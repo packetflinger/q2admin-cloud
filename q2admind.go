@@ -44,6 +44,7 @@ type Player struct {
     lastteleportlist int64    // viewing the big list of destinations
     invites          int
     lastinvite       int64
+    invitesavailable int
     ip               string
     port             int
     fov              int
