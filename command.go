@@ -75,10 +75,48 @@ func Invite(srv *Server) {
     p := findplayer(srv.players, int(cl))
     log.Printf("[%s/INVITE/%s] %s\n", srv.name, p.name, text)
 
+    now := time.Now().Unix()
+    invtime := now - p.lastinvite
+
+    if p.invitesavailable == 0 {
+        if invtime > 600 {
+            p.invitesavailable = 3
+        } else {
+            txt := fmt.Sprintf("You have no more invites available, wait %d seconds\n", 600 - invtime)
+            SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+            return
+        }
+    } else {
+        if invtime < 30 {
+            txt := fmt.Sprintf("Invite used too recently, wait %d seconds\n", 30 - invtime)
+            SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+            return
+        }
+    }
+
+    inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.name, srv.name, srv.ipaddress, srv.port)
+    for i, s := range servers {
+        if s.enabled && s.connected {
+            ConsoleSay(&servers[i], inv)
+        }
+    }
+
+    p.lastinvite = now
+    p.invitesavailable--
     //txt := "Sorry, INVITE command is currently under construction\n"
     //SayPlayer(srv, int(cl), PRINT_HIGH, txt)
     //StuffPlayer(srv, int(cl), "say this better work")
-    MutePlayer(srv, p.clientid, 15)
+    //MutePlayer(srv, p.clientid, 15)
+}
+
+func ConsoleSay(srv *Server, print string) {
+    if print == "" {
+        return
+    }
+
+    txt := fmt.Sprintf("say %s\n", print)
+    WriteByte(SCMDCommand, &srv.messageout)
+    WriteString(txt, &srv.messageout)
 }
 
 /**
