@@ -203,12 +203,9 @@ func SayPlayer(srv *Server, client int, level int, text string) {
 }
 
 func SayEveryone(srv *Server, level int, text string) {
-    for _, p := range srv.players {
-        WriteByte(SCMDSayClient, &srv.messageout)
-        WriteByte(byte(p.clientid), &srv.messageout)
-        WriteByte(byte(level), &srv.messageout)
-        WriteString(text, &srv.messageout)
-    }
+    WriteByte(SCMDSayAll, &srv.messageout)
+    WriteByte(byte(level), &srv.messageout)
+    WriteString(text, &srv.messageout)
 }
 
 /**
@@ -466,6 +463,6 @@ func init() {
     log.Println("Loading servers:")
     servers = LoadServers(db)
     for _, s := range servers {
-        log.Printf("  %s - %s:%d (%s)", s.name, s.ipaddress, s.port, s.uuid)
+        log.Printf("  %-15s %-21s [%s]", s.name, fmt.Sprintf("%s:%d", s.ipaddress, s.port), s.uuid)
     }
 }
