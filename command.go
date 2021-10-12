@@ -97,7 +97,7 @@ func Invite(srv *Server) {
     inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.name, srv.name, srv.ipaddress, srv.port)
     for i, s := range servers {
         if s.enabled && s.connected {
-            ConsoleSay(&servers[i], inv)
+            SayEveryone(&servers[i], PRINT_CHAT, inv)
         }
     }
 
