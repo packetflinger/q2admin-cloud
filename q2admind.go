@@ -215,8 +215,13 @@ func SayEveryone(srv *Server, level int, text string) {
  * a key/value map
  */
 func UserinfoMap(ui string) (map[string]string) {
-    data := strings.Split(ui[1:], "\\")  // ui should start with /
     info := make(map[string]string)
+    if ui == "" {
+        return info
+    }
+
+    data := strings.Split(ui[1:], "\\")  // ui should start with /
+
     for i:=0; i<len(data); i+=2 {
         info[data[i]] = data[i+1]
     }
@@ -224,8 +229,10 @@ func UserinfoMap(ui string) (map[string]string) {
     // special case: split the IP value into IP and Port
     ip := info["ip"]
     ipport := strings.Split(ip, ":")
-    info["port"] = ipport[1]
-    info["ip"] = ipport[0]
+    if (len(ipport) >= 2) {
+        info["port"] = ipport[1]
+        info["ip"] = ipport[0]
+    }
 
     return info
 }
