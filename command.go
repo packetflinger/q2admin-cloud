@@ -4,6 +4,8 @@ import (
     "errors"
     "fmt"
     "log"
+    "sort"
+    //"strings"
     "time"
 )
 
@@ -30,12 +32,29 @@ func Teleport(srv *Server) {
         }
 
         p.lastteleportlist = now
-        txt := "Sorry, teleport command is still under construction\n"
-        SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+        avail := TeleportAvailableReply()
+        SayPlayer(srv, int(cl), PRINT_CHAT, avail)
+
+        SayPlayer(srv, int(cl), PRINT_CHAT, "Active Servers\n")
+        line := ""
+
+        for _, s := range servers {
+            if len(s.players) == 0 {
+                continue
+            }
+
+            players := ""
+            for _, p := range s.players {
+                players = fmt.Sprintf("%s %s", players, p.name)
+            }
+
+            line = fmt.Sprintf(" %-15s %-15s %s\n", s.name, s.currentmap, players)
+            SayPlayer(srv, int(cl), PRINT_CHAT, line)
+        }
         return
     }
 
-    newserver, err := FindTeleportDestination(dest)
+    s, err := FindTeleportDestination(dest)
     p.lastteleport = now
     p.teleports++
 
@@ -43,7 +62,9 @@ func Teleport(srv *Server) {
         log.Println("warning,", err)
         SayPlayer(srv, int(cl), PRINT_HIGH, "Unknown destination\n")
     } else {
-        st := fmt.Sprintf("connect %s\n", newserver)
+        txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.name, s.name, s.ipaddress, s.port)
+        SayEveryone(srv, PRINT_HIGH, txt)
+        st := fmt.Sprintf("connect %s:%d\n", s.ipaddress, s.port)
         StuffPlayer(srv, int(cl), st)
     }
 
@@ -54,14 +75,37 @@ func Teleport(srv *Server) {
 /**
  * Resolve a teleport name to an ip:port
  */
-func FindTeleportDestination(dest string) (string, error){
+func FindTeleportDestination(dest string) (*Server, error){
     for _, s := range servers {
         if s.name == dest {
-            return fmt.Sprintf("%s:%d", s.ipaddress, s.port), nil
+            return &s, nil
         }
     }
 
-    return "", errors.New("unknown destination")
+    return nil, errors.New("unknown destination")
+}
+
+func TeleportAvailableReply() string {
+    var allservers []string
+
+    for _, s := range servers {
+        if !s.connected {
+            continue
+        }
+
+        allservers = append(allservers, s.name)
+    }
+
+    // alphabetize the list
+    sort.Strings(allservers)
+
+    serverstr := "Available Servers:"
+    for _, s := range allservers {
+        serverstr = fmt.Sprintf("%s %s", serverstr, s)
+    }
+    serverstr = fmt.Sprintf("%s\n", serverstr)
+
+    return serverstr
 }
 
 /**
@@ -103,10 +147,6 @@ func Invite(srv *Server) {
 
     p.lastinvite = now
     p.invitesavailable--
-    //txt := "Sorry, INVITE command is currently under construction\n"
-    //SayPlayer(srv, int(cl), PRINT_HIGH, txt)
-    //StuffPlayer(srv, int(cl), "say this better work")
-    //MutePlayer(srv, p.clientid, 15)
 }
 
 func ConsoleSay(srv *Server, print string) {
