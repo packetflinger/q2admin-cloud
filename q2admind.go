@@ -17,7 +17,7 @@ import (
 )
 
 const (
-    versionRequired =  200    // git revision number
+    versionRequired =  300    // git revision number
     challengeLength =  16     // bytes
     AESBlockLength =   16     // 128bit
     AESIVLength =      12
