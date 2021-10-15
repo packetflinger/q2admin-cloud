@@ -78,16 +78,25 @@ func ParsePrint(srv *Server) {
     log.Printf("[%s/PRINT] (%d) %s\n", srv.name, level, text)
 
     sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,NOW())"
-    _, err := db.Query(sql, srv.id, LogTypePrint, text)
+    q, err := db.Query(sql, srv.id, LogTypePrint, text)
     if err != nil {
         log.Println(err)
     }
+    q.Close()
 }
 
 /**
  * A player connected to the a q2 server
  */
 func ParseConnect(srv *Server) {
+    p := ParsePlayer(srv)
+
+    if p == nil {
+        return
+    }
+
+    info := UserinfoMap(p.userinfo)
+    /*
     clientnum := ReadByte(&srv.message)
     userinfo := ReadString(&srv.message)
     info := UserinfoMap(userinfo)
@@ -103,32 +112,32 @@ func ParseConnect(srv *Server) {
     }
 
     srv.players = append(srv.players, newplayer)
-
-    txt := fmt.Sprintf("CONNECT [%d] %s (%s)", clientnum, info["name"], info["ip"])
+*/
+    txt := fmt.Sprintf("CONNECT [%d] %s (%s)", p.clientid, info["name"], info["ip"])
     log.Printf("%s\n", txt)
     LogEventToDatabase(srv.id, LogTypeJoin, txt)
 
     // global
-    if isbanned, msg := CheckForBan(&globalbans, newplayer.ip); isbanned == Banned {
+    if isbanned, msg := CheckForBan(&globalbans, p.ip); isbanned == Banned {
         SayPlayer(
             srv,
-            int(clientnum),
+            p.clientid,
             PRINT_CHAT,
             fmt.Sprintf("Your IP matches a globally banned netblock: %s\n", msg),
         )
-        KickPlayer(srv, int(clientnum))
+        KickPlayer(srv, p.clientid)
         return
     }
 
     // local
-    if isbanned, msg := CheckForBan(&srv.bans, newplayer.ip); isbanned == Banned {
+    if isbanned, msg := CheckForBan(&srv.bans, p.ip); isbanned == Banned {
         SayPlayer(
             srv,
-            int(clientnum),
+            p.clientid,
             PRINT_CHAT,
             fmt.Sprintf("Your IP matches a locally banned netblock: %s\n", msg),
         )
-        KickPlayer(srv, int(clientnum))
+        KickPlayer(srv, p.clientid)
     }
 }
 
@@ -155,13 +164,19 @@ func ParsePlayerlist(srv *Server) {
     count := ReadByte(&srv.message)
     log.Printf("[%s/PLAYERLIST] %d\n", srv.name, count)
     for i:=0; i<int(count); i++ {
-        ParsePlayer(srv)
+        _ = ParsePlayer(srv)
     }
 }
 
-func ParsePlayer(srv *Server) {
+func ParsePlayer(srv *Server) *Player{
     clientnum := ReadByte(&srv.message)
     userinfo := ReadString(&srv.message)
+
+    if int(clientnum) > srv.maxplayers {
+        log.Printf("WARNING: Invalid client number, ignoring\n")
+        return nil
+    }
+
     log.Printf("[%s/PLAYER] (%d) %s\n", srv.name, clientnum, userinfo)
 
     info := UserinfoMap(userinfo)
@@ -179,10 +194,11 @@ func ParsePlayer(srv *Server) {
     // make sure player isn't already in the slice
     for _, p := range srv.players {
         if p.clientid == newplayer.clientid {
-            return
+            return nil
         }
     }
     srv.players = append(srv.players, newplayer)
+    return &newplayer
 }
 
 func ParseCommand(srv *Server) {
