@@ -17,10 +17,12 @@ import (
 )
 
 const (
-    versionRequired =  200
+    versionRequired =  200    // git revision number
     challengeLength =  16     // bytes
-    AESBlockLength =   16
+    AESBlockLength =   16     // 128bit
     AESIVLength =      12
+    SessionName =      "q2asess" // website cookie name
+    TeleportWidth =    80     // max chars per line for teleport replies
 )
 
 
