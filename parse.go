@@ -163,6 +163,26 @@ func ParsePlayer(srv *Server) {
     clientnum := ReadByte(&srv.message)
     userinfo := ReadString(&srv.message)
     log.Printf("[%s/PLAYER] (%d) %s\n", srv.name, clientnum, userinfo)
+
+    info := UserinfoMap(userinfo)
+    port, _ := strconv.Atoi(info["port"])
+    fov, _ := strconv.Atoi(info["fov"])
+    newplayer := Player{
+        clientid: int(clientnum),
+        userinfo: userinfo,
+        name: info["name"],
+        ip: info["ip"],
+        port: port,
+        fov: fov,
+    }
+
+    // make sure player isn't already in the slice
+    for _, p := range srv.players {
+        if p.clientid == newplayer.clientid {
+            return
+        }
+    }
+    srv.players = append(srv.players, newplayer)
 }
 
 func ParseCommand(srv *Server) {
