@@ -305,12 +305,12 @@ func handleConnection(c net.Conn) {
     log.Println("Magic value accepted")
 
     _ = ReadByte(&msg) // should be CMDHello
-    uuid := ReadString(&msg)
-    ver := ReadLong(&msg)
-    port := ReadShort(&msg)
+    uuid       := ReadString(&msg)
+    ver        := ReadLong(&msg)
+    port       := ReadShort(&msg)
     maxplayers := ReadByte(&msg)
-    enc := ReadByte(&msg)
-    clNonce := ReadData(&msg, challengeLength)
+    enc        := ReadByte(&msg)
+    clNonce    := ReadData(&msg, challengeLength)
 
     if ver < versionRequired {
         c.Close()
