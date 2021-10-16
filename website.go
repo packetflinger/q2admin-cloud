@@ -66,23 +66,13 @@ func GetUser(id int) WebUser {
 }
 
 /**
- * User just successfully authed, remove any existing sessions and make
- * a new one
+ * User just successfully authed, insert a new session
  */
 func CreateSession(user int) string {
     sessionid := uuid.New().String()
 
-    // remove any old sessions
-    sql := "DELETE FROM websession WHERE user = ?"
-    r, err := db.Query(sql, user)
-    if err != nil {
-        log.Println(err)
-    }
-    r.Close()
-
-    // add the new session
-    sql = "INSERT INTO websession (session, user, expiration) VALUES (?, ?, NOW() + INTERVAL 2 DAY)"
-    r, err = db.Query(sql, sessionid, user)
+    sql := "INSERT INTO websession (session, user, expiration) VALUES (?, ?, NOW() + INTERVAL 2 DAY)"
+    r, err := db.Query(sql, sessionid, user)
     if err != nil {
         log.Println(err)
     }
