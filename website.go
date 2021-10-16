@@ -58,6 +58,7 @@ func GetUser(id int) WebUser {
     var user WebUser
     for r.Next() {
         r.Scan(&user.ID, &user.UUID, &user.Email, &user.ServerCount, &user.Admin)
+        r.Close()
         return user
     }
 
@@ -73,18 +74,19 @@ func CreateSession(user int) string {
 
     // remove any old sessions
     sql := "DELETE FROM websession WHERE user = ?"
-    _, err := db.Query(sql, user)
+    r, err := db.Query(sql, user)
     if err != nil {
         log.Println(err)
     }
+    r.Close()
 
     // add the new session
     sql = "INSERT INTO websession (session, user, expiration) VALUES (?, ?, NOW() + INTERVAL 2 DAY)"
-    _, err = db.Query(sql, sessionid, user)
+    r, err = db.Query(sql, sessionid, user)
     if err != nil {
         log.Println(err)
     }
-
+    r.Close()
     return sessionid
 }
 
@@ -94,6 +96,7 @@ func ValidateSession(sess string) (int, error) {
     if r, e := db.Query(sql, sess); e == nil {
         r.Next()
         r.Scan(&UserID)
+        r.Close()
         return UserID, nil
     } else {
         return 0, errors.New(e.Error())
@@ -109,7 +112,8 @@ func RunHTTPServer() {
     http.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
         user := GetSessionUser(r)
         if user.ID != 0 {
-            fmt.Fprintf(w, "<p>User: %s</p>", user.UUID)
+            //fmt.Fprintf(w, "<p>User: %s</p>", user.UUID)
+            http.Redirect(w, r, "/login", http.StatusFound) // 302
             return
         }
 
@@ -128,18 +132,18 @@ func RunHTTPServer() {
             // lookup the user's ID
             var UserID int
             sql := "SELECT id FROM user WHERE email = ? LIMIT 1"
-            r, e := db.Query(sql, email)
+            rs, e := db.Query(sql, email)
             if e == nil {
-                r.Next()
-                r.Scan(&UserID)
-
+                rs.Next()
+                rs.Scan(&UserID)
+                rs.Close()
                 sess := CreateSession(UserID)
                 cookieexpire := time.Now().AddDate(0, 0, 2) // years, months, days
                 cookie := http.Cookie{Name: SessionName, Value: sess, Expires: cookieexpire}
                 http.SetCookie(w, &cookie)
             }
 
-            fmt.Fprintf(w, email)
+            http.Redirect(w, r, "/dashboard", http.StatusFound) // 302
             return
         }
 
@@ -151,6 +155,8 @@ func RunHTTPServer() {
             tmpl.Execute(w, nil)
         }
     })
+
+    http.HandleFunc("/dashboard", WebsiteDashboard)
 
     http.HandleFunc("/api/GetConnectedServers", func (w http.ResponseWriter, r *http.Request) {
         var activeservers []ActiveServer
@@ -173,4 +179,17 @@ func RunHTTPServer() {
 
     log.Printf("Listening for web requests on %s\n", port)
     http.ListenAndServe(port, nil)
+}
+
+func WebsiteDashboard(w http.ResponseWriter, r *http.Request) {
+    if user := GetSessionUser(r); user.ID == 0 {
+        http.Redirect(w, r, "/login", http.StatusFound) // 302
+    }
+
+    tmpl, e := template.ParseFiles("website-templates/dashboard.tmpl")
+    if e != nil {
+        log.Println(e)
+    } else {
+        tmpl.Execute(w, nil)
+    }
 }
