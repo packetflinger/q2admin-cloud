@@ -5,5 +5,6 @@
     "dbstring": "q2a:q2a@tcp(localhost:3306)/q2admin",
     "privatekey": "private-1628817495.pem",
     "apiport": 8087,
-    "debug": 1
+    "debug": 1,
+    "enableapi": 0
 }
