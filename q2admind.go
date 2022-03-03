@@ -341,10 +341,12 @@ func handleConnection(c net.Conn) {
 
 	log.Printf("Loading public key: %s\n", keyname)
 	pubkey, err := LoadPublicKey(keyname)
-	server.publickey = pubkey
 	if err != nil {
-		log.Printf("Loading public key: %s\n", err.Error())
+		log.Printf("Public key error: %s\n", err.Error())
+		c.Close()
+		return
 	}
+	server.publickey = pubkey
 
 	challengeCipher := Sign(q2a.privatekey, clNonce)
 	WriteByte(SCMDHelloAck, &server.messageout)
@@ -358,11 +360,8 @@ func handleConnection(c net.Conn) {
 	if server.encrypted {
 		server.aeskey = RandomBytes(AESBlockLength)
 		server.aesiv = RandomBytes(AESIVLength)
-		//fmt.Printf("key:\n%s\n", hex.Dump(server.aeskey))
-		//fmt.Printf("iv:\n%s\n", hex.Dump(server.aesiv))
 		blob := append(server.aeskey, server.aesiv...)
 		aescipher := PublicEncrypt(server.publickey, blob)
-		//fmt.Printf("cipher:\n%s\n", hex.Dump(aescipher))
 		WriteData(aescipher, &server.messageout)
 	}
 
