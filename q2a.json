@@ -1,0 +1,9 @@
+{
+    "address": "0.0.0.0",
+    "port": 9988,
+    "database": "server.sqlite",
+    "dbstring": "q2a:q2a@tcp(localhost:3306)/q2admin",
+    "privatekey": "private-1628817495.pem",
+    "apiport": 8087,
+    "debug": 1
+}
