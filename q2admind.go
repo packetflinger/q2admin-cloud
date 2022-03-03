@@ -213,7 +213,7 @@ func SayEveryone(srv *Server, level int, text string) {
 }
 
 /**
- * Take a "/"" delimited string of userinfo and return
+ * Take a back-slash delimited string of userinfo and return
  * a key/value map
  */
 func UserinfoMap(ui string) map[string]string {
@@ -222,7 +222,7 @@ func UserinfoMap(ui string) map[string]string {
 		return info
 	}
 
-	data := strings.Split(ui[1:], "\\") // ui should start with /
+	data := strings.Split(ui[1:], "\\")
 
 	for i := 0; i < len(data); i += 2 {
 		info[data[i]] = data[i+1]
@@ -250,7 +250,7 @@ func findserver(lookup string) (*Server, error) {
 		}
 	}
 
-	return nil, errors.New("Unknown server")
+	return nil, errors.New("unknown server")
 }
 
 /**
@@ -477,7 +477,12 @@ func init() {
 
 	rand.Seed(time.Now().Unix())
 
-	privkey, _ := LoadPrivateKey(config.PrivateKey)
+	log.Printf("Loading private key %s\n", config.PrivateKey)
+	privkey, err := LoadPrivateKey(config.PrivateKey)
+	if err != nil {
+		log.Fatalf("Problems loading private key: %s\n", err.Error())
+	}
+
 	pubkey := privkey.Public().(*rsa.PublicKey)
 	q2a.privatekey = privkey
 	q2a.publickey = pubkey
