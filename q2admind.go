@@ -3,6 +3,8 @@ package main
 import (
 	//"bufio"
 	"database/sql"
+	"os/signal"
+
 	//"encoding/hex"
 	"crypto/rsa"
 	"encoding/hex"
@@ -432,7 +434,27 @@ func handleConnection(c net.Conn) {
 	c.Close()
 }
 
+/**
+ * Gracefully shutdown everything
+ */
+func Shutdown() {
+	log.Println("Shutting down...")
+	db.Close() // not sure if this is necessary
+}
+
+/**
+ * Entry point
+ */
 func main() {
+	// catch stuff like ctrl+c
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		Shutdown()
+		os.Exit(1)
+	}()
+
 	port := fmt.Sprintf("%s:%d", config.Address, config.Port)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
@@ -458,6 +480,9 @@ func main() {
 	}
 }
 
+/**
+ * pre-entry point
+ */
 func init() {
 	configfile := "q2a.json" // override with cli arg
 	if len(os.Args) > 1 {
