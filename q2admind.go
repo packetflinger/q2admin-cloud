@@ -7,7 +7,6 @@ import (
 
 	//"encoding/hex"
 	"crypto/rsa"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,8 +21,8 @@ import (
 const (
 	versionRequired = 300       // git revision number
 	challengeLength = 16        // bytes
-	AESBlockLength  = 16        // 128bit
-	AESIVLength     = 12        // 96bit
+	AESBlockLength  = 16        // 128 bit
+	AESIVLength     = 16        // 128 bit
 	SessionName     = "q2asess" // website cookie name
 	TeleportWidth   = 80        // max chars per line for teleport replies
 )
@@ -263,7 +262,7 @@ func SendMessages(srv *Server) {
 		return
 	}
 
-	// key have been exchanged, encrypt the message
+	// keys have been exchanged, encrypt the message
 	if srv.trusted && srv.encrypted {
 		cipher := SymmetricEncrypt(
 			srv.aeskey,
@@ -276,9 +275,9 @@ func SendMessages(srv *Server) {
 	}
 
 	if srv.messageout.length > 0 {
-		if config.Debug == 1 {
-			fmt.Printf("Sending\n%s\n\n", hex.Dump(srv.messageout.buffer))
-		}
+		//if config.Debug == 1 {
+		//fmt.Printf("Sending\n%s\n\n", hex.Dump(srv.messageout.buffer))
+		//}
 		(*srv.connection).Write(srv.messageout.buffer)
 		clearmsg(&srv.messageout)
 	}
@@ -413,15 +412,12 @@ func handleConnection(c net.Conn) {
 
 		// decrypt if necessary
 		if server.encrypted && server.trusted {
-			fmt.Printf("Cipher Read:\n%s\n", hex.Dump(input[:size]))
-			input, size = SymmetricDecrypt(server.aeskey, server.aesiv, input)
-			fmt.Printf("Clear Read:\n%s\n", hex.Dump(input[:size]))
+			input, size = SymmetricDecrypt(server.aeskey, server.aesiv, input[:size])
 		}
 
 		server.message.buffer = input
 		server.message.index = 0
 		server.message.length = size
-		//server.message.length = size
 
 		//fmt.Printf("Read:\n%s\n\n", hex.Dump(input[:size]))
 		ParseMessage(server)

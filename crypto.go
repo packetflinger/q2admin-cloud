@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -131,13 +131,6 @@ func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) []byte {
 }
 
 func PublicEncrypt(key *rsa.PublicKey, plaintext []byte) []byte {
-	/*encryptedBytes, err := rsa.EncryptOAEP(
-	sha256.New(),
-	rand.Reader,
-	key,
-	plaintext,
-	nil)*/
-
 	encryptedBytes, err := rsa.EncryptPKCS1v15(rand.Reader, key, plaintext)
 
 	if err != nil {
@@ -167,43 +160,47 @@ func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
 
 	checksum := hash.Sum(nil)
 
-	//signature, _ := rsa.SignPSS(rand.Reader, key, 5, checksum, nil)
 	signature, err := rsa.SignPKCS1v15(rand.Reader, key, 5, checksum)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	//fmt.Printf("Signature:\n\n%s\n", hex.Dump(signature))
 	return signature
 }
 
+/**
+ * decrypt incoming messages using AES
+ */
 func SymmetricDecrypt(key []byte, nonce []byte, ciphertext []byte) ([]byte, int) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		fmt.Println("newcipher:", err)
 	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		fmt.Println("newgcm:", err)
-	}
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		fmt.Println("open:", err)
-	}
-	//fmt.Printf("cipher:\n%s\n", hex.Dump(ciphertext))
-	//fmt.Printf("plain:\n%s\n", hex.Dump(plaintext))
-	return plaintext, len(plaintext)
+
+	plaintext := make([]byte, len(ciphertext))
+	cbc := cipher.NewCBCDecrypter(block, nonce)
+	cbc.CryptBlocks(plaintext, ciphertext)
+
+	padding := int(plaintext[len(plaintext)-1])
+	unpadded := plaintext[:len(plaintext)-padding]
+
+	return unpadded, len(unpadded)
 }
 
+/**
+ * Encrypt outgoing messages using AES
+ */
 func SymmetricEncrypt(key []byte, nonce []byte, plaintext []byte) []byte {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		fmt.Println(err)
 	}
-	gcm, _ := cipher.NewGCM(block)
 
-	ciphertext := gcm.Seal(nil, nonce, plaintext, nil)
-	fmt.Printf("cipher:\n%s\n", hex.Dump(ciphertext))
+	plaintext = PKCS5Padding(plaintext, AESBlockLength)
+	ciphertext := make([]byte, len(plaintext))
+	cbc := cipher.NewCBCEncrypter(block, nonce)
+	cbc.CryptBlocks(ciphertext, plaintext)
+
 	return ciphertext
 }
 
@@ -228,4 +225,10 @@ func DigestSHA256(input []byte) []byte {
 	_, _ = hash.Write(input)
 	checksum := hash.Sum(nil)
 	return checksum
+}
+
+func PKCS5Padding(input []byte, blockSize int) []byte {
+	padding := (blockSize - len(input)%blockSize)
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(input, padtext...)
 }
