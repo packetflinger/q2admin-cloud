@@ -45,13 +45,24 @@ func LoadServers(db *sql.DB) []Server {
 	return srvs
 }
 
-func LogEventToDatabase(server int, logtype int, logentry string) {
-	now := time.Now().Unix()
-	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,?)"
-	q, err := db.Query(sql, server, logtype, logentry, now)
+/**
+ * A player said something, record to use against them later
+ */
+func LogChat(srv *Server, chat string) {
+	sql := "INSERT INTO chat (server, time, chat) VALUES (?,?,?)"
+	_, err := db.Exec(sql, srv.id, GetUnixTimestamp(), chat)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	q.Close()
+}
+
+func LogEventToDatabase(server int, logtype int, logentry string) {
+	now := time.Now().Unix()
+	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,?)"
+	_, err := db.Exec(sql, server, logtype, logentry, now)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }
