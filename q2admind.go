@@ -19,12 +19,13 @@ import (
 )
 
 const (
-	versionRequired = 300       // git revision number
-	challengeLength = 16        // bytes
-	AESBlockLength  = 16        // 128 bit
-	AESIVLength     = 16        // 128 bit
-	SessionName     = "q2asess" // website cookie name
-	TeleportWidth   = 80        // max chars per line for teleport replies
+	ProtocolMagic   = 1128346193 // "Q2AC"
+	versionRequired = 300        // git revision number
+	challengeLength = 16         // bytes
+	AESBlockLength  = 16         // 128 bit
+	AESIVLength     = 16         // 128 bit
+	SessionName     = "q2asess"  // website cookie name
+	TeleportWidth   = 80         // max chars per line for teleport replies
 )
 
 // use a custom buffer struct to keep track of where
@@ -315,9 +316,9 @@ func handleConnection(c net.Conn) {
 	msg.buffer = input
 
 	magic := ReadLong(&msg)
-	if magic != 1128346193 {
+	if magic != ProtocolMagic {
 		// not a valid client, just close connection
-		log.Println("Invalid magic value")
+		log.Println("Bad magic value in new connection, not a valid client")
 		c.Close()
 		return
 	}
