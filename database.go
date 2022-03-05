@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"time"
 
 	//_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -45,10 +46,12 @@ func LoadServers(db *sql.DB) []Server {
 }
 
 func LogEventToDatabase(server int, logtype int, logentry string) {
-	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,NOW())"
-	q, err := db.Query(sql, server, logtype, logentry)
+	now := time.Now().Unix()
+	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,?)"
+	q, err := db.Query(sql, server, logtype, logentry, now)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 	q.Close()
 }
