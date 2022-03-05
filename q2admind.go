@@ -200,6 +200,9 @@ func removeplayer(players []Player, cl int) []Player {
 	return append(players[:index], players[index+1:]...)
 }
 
+/**
+ * Send a message to a particular player
+ */
 func SayPlayer(srv *Server, client int, level int, text string) {
 	WriteByte(SCMDSayClient, &srv.messageout)
 	WriteByte(byte(client), &srv.messageout)
@@ -207,6 +210,9 @@ func SayPlayer(srv *Server, client int, level int, text string) {
 	WriteString(text, &srv.messageout)
 }
 
+/**
+ * Send a message to every player on the server
+ */
 func SayEveryone(srv *Server, level int, text string) {
 	WriteByte(SCMDSayAll, &srv.messageout)
 	WriteByte(byte(level), &srv.messageout)
@@ -419,7 +425,6 @@ func handleConnection(c net.Conn) {
 		server.message.index = 0
 		server.message.length = size
 
-		//fmt.Printf("Read:\n%s\n\n", hex.Dump(input[:size]))
 		ParseMessage(server)
 		SendMessages(server)
 	}
