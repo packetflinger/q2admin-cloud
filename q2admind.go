@@ -162,15 +162,6 @@ const (
 	LogTypeCommand
 )
 
-/*
-var servers = []Server {
-    {id: 1, key:1234, name: "dm", ipaddress: "107.174.230.210", port: 27910, enabled: true},
-    {id: 2, key:2345, name: "dmx", ipaddress: "107.174.230.210", port: 27911, enabled: true},
-    {id: 3, key:4567, name: "tourney", ipaddress: "107.174.230.210", port: 27912, enabled: true},
-    {id: 4, key:5678, name: "tourney2", ipaddress: "107.174.230.210", port: 27913, enabled: true},
-}
-*/
-
 var servers = []Server{}
 
 func clearmsg(msg *MessageBuffer) {
