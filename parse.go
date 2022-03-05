@@ -79,8 +79,8 @@ func ParsePrint(srv *Server) {
 	text := ReadString(&srv.message)
 	log.Printf("[%s/PRINT] (%d) %s\n", srv.name, level, text)
 
-	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,NOW())"
-	q, err := db.Query(sql, srv.id, LogTypePrint, text)
+	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,?)"
+	q, err := db.Query(sql, srv.id, LogTypePrint, text, GetUnixTimestamp())
 	if err != nil {
 		log.Println(err)
 		return
