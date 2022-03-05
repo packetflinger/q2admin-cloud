@@ -28,14 +28,20 @@ const (
 	TeleportWidth   = 80         // max chars per line for teleport replies
 )
 
-// use a custom buffer struct to keep track of where
-// we are in the stream of bytes internally
+/**
+ * Use a custom buffer struct to keep track of where
+ * we are in the stream of bytes internally
+ */
 type MessageBuffer struct {
 	buffer []byte
 	index  int
 	length int // maybe not needed
 }
 
+/**
+ * Each player on a game server has one of these.
+ * Each game server has a slice of all current players
+ */
 type Player struct {
 	clientid         int
 	name             string
@@ -54,40 +60,50 @@ type Player struct {
 	fov              int
 }
 
-// this is a Quake 2 Gameserver, and also a client to us
+/**
+ * This is a Quake 2 Gameserver, and also a client to us.
+ *
+ * This struct is partially populated by the database on
+ * init and the rest is filled in when the game server
+ * actually connects
+ */
 type Server struct {
 	id         int // this is the database index
 	uuid       string
-	owner      int
+	owner      int // user id from database
 	index      int
 	version    int // what version are we running
 	name       string
-	ipaddress  string
-	port       int // default 27910
-	connected  bool
+	ipaddress  string // used for teleporting
+	port       int    // used for teleporting
+	connected  bool   // is it currently connected to us?
 	currentmap string
 	enabled    bool
 	connection *net.Conn
 	players    []Player
 	maxplayers int
-	message    MessageBuffer
-	messageout MessageBuffer
-	encrypted  bool
-	havekeys   bool
-	trusted    bool // signature challenge verified
-	publickey  *rsa.PublicKey
-	aeskey     []byte // 16 (128bit)
-	aesiv      []byte
+	message    MessageBuffer  // incoming byte stream
+	messageout MessageBuffer  // outgoing byte stream
+	encrypted  bool           // are the messages AES encrypted?
+	havekeys   bool           // do we have all required encryption keys?
+	trusted    bool           // signature challenge verified
+	publickey  *rsa.PublicKey // supplied by owner via website
+	aeskey     []byte         // 16 (128bit)
+	aesiv      []byte         // 16 bytes (CBC)
 	bans       []Ban
 }
 
-// "this" admin server
+/**
+ * "This" admin server
+ */
 type AdminServer struct {
 	privatekey *rsa.PrivateKey
 	publickey  *rsa.PublicKey
 }
 
-// structure of the config file
+/**
+ * The config file once parsed
+ */
 type Config struct {
 	Address    string `json:"address"`
 	Port       int    `json:"port"`
@@ -99,19 +115,23 @@ type Config struct {
 	APIEnabled int    `json:"enableapi"`
 }
 
-var config Config
-var q2a AdminServer
-var db *sql.DB
+/**
+ * Global variables
+ */
+var config Config        // the local config
+var q2a AdminServer      // this server
+var db *sql.DB           // our database connection (sqlite3)
+var servers = []Server{} // the slice of game servers we manage
 
 /**
  * Commands sent from the Q2 server to us
  */
 const (
-	_ = iota
-	CMDHello
-	CMDQuit
-	CMDConnect
-	CMDDisconnect
+	_             = iota
+	CMDHello      // server connect
+	CMDQuit       // server disconnect
+	CMDConnect    // player connect
+	CMDDisconnect // player disconnect
 	CMDPlayerList
 	CMDPlayerUpdate
 	CMDPrint
@@ -139,6 +159,9 @@ const (
 	SCMDKey
 )
 
+/**
+ * Player commands, players can issue this from their client
+ */
 const (
 	PCMDTeleport = iota
 	PCMDInvite
@@ -146,6 +169,9 @@ const (
 	PCMDReport
 )
 
+/**
+ * Print levels
+ */
 const (
 	PRINT_LOW    = iota // pickups
 	PRINT_MEDIUM        // obituaries (white/grey, no sound)
@@ -153,6 +179,9 @@ const (
 	PRINT_CHAT          // highlighted, sound
 )
 
+/**
+ * Log types, used in the database
+ */
 const (
 	LogTypePrint = iota
 	LogTypeJoin
@@ -162,14 +191,18 @@ const (
 	LogTypeCommand
 )
 
-var servers = []Server{}
-
+/**
+ * Initialize a message buffer
+ */
 func clearmsg(msg *MessageBuffer) {
 	msg.buffer = nil
 	msg.index = 0
 	msg.length = 0
 }
 
+/**
+ * Get a pointer to a player based on a client number
+ */
 func findplayer(players []Player, cl int) *Player {
 	for i, p := range players {
 		if p.clientid == cl {
@@ -180,6 +213,9 @@ func findplayer(players []Player, cl int) *Player {
 	return nil
 }
 
+/**
+ * Remove a player from the players slice (used when player quits)
+ */
 func removeplayer(players []Player, cl int) []Player {
 	var index int
 	for i, pl := range players {
