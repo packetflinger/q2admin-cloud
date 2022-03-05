@@ -281,9 +281,6 @@ func SendMessages(srv *Server) {
 	}
 
 	if srv.messageout.length > 0 {
-		//if config.Debug == 1 {
-		//fmt.Printf("Sending\n%s\n\n", hex.Dump(srv.messageout.buffer))
-		//}
 		(*srv.connection).Write(srv.messageout.buffer)
 		clearmsg(&srv.messageout)
 	}
@@ -302,8 +299,6 @@ func handleConnection(c net.Conn) {
 
 	_, _ = c.Read(input)
 	msg.buffer = input
-
-	//fmt.Printf("Read Input:\n%s\n\n", hex.Dump(input[0:bytesread]))
 
 	magic := ReadLong(&msg)
 	if magic != 1128346193 {
@@ -373,7 +368,6 @@ func handleConnection(c net.Conn) {
 	svchallenge := RandomBytes(challengeLength)
 	WriteData(svchallenge, &server.messageout)
 
-	//c.Write(server.messageout.buffer)
 	SendMessages(server)
 
 	// read the client signature
