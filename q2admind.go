@@ -287,6 +287,20 @@ func SendMessages(srv *Server) {
 }
 
 /**
+ * Dates are stored in the database as unix timestamps
+ */
+func GetUnixTimestamp() int64 {
+	return time.Now().Unix()
+}
+
+/**
+ * Get a time "object" from a database timestamp
+ */
+func GetTimeFromTimestamp(ts int64) time.Time {
+	return time.Unix(ts, 0)
+}
+
+/**
  * Setup the connection
  * The first message sent should identify the game server
  * and trigger the authentication process
@@ -303,10 +317,10 @@ func handleConnection(c net.Conn) {
 	magic := ReadLong(&msg)
 	if magic != 1128346193 {
 		// not a valid client, just close connection
+		log.Println("Invalid magic value")
 		c.Close()
 		return
 	}
-	log.Println("Magic value accepted")
 
 	_ = ReadByte(&msg) // should be CMDHello
 	uuid := ReadString(&msg)
@@ -317,10 +331,10 @@ func handleConnection(c net.Conn) {
 	clNonce := ReadData(&msg, challengeLength)
 
 	if ver < versionRequired {
+		log.Println("Version too old")
 		c.Close()
 		return
 	}
-	log.Println("Running acceptable version")
 
 	server, err := findserver(uuid)
 	if err != nil {
@@ -329,7 +343,7 @@ func handleConnection(c net.Conn) {
 		c.Close()
 		return
 	}
-	log.Printf("Server located: %s\n", server.name)
+	log.Printf("[%s] connecting...\n", server.name)
 
 	server.port = int(port)
 	server.encrypted = int(enc) == 1 // stupid bool conversion
@@ -339,7 +353,7 @@ func handleConnection(c net.Conn) {
 	server.maxplayers = int(maxplayers)
 	keyname := fmt.Sprintf("keys/%s.pem", uuid)
 
-	log.Printf("Loading public key: %s\n", keyname)
+	log.Printf("[%s] Loading public key: %s\n", server.name, keyname)
 	pubkey, err := LoadPublicKey(keyname)
 	if err != nil {
 		log.Printf("Public key error: %s\n", err.Error())
@@ -387,9 +401,9 @@ func handleConnection(c net.Conn) {
 	verified := VerifySignature(server.publickey, svchallenge, clientSignature)
 
 	if verified {
-		log.Printf("%s signature verified\n", server.name)
+		log.Printf("[%s] signature verified, server trusted\n", server.name)
 	} else {
-		log.Printf("%s signature verifcation failed...", server.name)
+		log.Printf("[%s] signature verifcation failed...", server.name)
 		c.Close()
 		return
 	}
