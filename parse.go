@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"strconv"
@@ -129,9 +130,16 @@ func ParseConnect(srv *Server) {
  * A player disconnected from a q2 server
  */
 func ParseDisconnect(srv *Server) {
-	clientnum := ReadByte(&srv.message)
-	srv.players = removeplayer(srv.players, int(clientnum))
-	log.Printf("[%s/DISCONNECT] (%d)\n", srv.name, clientnum)
+	clientnum := int(ReadByte(&srv.message))
+
+	if clientnum < 0 || clientnum > srv.maxplayers {
+		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(srv.message.buffer))
+		return
+	}
+
+	pl := findplayer(srv.players, clientnum)
+	srv.players = removeplayer(srv.players, clientnum)
+	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.name, clientnum, pl.name)
 }
 
 /**
