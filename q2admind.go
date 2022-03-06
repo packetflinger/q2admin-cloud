@@ -14,7 +14,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -177,52 +176,6 @@ func clearmsg(msg *MessageBuffer) {
 	msg.buffer = nil
 	msg.index = 0
 	msg.length = 0
-}
-
-/**
- * Send a message to a particular player
- */
-func SayPlayer(srv *Server, client int, level int, text string) {
-	WriteByte(SCMDSayClient, &srv.messageout)
-	WriteByte(byte(client), &srv.messageout)
-	WriteByte(byte(level), &srv.messageout)
-	WriteString(text, &srv.messageout)
-}
-
-/**
- * Send a message to every player on the server
- */
-func SayEveryone(srv *Server, level int, text string) {
-	WriteByte(SCMDSayAll, &srv.messageout)
-	WriteByte(byte(level), &srv.messageout)
-	WriteString(text, &srv.messageout)
-}
-
-/**
- * Take a back-slash delimited string of userinfo and return
- * a key/value map
- */
-func UserinfoMap(ui string) map[string]string {
-	info := make(map[string]string)
-	if ui == "" {
-		return info
-	}
-
-	data := strings.Split(ui[1:], "\\")
-
-	for i := 0; i < len(data); i += 2 {
-		info[data[i]] = data[i+1]
-	}
-
-	// special case: split the IP value into IP and Port
-	ip := info["ip"]
-	ipport := strings.Split(ip, ":")
-	if len(ipport) >= 2 {
-		info["port"] = ipport[1]
-		info["ip"] = ipport[0]
-	}
-
-	return info
 }
 
 /**
