@@ -157,6 +157,7 @@ const (
 	SCMDAuth
 	SCMDTrusted
 	SCMDKey
+	SCMDGetPlayers
 )
 
 /**
