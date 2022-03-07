@@ -28,7 +28,7 @@ type Player struct {
 /**
  * Get a pointer to a player based on a client number
  */
-func findplayer(players []Player, cl int) *Player {
+func FindPlayer(players []Player, cl int) *Player {
 	for i, p := range players {
 		if p.clientid == cl {
 			return &players[i]
@@ -41,7 +41,7 @@ func findplayer(players []Player, cl int) *Player {
 /**
  * Remove a player from the players slice (used when player quits)
  */
-func removeplayer(players []Player, cl int) []Player {
+func RemovePlayer(players []Player, cl int) []Player {
 	var index int
 	for i, pl := range players {
 		if pl.clientid == cl {

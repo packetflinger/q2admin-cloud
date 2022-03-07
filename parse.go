@@ -137,8 +137,8 @@ func ParseDisconnect(srv *Server) {
 		return
 	}
 
-	pl := findplayer(srv.players, clientnum)
-	srv.players = removeplayer(srv.players, clientnum)
+	pl := FindPlayer(srv.players, clientnum)
+	srv.players = RemovePlayer(srv.players, clientnum)
 	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.name, clientnum, pl.name)
 }
 
