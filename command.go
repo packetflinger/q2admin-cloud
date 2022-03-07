@@ -183,8 +183,9 @@ func MutePlayer(srv *Server, cl int, seconds int) {
 	}
 	WriteByte(SCMDCommand, &srv.messageout)
 	WriteString(cmd, &srv.messageout)
+	player := FindPlayer(srv.players, cl)
 
-	txt := fmt.Sprintf("MUTE [%d] was muted")
+	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", srv.name, cl, player.name)
 	LogEventToDatabase(srv.id, LogTypeCommand, txt)
 }
 
