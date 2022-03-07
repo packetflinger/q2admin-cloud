@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/md5"
 	"fmt"
-	"log"
 	"strings"
 )
 
@@ -63,7 +62,6 @@ func FindPlayer(players []Player, cl int) *Player {
 func LoadPlayerHash(player *Player) {
 	var database_id int64
 
-	log.Println(player)
 	phash := player.userinfomap["phash"]
 	if phash != "" {
 		player.hash = phash
@@ -78,16 +76,12 @@ func LoadPlayerHash(player *Player) {
 			player.userinfomap["fov"],
 			ip,
 		))
-		log.Println(string(pt))
-		hash := md5.Sum(pt)
 
+		hash := md5.Sum(pt)
 		player.hash = fmt.Sprintf("%x", hash[:8])
 	}
 
-	log.Println(player.hash)
-
 	database_id = int64(GetPlayerIdFromHash(player.hash))
-	log.Println(database_id)
 	if database_id > 0 {
 		player.database_id = database_id
 		return

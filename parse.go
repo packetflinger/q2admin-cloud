@@ -64,7 +64,7 @@ func ParseFrag(srv *Server) {
  * Received a ping from a client, send a pong to show we're alive
  */
 func Pong(srv *Server) {
-	if config.Debug > 0 {
+	if config.Debug > 1 {
 		log.Printf("[%s/PING]\n", srv.name)
 	}
 	WriteByte(SCMDPong, &srv.messageout)
@@ -95,8 +95,6 @@ func ParseConnect(srv *Server) {
 	if p == nil {
 		return
 	}
-
-	LoadPlayerHash(p)
 
 	info := UserinfoMap(p.userinfo)
 
@@ -171,8 +169,6 @@ func ParsePlayer(srv *Server) *Player {
 		return nil
 	}
 
-	log.Printf("[%s/PLAYER] (%d) %s\n", srv.name, clientnum, userinfo)
-
 	info := UserinfoMap(userinfo)
 	port, _ := strconv.Atoi(info["port"])
 	fov, _ := strconv.Atoi(info["fov"])
@@ -186,12 +182,17 @@ func ParsePlayer(srv *Server) *Player {
 		fov:         fov,
 	}
 
+	LoadPlayerHash(&newplayer)
+
 	// make sure player isn't already in the slice
 	for _, p := range srv.players {
 		if p.clientid == newplayer.clientid {
 			return nil
 		}
 	}
+
+	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.name, clientnum, newplayer.hash, userinfo)
+
 	srv.players = append(srv.players, newplayer)
 	return &newplayer
 }
