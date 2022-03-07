@@ -22,6 +22,39 @@ func DatabaseConnect() *sql.DB {
 	return db
 }
 
+func GetPlayerIdFromHash(hash string) int {
+	sql := "SELECT id FROM player WHERE hash = ? LIMIT 1"
+	r, err := db.Query(sql, hash)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	defer r.Close()
+
+	id := 0
+	for r.Next() {
+		r.Scan(&id)
+	}
+
+	return id
+}
+
+func InsertPlayer(p *Player) int64 {
+	sql := "INSERT INTO player (hash) VALUES (?)"
+	r, err := db.Exec(sql, p.hash)
+	if err != nil {
+		log.Println(err)
+	}
+
+	id, err := r.LastInsertId()
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+
+	return id
+}
+
 /**
  * Pull all the servers from the database and load them
  * into a structure
@@ -55,6 +88,20 @@ func LogChat(srv *Server, chat string) {
 		log.Println(err)
 		return
 	}
+}
+
+/**
+ * Save frags for stats
+ */
+func LogFrag(srv *Server, victim int, attacker int) {
+	/*
+		sql := "INSERT INTO frag (victim,attacker,server,fragdate) VALUES (?,?,?,?)"
+		_, err := db.Exec(sql, server, logtype, logentry, now)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	*/
 }
 
 func LogEventToDatabase(server int, logtype int, logentry string) {

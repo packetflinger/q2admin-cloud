@@ -1,6 +1,11 @@
 package main
 
-import "strings"
+import (
+	"crypto/md5"
+	"fmt"
+	"log"
+	"strings"
+)
 
 /**
  * Each player on a game server has one of these.
@@ -8,8 +13,10 @@ import "strings"
  */
 type Player struct {
 	clientid         int
+	database_id      int64
 	name             string
 	userinfo         string
+	userinfomap      map[string]string
 	hash             string
 	frags            int
 	deaths           int
@@ -36,6 +43,58 @@ func FindPlayer(players []Player, cl int) *Player {
 	}
 
 	return nil
+}
+
+/**
+ * A player hash is a way of uniquely identifiying a player.
+ *
+ * It's the first 16 characters of an MD5 hash of their
+ * name + skin + fov + partial IP. The idea is to identify
+ * players with the same name as different people, so someone can't
+ * impersonate someone else and tank their stats.
+ *
+ * Players can specify a player hash in their Userinfo rather than
+ * having one generated. This way they can use different names and
+ * still have their stats follow them.
+ *
+ * To specify a player hash from your q2 config:
+ * set phash "<hash here>" u
+ */
+func LoadPlayerHash(player *Player) {
+	var database_id int64
+
+	log.Println(player)
+	phash := player.userinfomap["phash"]
+	if phash != "" {
+		player.hash = phash
+	} else {
+		ipslice := strings.Split(player.ip, ".")
+		ip := fmt.Sprintf("%s.%s.%s", ipslice[0], ipslice[1], ipslice[2])
+
+		pt := []byte(fmt.Sprintf(
+			"%s-%s-%s-%s",
+			player.name,
+			player.userinfomap["skin"],
+			player.userinfomap["fov"],
+			ip,
+		))
+		log.Println(string(pt))
+		hash := md5.Sum(pt)
+
+		player.hash = fmt.Sprintf("%x", hash[:8])
+	}
+
+	log.Println(player.hash)
+
+	database_id = int64(GetPlayerIdFromHash(player.hash))
+	log.Println(database_id)
+	if database_id > 0 {
+		player.database_id = database_id
+		return
+	}
+
+	database_id = InsertPlayer(player)
+	player.database_id = database_id
 }
 
 /**

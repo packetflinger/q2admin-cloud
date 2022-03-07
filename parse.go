@@ -96,9 +96,11 @@ func ParseConnect(srv *Server) {
 		return
 	}
 
+	LoadPlayerHash(p)
+
 	info := UserinfoMap(p.userinfo)
 
-	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s", srv.name, p.clientid, info["name"], info["ip"])
+	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", srv.name, p.clientid, info["name"], info["ip"], p.hash)
 	log.Printf("%s\n", txt)
 	LogEventToDatabase(srv.id, LogTypeJoin, txt)
 
@@ -175,12 +177,13 @@ func ParsePlayer(srv *Server) *Player {
 	port, _ := strconv.Atoi(info["port"])
 	fov, _ := strconv.Atoi(info["fov"])
 	newplayer := Player{
-		clientid: int(clientnum),
-		userinfo: userinfo,
-		name:     info["name"],
-		ip:       info["ip"],
-		port:     port,
-		fov:      fov,
+		clientid:    int(clientnum),
+		userinfo:    userinfo,
+		userinfomap: info,
+		name:        info["name"],
+		ip:          info["ip"],
+		port:        port,
+		fov:         fov,
 	}
 
 	// make sure player isn't already in the slice
