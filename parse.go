@@ -55,14 +55,19 @@ func ParseFrag(srv *Server) {
 	v := int(ReadByte(&srv.message))
 	a := int(ReadByte(&srv.message))
 
-	/*
-		if v > 0 && v < srv.maxplayers {
-			victim := FindPlayer(srv.players, v)
-		}
-	*/
-	//victim := findplayer(srv.players, int(v))
+	victim := FindPlayer(srv.players, v)
+	attacker := FindPlayer(srv.players, a)
 
 	log.Printf("[%s/FRAG] %d > %d\n", srv.name, a, v)
+
+	if attacker == victim || attacker == nil {
+		victim.suicides++
+		victim.frags--
+		victim.deaths++
+	} else {
+		attacker.frags++
+		victim.deaths++
+	}
 }
 
 /**
