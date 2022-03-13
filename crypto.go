@@ -15,6 +15,16 @@ import (
 )
 
 /**
+ * Get a SHA256 hash of an input byte slice
+ */
+func DigestSHA256(input []byte) []byte {
+	hash := sha256.New()
+	_, _ = hash.Write(input)
+	checksum := hash.Sum(nil)
+	return checksum
+}
+
+/**
  * Generate a private/public key pair of a certain bit length
  */
 func GenerateKeys(bitlength int) bool {
@@ -67,6 +77,9 @@ func GenerateKeys(bitlength int) bool {
 	return true
 }
 
+/**
+ * Read an RSA private key into memory from the filesystem
+ */
 func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
 	priv, err := os.ReadFile(keyfile)
 	if err != nil {
@@ -96,6 +109,10 @@ func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
 	return nil, errors.New("something went wrong")
 }
 
+/**
+ * Read an RSA public key from the filesystem and get
+ * it ready to use
+ */
 func LoadPublicKey(keyfile string) (*rsa.PublicKey, error) {
 	pub, err := os.ReadFile(keyfile)
 	if err != nil {
@@ -115,6 +132,17 @@ func LoadPublicKey(keyfile string) (*rsa.PublicKey, error) {
 	}
 
 	return nil, errors.New("not a public key file")
+}
+
+/**
+ * Manually add padding to a slice to get it to a specific
+ * block size. The number of bytes required is the byte used
+ * for the actual padding
+ */
+func PKCS5Padding(input []byte, blockSize int) []byte {
+	padding := (blockSize - len(input)%blockSize)
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(input, padtext...)
 }
 
 func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) []byte {
@@ -140,6 +168,9 @@ func PublicEncrypt(key *rsa.PublicKey, plaintext []byte) []byte {
 	return encryptedBytes
 }
 
+/**
+ * Get a byte slice of random data (for generating keys)
+ */
 func RandomBytes(length int) []byte {
 	b := make([]byte, length)
 	_, err := rand.Read(b)
@@ -204,6 +235,9 @@ func SymmetricEncrypt(key []byte, nonce []byte, plaintext []byte) []byte {
 	return ciphertext
 }
 
+/**
+ * Use a public key to decrypt a signature and compare it to hash of the content
+ */
 func VerifySignature(key *rsa.PublicKey, plaintext []byte, sig []byte) bool {
 	hash := sha256.New()
 	temp := plaintext
@@ -218,17 +252,4 @@ func VerifySignature(key *rsa.PublicKey, plaintext []byte, sig []byte) bool {
 
 	fmt.Println(err)
 	return false
-}
-
-func DigestSHA256(input []byte) []byte {
-	hash := sha256.New()
-	_, _ = hash.Write(input)
-	checksum := hash.Sum(nil)
-	return checksum
-}
-
-func PKCS5Padding(input []byte, blockSize int) []byte {
-	padding := (blockSize - len(input)%blockSize)
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(input, padtext...)
 }
