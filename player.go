@@ -11,7 +11,7 @@ import (
  * Each game server has a slice of all current players
  */
 type Player struct {
-	clientid         int
+	clientid         int // ID on the gameserver (0-maxplayers)
 	database_id      int64
 	name             string
 	userinfo         string
