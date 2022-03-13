@@ -72,7 +72,12 @@ func Pong(srv *Server) {
 	if config.Debug > 1 {
 		log.Printf("[%s/PING]\n", srv.name)
 	}
+	srv.pingcount++
 	WriteByte(SCMDPong, &srv.messageout)
+
+	if (srv.pingcount & 63) == 0 {
+		RotateKeys(srv)
+	}
 }
 
 /**

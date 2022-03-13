@@ -182,6 +182,28 @@ func RandomBytes(length int) []byte {
 }
 
 /**
+ * Change our AES key and IV. This should be called
+ * periodically.
+ */
+func RotateKeys(server *Server) {
+	if !server.encrypted {
+		return
+	}
+
+	key := RandomBytes(AESBlockLength)
+	iv := RandomBytes(AESIVLength)
+	blob := append(key, iv...)
+
+	// Send immediately so old keys used for this message
+	WriteByte(SCMDKey, &server.messageout)
+	WriteData(blob, &server.messageout)
+	SendMessages(server)
+
+	server.aeskey = key
+	server.aesiv = iv
+}
+
+/**
  * Hash the plaintext, encrypt the resulting digest with our private key.
  * Only our public key can decrypt, proving it's really us
  */

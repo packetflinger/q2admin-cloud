@@ -68,6 +68,7 @@ type Server struct {
 	aeskey     []byte         // 16 (128bit)
 	aesiv      []byte         // 16 bytes (CBC)
 	bans       []Ban
+	pingcount  int
 }
 
 /**
