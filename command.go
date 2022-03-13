@@ -146,6 +146,7 @@ func Invite(srv *Server) {
 		}
 	}
 
+	p.invites++
 	p.lastinvite = now
 	p.invitesavailable--
 }
