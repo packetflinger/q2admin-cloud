@@ -75,6 +75,7 @@ func Pong(srv *Server) {
 	srv.pingcount++
 	WriteByte(SCMDPong, &srv.messageout)
 
+	// close to once per hour
 	if (srv.pingcount & 63) == 0 {
 		RotateKeys(srv)
 	}
