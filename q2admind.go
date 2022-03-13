@@ -231,6 +231,10 @@ func GetTimeFromTimestamp(ts int64) time.Time {
 	return time.Unix(ts, 0)
 }
 
+func (s *Server) ValidClientID(id int) bool {
+	return id >= 0 && id < s.maxplayers
+}
+
 /**
  * Setup the connection
  * The first message sent should identify the game server
