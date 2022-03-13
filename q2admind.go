@@ -48,7 +48,6 @@ type Server struct {
 	id         int // this is the database index
 	uuid       string
 	owner      int // user id from database
-	index      int
 	version    int // what version are we running
 	name       string
 	ipaddress  string // used for teleporting
@@ -62,7 +61,6 @@ type Server struct {
 	message    MessageBuffer  // incoming byte stream
 	messageout MessageBuffer  // outgoing byte stream
 	encrypted  bool           // are the messages AES encrypted?
-	havekeys   bool           // do we have all required encryption keys?
 	trusted    bool           // signature challenge verified
 	publickey  *rsa.PublicKey // supplied by owner via website
 	aeskey     []byte         // 16 (128bit)
