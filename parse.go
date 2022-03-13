@@ -52,9 +52,14 @@ func ParseMessage(srv *Server) {
  * and of the attacker
  */
 func ParseFrag(srv *Server) {
-	v := ReadByte(&srv.message)
-	a := ReadByte(&srv.message)
+	v := int(ReadByte(&srv.message))
+	a := int(ReadByte(&srv.message))
 
+	/*
+		if v > 0 && v < srv.maxplayers {
+			victim := FindPlayer(srv.players, v)
+		}
+	*/
 	//victim := findplayer(srv.players, int(v))
 
 	log.Printf("[%s/FRAG] %d > %d\n", srv.name, a, v)
@@ -78,11 +83,13 @@ func Pong(srv *Server) {
 func ParsePrint(srv *Server) {
 	level := ReadByte(&srv.message)
 	text := ReadString(&srv.message)
-	log.Printf("[%s/PRINT] (%d) %s\n", srv.name, level, text)
 
 	switch level {
 	case PRINT_CHAT:
 		LogChat(srv, text)
+		log.Printf("[%s/PRINT] (%d) %s\n", srv.name, level, text)
+	case PRINT_MEDIUM:
+		ParseObituary(text)
 	}
 }
 
@@ -150,6 +157,10 @@ func ParseMap(srv *Server) {
 	mapname := ReadString(&srv.message)
 	srv.currentmap = mapname
 	log.Printf("[%s/MAP] %s\n", srv.name, srv.currentmap)
+}
+
+func ParseObituary(text string) {
+	log.Printf("Obit: %s\n", text)
 }
 
 func ParsePlayerlist(srv *Server) {
