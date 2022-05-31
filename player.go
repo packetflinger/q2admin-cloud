@@ -96,18 +96,20 @@ func LoadPlayerHash(player *Player) {
 }
 
 /**
+ * Check if a client ID is valid for a particular server context,
+ * does not care if a valid player structure is located there or not
+ */
+func (srv *Server) ValidPlayerID(cl int) bool {
+	return cl >= 0 && cl < len(srv.players)
+}
+
+/**
  * Remove a player from the players slice (used when player quits)
  */
-func RemovePlayer(players []Player, cl int) []Player {
-	var index int
-	for i, pl := range players {
-		if pl.clientid == cl {
-			index = i
-			break
-		}
+func (srv *Server) RemovePlayer(cl int) {
+	if srv.ValidPlayerID(cl) {
+		srv.players[cl] = Player{}
 	}
-
-	return append(players[:index], players[index+1:]...)
 }
 
 /**
