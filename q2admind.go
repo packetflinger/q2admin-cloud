@@ -348,6 +348,8 @@ func handleConnection(c net.Conn) {
 	server.SendMessages()
 	server.trusted = true
 
+	server.players = make([]Player, server.maxplayers)
+
 	for {
 		input := make([]byte, 5000)
 		size, err := c.Read(input)

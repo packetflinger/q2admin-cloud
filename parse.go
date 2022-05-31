@@ -55,8 +55,8 @@ func ParseFrag(srv *Server) {
 	v := int(ReadByte(&srv.message))
 	a := int(ReadByte(&srv.message))
 
-	victim := FindPlayer(srv.players, v)
-	attacker := FindPlayer(srv.players, a)
+	victim := srv.FindPlayer(v)
+	attacker := srv.FindPlayer(a)
 
 	log.Printf("[%s/FRAG] %d > %d\n", srv.name, a, v)
 
@@ -155,7 +155,7 @@ func ParseDisconnect(srv *Server) {
 		return
 	}
 
-	pl := FindPlayer(srv.players, clientnum)
+	pl := srv.FindPlayer(clientnum)
 	srv.players = RemovePlayer(srv.players, clientnum)
 	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.name, clientnum, pl.name)
 }
@@ -215,7 +215,7 @@ func ParsePlayer(srv *Server) *Player {
 
 	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.name, clientnum, newplayer.hash, userinfo)
 
-	srv.players = append(srv.players, newplayer)
+	srv.players[newplayer.clientid] = newplayer
 	return &newplayer
 }
 

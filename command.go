@@ -19,7 +19,7 @@ import (
 func Teleport(srv *Server) {
 	cl := ReadByte(&srv.message)
 	dest := ReadString(&srv.message)
-	p := FindPlayer(srv.players, int(cl))
+	p := srv.FindPlayer(int(cl))
 
 	now := time.Now().Unix()
 	log.Printf("[%s/TELEPORT/%s] %s\n", srv.name, p.name, dest)
@@ -117,7 +117,7 @@ func TeleportAvailableReply() string {
 func Invite(srv *Server) {
 	cl := ReadByte(&srv.message)
 	text := ReadString(&srv.message)
-	p := FindPlayer(srv.players, int(cl))
+	p := srv.FindPlayer(int(cl))
 	log.Printf("[%s/INVITE/%s] %s\n", srv.name, p.name, text)
 
 	now := time.Now().Unix()
@@ -184,7 +184,7 @@ func MutePlayer(srv *Server, cl int, seconds int) {
 	}
 	WriteByte(SCMDCommand, &srv.messageout)
 	WriteString(cmd, &srv.messageout)
-	player := FindPlayer(srv.players, cl)
+	player := srv.FindPlayer(cl)
 
 	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", srv.name, cl, player.name)
 	LogEventToDatabase(srv.id, LogTypeCommand, txt)

@@ -29,16 +29,20 @@ type Player struct {
 	ip               string
 	port             int
 	fov              int
+	connecttime      int64
 }
 
 /**
  * Get a pointer to a player based on a client number
  */
-func FindPlayer(players []Player, cl int) *Player {
-	for i, p := range players {
-		if p.clientid == cl {
-			return &players[i]
-		}
+func (srv *Server) FindPlayer(cl int) *Player {
+	if cl < 0 || cl > srv.maxplayers {
+		return nil
+	}
+
+	p := srv.players[cl]
+	if p.connecttime > 0 {
+		return &srv.players[cl]
 	}
 
 	return nil
