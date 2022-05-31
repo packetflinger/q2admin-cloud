@@ -197,7 +197,7 @@ func RotateKeys(server *Server) {
 	// Send immediately so old keys used for this message
 	WriteByte(SCMDKey, &server.messageout)
 	WriteData(blob, &server.messageout)
-	SendMessages(server)
+	server.SendMessages()
 
 	server.aeskey = key
 	server.aesiv = iv

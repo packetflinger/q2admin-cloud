@@ -194,7 +194,7 @@ func findserver(lookup string) (*Server, error) {
 /**
  * Send all messages in the outgoing queue to the gameserver
  */
-func SendMessages(srv *Server) {
+func (srv *Server) SendMessages() {
 	if !srv.connected {
 		return
 	}
@@ -317,7 +317,7 @@ func handleConnection(c net.Conn) {
 	svchallenge := RandomBytes(challengeLength)
 	WriteData(svchallenge, &server.messageout)
 
-	SendMessages(server)
+	server.SendMessages()
 
 	// read the client signature
 	size, _ := c.Read(input)
@@ -345,7 +345,7 @@ func handleConnection(c net.Conn) {
 
 	LoadBans(server)
 	WriteByte(SCMDTrusted, &server.messageout)
-	SendMessages(server)
+	server.SendMessages()
 	server.trusted = true
 
 	for {
@@ -368,8 +368,8 @@ func handleConnection(c net.Conn) {
 		server.message.index = 0
 		server.message.length = size
 
-		ParseMessage(server)
-		SendMessages(server)
+		server.ParseMessage()
+		server.SendMessages()
 	}
 
 	server.connected = false

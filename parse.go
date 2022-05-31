@@ -11,7 +11,7 @@ import (
  * Loop through all the data from the client
  * and act accordingly
  */
-func ParseMessage(srv *Server) {
+func (srv *Server) ParseMessage() {
 	msg := &srv.message
 	for {
 		if msg.index >= len(msg.buffer) {
