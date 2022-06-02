@@ -36,13 +36,14 @@ type Player struct {
  * Get a pointer to a player based on a client number
  */
 func (srv *Server) FindPlayer(cl int) *Player {
-	if cl < 0 || cl > srv.maxplayers {
+	if !srv.ValidPlayerID(cl) {
 		return nil
 	}
 
-	p := srv.players[cl]
+	p := &srv.players[cl]
+
 	if p.connecttime > 0 {
-		return &srv.players[cl]
+		return p
 	}
 
 	return nil

@@ -58,6 +58,10 @@ func ParseFrag(srv *Server) {
 	victim := srv.FindPlayer(v)
 	attacker := srv.FindPlayer(a)
 
+	if victim == nil {
+		return
+	}
+
 	log.Printf("[%s/FRAG] %d > %d\n", srv.name, a, v)
 
 	if attacker == victim || attacker == nil {
@@ -156,8 +160,8 @@ func ParseDisconnect(srv *Server) {
 	}
 
 	pl := srv.FindPlayer(clientnum)
-	srv.RemovePlayer(clientnum)
 	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.name, clientnum, pl.name)
+	srv.RemovePlayer(clientnum)
 }
 
 /**
@@ -202,16 +206,10 @@ func ParsePlayer(srv *Server) *Player {
 		ip:          info["ip"],
 		port:        port,
 		fov:         fov,
+		connecttime: GetUnixTimestamp(),
 	}
 
 	LoadPlayerHash(&newplayer)
-
-	// make sure player isn't already in the slice
-	for _, p := range srv.players {
-		if p.clientid == newplayer.clientid {
-			return nil
-		}
-	}
 
 	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.name, clientnum, newplayer.hash, userinfo)
 
