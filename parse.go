@@ -126,8 +126,7 @@ func ParseConnect(srv *Server) {
 
 	// global
 	if isbanned, msg := CheckForBan(&globalbans, p.ip); isbanned == Banned {
-		SayPlayer(
-			srv,
+		srv.SayPlayer(
 			p.clientid,
 			PRINT_CHAT,
 			fmt.Sprintf("Your IP/Userinfo matches a global ban: %s\n", msg),
@@ -138,8 +137,7 @@ func ParseConnect(srv *Server) {
 
 	// local
 	if isbanned, msg := CheckForBan(&srv.bans, p.ip); isbanned == Banned {
-		SayPlayer(
-			srv,
+		srv.SayPlayer(
 			p.clientid,
 			PRINT_CHAT,
 			fmt.Sprintf("Your IP/Userinfo matches a local ban: %s\n", msg),

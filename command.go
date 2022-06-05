@@ -28,15 +28,15 @@ func Teleport(srv *Server) {
 		listtime := now - p.lastteleportlist
 		if listtime < 30 {
 			txt := fmt.Sprintf("You can't list teleport destinations for %d more seconds\n", 30-listtime)
-			SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+			srv.SayPlayer(int(cl), PRINT_HIGH, txt)
 			return
 		}
 
 		p.lastteleportlist = now
 		avail := TeleportAvailableReply()
-		SayPlayer(srv, int(cl), PRINT_CHAT, avail)
+		srv.SayPlayer(int(cl), PRINT_CHAT, avail)
 
-		SayPlayer(srv, int(cl), PRINT_CHAT, "Active Servers\n")
+		srv.SayPlayer(int(cl), PRINT_CHAT, "Active Servers\n")
 		line := ""
 
 		for _, s := range servers {
@@ -50,7 +50,7 @@ func Teleport(srv *Server) {
 			}
 
 			line = fmt.Sprintf(" %-15s %-15s %s\n", s.name, s.currentmap, players)
-			SayPlayer(srv, int(cl), PRINT_CHAT, line)
+			srv.SayPlayer(int(cl), PRINT_CHAT, line)
 		}
 		return
 	}
@@ -61,7 +61,7 @@ func Teleport(srv *Server) {
 
 	if err != nil {
 		log.Println("warning,", err)
-		SayPlayer(srv, int(cl), PRINT_HIGH, "Unknown destination\n")
+		srv.SayPlayer(int(cl), PRINT_HIGH, "Unknown destination\n")
 	} else {
 		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.name, s.name, s.ipaddress, s.port)
 		srv.SayEveryone(PRINT_HIGH, txt)
@@ -128,13 +128,13 @@ func Invite(srv *Server) {
 			p.invitesavailable = 3
 		} else {
 			txt := fmt.Sprintf("You have no more invites available, wait %d seconds\n", 600-invtime)
-			SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+			srv.SayPlayer(int(cl), PRINT_HIGH, txt)
 			return
 		}
 	} else {
 		if invtime < 30 {
 			txt := fmt.Sprintf("Invite used too recently, wait %d seconds\n", 30-invtime)
-			SayPlayer(srv, int(cl), PRINT_HIGH, txt)
+			srv.SayPlayer(int(cl), PRINT_HIGH, txt)
 			return
 		}
 	}

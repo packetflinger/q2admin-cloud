@@ -125,7 +125,7 @@ func (srv *Server) SayEveryone(level int, text string) {
 /**
  * Send a message to a particular player
  */
-func SayPlayer(srv *Server, client int, level int, text string) {
+func (srv *Server) SayPlayer(client int, level int, text string) {
 	WriteByte(SCMDSayClient, &srv.messageout)
 	WriteByte(byte(client), &srv.messageout)
 	WriteByte(byte(level), &srv.messageout)
