@@ -116,7 +116,7 @@ func (srv *Server) RemovePlayer(cl int) {
 /**
  * Send a message to every player on the server
  */
-func SayEveryone(srv *Server, level int, text string) {
+func (srv *Server) SayEveryone(level int, text string) {
 	WriteByte(SCMDSayAll, &srv.messageout)
 	WriteByte(byte(level), &srv.messageout)
 	WriteString(text, &srv.messageout)

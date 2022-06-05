@@ -64,7 +64,7 @@ func Teleport(srv *Server) {
 		SayPlayer(srv, int(cl), PRINT_HIGH, "Unknown destination\n")
 	} else {
 		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.name, s.name, s.ipaddress, s.port)
-		SayEveryone(srv, PRINT_HIGH, txt)
+		srv.SayEveryone(PRINT_HIGH, txt)
 		st := fmt.Sprintf("connect %s:%d\n", s.ipaddress, s.port)
 		StuffPlayer(srv, int(cl), st)
 	}
@@ -140,9 +140,9 @@ func Invite(srv *Server) {
 	}
 
 	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.name, srv.name, srv.ipaddress, srv.port)
-	for i, s := range servers {
+	for _, s := range servers {
 		if s.enabled && s.connected {
-			SayEveryone(&servers[i], PRINT_CHAT, inv)
+			s.SayEveryone(PRINT_CHAT, inv)
 		}
 	}
 
