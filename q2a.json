@@ -3,8 +3,8 @@
     "port": 9988,
     "database": "server.sqlite",
     "dbstring": "q2a:q2a@tcp(localhost:3306)/q2admin",
-    "privatekey": "private-1628817495.pem",
+    "privatekey": "private.pem",
     "apiport": 8087,
-    "debug": 1,
-    "enableapi": 0
+    "debug": 0,
+    "enableapi": 1
 }
