@@ -48,7 +48,7 @@ func GetSessionUser(r *http.Request) WebUser {
 
 func GetUser(id int) WebUser {
     niluser := &WebUser{}
-    sql := "SELECT id, uuid, email, servercount, admin FROM user WHERE id = ? LIMIT 1"
+    sql := "SELECT id, uuid, email, server_count, admin FROM user WHERE id = ? LIMIT 1"
     r, e := db.Query(sql, id)
     if e != nil {
         log.Println(e)
@@ -70,20 +70,29 @@ func GetUser(id int) WebUser {
  */
 func CreateSession(user int) string {
     sessionid := uuid.New().String()
+    expires := GetUnixTimestamp() + (86400 * 2) // two day from now
 
-    sql := "INSERT INTO websession (session, user, expiration) VALUES (?, ?, NOW() + INTERVAL 2 DAY)"
-    r, err := db.Query(sql, sessionid, user)
+    sql := "INSERT INTO websession (session, user, expiration) VALUES (?, ?, ?)"
+    _, err := db.Exec(sql, sessionid, user, expires)
     if err != nil {
         log.Println(err)
     }
-    r.Close()
+    //r.Close()
+
+    sql = "UPDATE user SET last_login = ? WHERE id = ? LIMIT 1"
+    _, err = db.Exec(sql, GetUnixTimestamp(), user)
+    if err != nil {
+        log.Println(err)
+    }
+    //r.Close()
+
     return sessionid
 }
 
 func ValidateSession(sess string) (int, error) {
     var UserID int
-    sql := "SELECT user FROM websession WHERE session = ? AND expiration >= NOW() LIMIT 1"
-    if r, e := db.Query(sql, sess); e == nil {
+    sql := "SELECT user FROM websession WHERE session = ? AND expiration >= ? LIMIT 1"
+    if r, e := db.Query(sql, sess, GetUnixTimestamp()); e == nil {
         r.Next()
         r.Scan(&UserID)
         r.Close()
@@ -94,7 +103,8 @@ func ValidateSession(sess string) (int, error) {
 }
 
 func RunHTTPServer() {
-    port := ":27999"
+    //port := ":27999"
+    port := fmt.Sprintf(":%d", config.APIPort)
 
     fs := http.FileServer(http.Dir("assets/"))
     http.Handle("/assets/", http.StripPrefix("/assets/", fs))
@@ -103,7 +113,7 @@ func RunHTTPServer() {
         user := GetSessionUser(r)
         if user.ID != 0 {
             //fmt.Fprintf(w, "<p>User: %s</p>", user.UUID)
-            http.Redirect(w, r, "/login", http.StatusFound) // 302
+            http.Redirect(w, r, "/dashboard", http.StatusFound) // 302
             return
         }
 
@@ -118,6 +128,7 @@ func RunHTTPServer() {
             }
 
             email := r.FormValue("email")
+            //log.Printf("Submitted login address: %s\n", email)
 
             // lookup the user's ID
             var UserID int
@@ -127,6 +138,7 @@ func RunHTTPServer() {
                 rs.Next()
                 rs.Scan(&UserID)
                 rs.Close()
+                //log.Printf("Userid lookup: %d\n", UserID)
                 sess := CreateSession(UserID)
                 cookieexpire := time.Now().AddDate(0, 0, 2) // years, months, days
                 cookie := http.Cookie{Name: SessionName, Value: sess, Expires: cookieexpire}
