@@ -63,11 +63,11 @@ func LoadGlobalBans() {
  * Happens after gameserver connects and authenticates
  */
 func LoadBans(srv *Server) {
-	banfile := fmt.Sprintf("bans/%s.csv", srv.name)
+	banfile := fmt.Sprintf("bans/%s.csv", srv.Name)
 
 	bandata, err := os.ReadFile(banfile)
 	if err != nil {
-		log.Printf("[%s] problems loading banlist: %s\n", srv.name, err)
+		log.Printf("[%s] problems loading banlist: %s\n", srv.Name, err)
 		return
 	}
 
@@ -90,7 +90,7 @@ func LoadBans(srv *Server) {
 		srv.bans = append(srv.bans, ban)
 	}
 
-	log.Printf("[%s] banlist loaded: %s\n", srv.name, banfile)
+	log.Printf("[%s] banlist loaded: %s\n", srv.Name, banfile)
 }
 
 /**

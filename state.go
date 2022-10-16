@@ -11,7 +11,7 @@ import (
 // Write and struct to disk for later use
 //
 func (srv *Server) SaveState() {
-	fname := fmt.Sprintf("./states/%s.gob", srv.name)
+	fname := fmt.Sprintf("./states/%s.gob", srv.Name)
 	file, err := os.Create(fname)
 	if err != nil {
 		log.Println(err)
@@ -27,7 +27,7 @@ func (srv *Server) SaveState() {
 // Read a saved struct back into memory
 //
 func (srv *Server) LoadState() {
-	fname := fmt.Sprintf("./states/%s.gob", srv.name)
+	fname := fmt.Sprintf("./states/%s.gob", srv.Name)
 	file, err := os.Open(fname)
 	if err != nil {
 		log.Println(err)

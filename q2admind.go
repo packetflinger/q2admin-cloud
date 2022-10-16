@@ -45,11 +45,11 @@ type MessageBuffer struct {
  * actually connects
  */
 type Server struct {
-	id         int // this is the database index
-	uuid       string
-	owner      int // user id from database
+	ID         int // this is the database index
+	UUID       string
+	Owner      int // user id from database
 	version    int // what version are we running
-	name       string
+	Name       string
 	ipaddress  string // used for teleporting
 	port       int    // used for teleporting
 	connected  bool   // is it currently connected to us?
@@ -183,7 +183,7 @@ func clearmsg(msg *MessageBuffer) {
  */
 func findserver(lookup string) (*Server, error) {
 	for i, srv := range servers {
-		if srv.uuid == lookup {
+		if srv.UUID == lookup {
 			return &servers[i], nil
 		}
 	}
@@ -278,7 +278,7 @@ func handleConnection(c net.Conn) {
 		c.Close()
 		return
 	}
-	log.Printf("[%s] connecting...\n", server.name)
+	log.Printf("[%s] connecting...\n", server.Name)
 
 	server.port = int(port)
 	server.encrypted = int(enc) == 1 // stupid bool conversion
@@ -288,7 +288,7 @@ func handleConnection(c net.Conn) {
 	server.maxplayers = int(maxplayers)
 	keyname := fmt.Sprintf("keys/%s.pem", uuid)
 
-	log.Printf("[%s] Loading public key: %s\n", server.name, keyname)
+	log.Printf("[%s] Loading public key: %s\n", server.Name, keyname)
 	pubkey, err := LoadPublicKey(keyname)
 	if err != nil {
 		log.Printf("Public key error: %s\n", err.Error())
@@ -336,9 +336,9 @@ func handleConnection(c net.Conn) {
 	verified := VerifySignature(server.publickey, svchallenge, clientSignature)
 
 	if verified {
-		log.Printf("[%s] signature verified, server trusted\n", server.name)
+		log.Printf("[%s] signature verified, server trusted\n", server.Name)
 	} else {
-		log.Printf("[%s] signature verifcation failed...", server.name)
+		log.Printf("[%s] signature verifcation failed...", server.Name)
 		c.Close()
 		return
 	}
@@ -464,6 +464,6 @@ func init() {
 	log.Println("Loading servers:")
 	servers = LoadServers(db)
 	for _, s := range servers {
-		log.Printf("  %-15s %-21s [%s]", s.name, fmt.Sprintf("%s:%d", s.ipaddress, s.port), s.uuid)
+		log.Printf("  %-15s %-21s [%s]", s.Name, fmt.Sprintf("%s:%d", s.ipaddress, s.port), s.UUID)
 	}
 }

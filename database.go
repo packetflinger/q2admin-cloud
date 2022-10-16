@@ -69,7 +69,7 @@ func LoadServers(db *sql.DB) []Server {
 	var srv Server
 	var disabled int
 	for r.Next() {
-		r.Scan(&srv.id, &srv.uuid, &srv.owner, &srv.name, &srv.ipaddress, &srv.port, &disabled)
+		r.Scan(&srv.ID, &srv.UUID, &srv.Owner, &srv.Name, &srv.ipaddress, &srv.port, &disabled)
 		srv.enabled = disabled == 0
 		srvs = append(srvs, srv)
 	}
@@ -83,7 +83,7 @@ func LoadServers(db *sql.DB) []Server {
  */
 func LogChat(srv *Server, chat string) {
 	sql := "INSERT INTO chat (server, time, chat) VALUES (?,?,?)"
-	_, err := db.Exec(sql, srv.id, GetUnixTimestamp(), chat)
+	_, err := db.Exec(sql, srv.ID, GetUnixTimestamp(), chat)
 	if err != nil {
 		log.Println(err)
 		return

@@ -62,7 +62,7 @@ func ParseFrag(srv *Server) {
 		return
 	}
 
-	log.Printf("[%s/FRAG] %d > %d\n", srv.name, a, v)
+	log.Printf("[%s/FRAG] %d > %d\n", srv.Name, a, v)
 
 	if attacker == victim || attacker == nil {
 		victim.suicides++
@@ -79,7 +79,7 @@ func ParseFrag(srv *Server) {
  */
 func Pong(srv *Server) {
 	if config.Debug > 1 {
-		log.Printf("[%s/PING]\n", srv.name)
+		log.Printf("[%s/PING]\n", srv.Name)
 	}
 	srv.pingcount++
 	WriteByte(SCMDPong, &srv.messageout)
@@ -102,7 +102,7 @@ func ParsePrint(srv *Server) {
 	switch level {
 	case PRINT_CHAT:
 		LogChat(srv, text)
-		log.Printf("[%s/PRINT] (%d) %s\n", srv.name, level, text)
+		log.Printf("[%s/PRINT] (%d) %s\n", srv.Name, level, text)
 	case PRINT_MEDIUM:
 		ParseObituary(text)
 	}
@@ -120,9 +120,9 @@ func ParseConnect(srv *Server) {
 
 	info := UserinfoMap(p.userinfo)
 
-	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", srv.name, p.clientid, info["name"], info["ip"], p.hash)
+	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", srv.Name, p.clientid, info["name"], info["ip"], p.hash)
 	log.Printf("%s\n", txt)
-	LogEventToDatabase(srv.id, LogTypeJoin, txt)
+	LogEventToDatabase(srv.ID, LogTypeJoin, txt)
 
 	// global
 	if isbanned, msg := CheckForBan(&globalbans, p.ip); isbanned == Banned {
@@ -158,7 +158,7 @@ func ParseDisconnect(srv *Server) {
 	}
 
 	pl := srv.FindPlayer(clientnum)
-	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.name, clientnum, pl.name)
+	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.Name, clientnum, pl.name)
 	srv.RemovePlayer(clientnum)
 }
 
@@ -169,7 +169,7 @@ func ParseDisconnect(srv *Server) {
 func ParseMap(srv *Server) {
 	mapname := ReadString(&srv.message)
 	srv.currentmap = mapname
-	log.Printf("[%s/MAP] %s\n", srv.name, srv.currentmap)
+	log.Printf("[%s/MAP] %s\n", srv.Name, srv.currentmap)
 }
 
 func ParseObituary(text string) {
@@ -178,7 +178,7 @@ func ParseObituary(text string) {
 
 func ParsePlayerlist(srv *Server) {
 	count := ReadByte(&srv.message)
-	log.Printf("[%s/PLAYERLIST] %d\n", srv.name, count)
+	log.Printf("[%s/PLAYERLIST] %d\n", srv.Name, count)
 	for i := 0; i < int(count); i++ {
 		_ = ParsePlayer(srv)
 	}
@@ -209,7 +209,7 @@ func ParsePlayer(srv *Server) *Player {
 
 	LoadPlayerHash(&newplayer)
 
-	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.name, clientnum, newplayer.hash, userinfo)
+	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.Name, clientnum, newplayer.hash, userinfo)
 
 	srv.players[newplayer.clientid] = newplayer
 	return &newplayer
