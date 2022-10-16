@@ -1,0 +1,27 @@
+<html>
+    <head>
+        <title>Q2Admin Dashboard</title>
+    </head>
+    <body>
+        <div style="background-color: #aaa;"><h1>Q2Admin Dashboard</h1></div>
+        <p>{{.User.Email}}</p>
+        <h3>My Servers (<a href="/add-server/step1">Add Server</a>)</h3>
+        <p id="my-servers">
+            <img src="/assets/img/loading.svg" style="width:32px; height: 32px;">
+            <ul>
+            {{range .MyServers}}
+                <li><a href="/dashboard/sv/{{.UUID}}">{{.Name}}</a></li>
+            {{end}}
+            </ul>
+        </p>
+        <h3>Delegated Servers</h3>
+        <p id="delegated-servers">
+            <img src="/assets/img/loading.svg" style="width:32px; height: 32px;">
+            <ul>
+            {{range .OtherServers}}
+                <li><a href="/dashboard/sv/{{.UUID}}">{{.Name}}</a></li>
+            {{end}}
+            </ul>
+        </p>
+    </body>
+</html>

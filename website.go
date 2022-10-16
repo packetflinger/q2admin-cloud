@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 )
 
 type ActiveServer struct {
@@ -109,91 +110,29 @@ func ValidateSession(sess string) (int, error) {
 }
 
 func RunHTTPServer() {
-	//port := ":27999"
 	port := fmt.Sprintf(":%d", config.APIPort)
 
-	fs := http.FileServer(http.Dir("assets/"))
-	http.Handle("/assets/", http.StripPrefix("/assets/", fs))
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		user := GetSessionUser(r)
-		if user.ID != 0 {
-			//fmt.Fprintf(w, "<p>User: %s</p>", user.UUID)
-			http.Redirect(w, r, "/dashboard", http.StatusFound) // 302
-			return
-		}
-
-		http.Redirect(w, r, "/login", http.StatusFound) // 302
-	})
-
-	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		// login form submitted, process the login
-		if r.Method == "POST" {
-			if err := r.ParseForm(); err != nil {
-				log.Println(err)
-			}
-
-			email := r.FormValue("email")
-			//log.Printf("Submitted login address: %s\n", email)
-
-			// lookup the user's ID
-			var UserID int
-			sql := "SELECT id FROM user WHERE email = ? LIMIT 1"
-			rs, e := db.Query(sql, email)
-			if e == nil {
-				rs.Next()
-				rs.Scan(&UserID)
-				rs.Close()
-				//log.Printf("Userid lookup: %d\n", UserID)
-				sess := CreateSession(UserID)
-				cookieexpire := time.Now().AddDate(0, 0, 2) // years, months, days
-				cookie := http.Cookie{Name: SessionName, Value: sess, Expires: cookieexpire}
-				http.SetCookie(w, &cookie)
-			}
-
-			http.Redirect(w, r, "/dashboard", http.StatusFound) // 302
-			return
-		}
-
-		// ...or show the form
-		tmpl, e := template.ParseFiles("website-templates/login.tmpl")
-		if e != nil {
-			log.Println(e)
-		} else {
-			tmpl.Execute(w, nil)
-		}
-	})
-
-	http.HandleFunc("/dashboard/sv/", WebsiteServerHandler)
-	http.HandleFunc("/dashboard", WebsiteDashboard)
-
-	http.HandleFunc("/api/GetConnectedServers", func(w http.ResponseWriter, r *http.Request) {
-		var activeservers []ActiveServer
-		for _, s := range servers {
-			if s.connected {
-				srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.players)}
-				activeservers = append(activeservers, srv)
-			}
-		}
-
-		j, e := json.Marshal(activeservers)
-		if e != nil {
-			fmt.Println(e)
-			fmt.Fprintf(w, "{}")
-			return
-		}
-
-		fmt.Fprintf(w, string(j))
-	})
+	r := mux.NewRouter()
+	r.HandleFunc("/", WebsiteHandlerIndex)
+	r.HandleFunc("/signin", WebsiteHandlerSignin)
+	r.HandleFunc("/dashboard", WebsiteHandlerDashboard)
+	r.HandleFunc("/dashboard/sv/{ServerUUID}", WebsiteHandlerServerView)
+	r.HandleFunc("/api/GetConnectedServers", WebsiteAPIGetConnectedServers)
+	r.PathPrefix("/assets/").Handler(http.FileServer(http.Dir(".")))
 
 	log.Printf("Listening for web requests on %s\n", port)
-	err := http.ListenAndServe(port, nil)
-	if err != nil {
-		log.Fatal(err)
+
+	httpsrv := &http.Server{
+		Handler:      r,
+		Addr:         port,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
 	}
+
+	log.Fatal(httpsrv.ListenAndServe())
 }
 
-func WebsiteDashboard(w http.ResponseWriter, r *http.Request) {
+func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 
 	page := DashboardPage{}
 
@@ -216,5 +155,77 @@ func WebsiteDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func WebsiteServerHandler(w http.ResponseWriter, r *http.Request) {
+func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
+}
+
+//
+// the "index" handler
+//
+func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
+	user := GetSessionUser(r)
+	if user.ID != 0 {
+		http.Redirect(w, r, "/dashboard", http.StatusFound) // 302
+		return
+	}
+
+	http.Redirect(w, r, "/signin", http.StatusFound) // 302
+}
+
+//
+// Handle logins
+//
+func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
+	// login form submitted, process the login
+	if r.Method == "POST" {
+		if err := r.ParseForm(); err != nil {
+			log.Println(err)
+		}
+
+		email := r.FormValue("email")
+
+		// lookup the user's ID
+		var UserID int
+		sql := "SELECT id FROM user WHERE email = ? LIMIT 1"
+		rs, e := db.Query(sql, email)
+		if e == nil {
+			rs.Next()
+			rs.Scan(&UserID)
+			rs.Close()
+			//log.Printf("Userid lookup: %d\n", UserID)
+			sess := CreateSession(UserID)
+			cookieexpire := time.Now().AddDate(0, 0, 2) // years, months, days
+			cookie := http.Cookie{Name: SessionName, Value: sess, Expires: cookieexpire}
+			http.SetCookie(w, &cookie)
+		}
+
+		http.Redirect(w, r, "/dashboard", http.StatusFound) // 302
+		return
+	}
+
+	// ...or show the form
+	tmpl, e := template.ParseFiles("website-templates/login.tmpl")
+	if e != nil {
+		log.Println(e)
+	} else {
+		tmpl.Execute(w, nil)
+	}
+}
+
+func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
+	var activeservers []ActiveServer
+	for _, s := range servers {
+		if s.connected {
+			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.players)}
+			activeservers = append(activeservers, srv)
+		}
+	}
+
+	j, e := json.Marshal(activeservers)
+	if e != nil {
+		fmt.Println(e)
+		fmt.Fprintf(w, "{}")
+		return
+	}
+
+	fmt.Fprintf(w, string(j))
 }
