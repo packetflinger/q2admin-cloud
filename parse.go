@@ -12,7 +12,7 @@ import (
  * and act accordingly
  */
 func (srv *Server) ParseMessage() {
-	msg := &srv.message
+	msg := &srv.Message
 	for {
 		if msg.index >= len(msg.buffer) {
 			break
@@ -52,8 +52,8 @@ func (srv *Server) ParseMessage() {
  * and of the attacker
  */
 func ParseFrag(srv *Server) {
-	v := int(ReadByte(&srv.message))
-	a := int(ReadByte(&srv.message))
+	v := int(ReadByte(&srv.Message))
+	a := int(ReadByte(&srv.Message))
 
 	victim := srv.FindPlayer(v)
 	attacker := srv.FindPlayer(a)
@@ -81,11 +81,11 @@ func Pong(srv *Server) {
 	if config.Debug > 1 {
 		log.Printf("[%s/PING]\n", srv.Name)
 	}
-	srv.pingcount++
-	WriteByte(SCMDPong, &srv.messageout)
+	srv.PingCount++
+	WriteByte(SCMDPong, &srv.MessageOut)
 
 	// close to once per hour
-	if (srv.pingcount & 63) == 0 {
+	if (srv.PingCount & 63) == 0 {
 		RotateKeys(srv)
 	}
 }
@@ -96,8 +96,8 @@ func Pong(srv *Server) {
  * string: the actual message
  */
 func ParsePrint(srv *Server) {
-	level := ReadByte(&srv.message)
-	text := ReadString(&srv.message)
+	level := ReadByte(&srv.Message)
+	text := ReadString(&srv.Message)
 
 	switch level {
 	case PRINT_CHAT:
@@ -136,7 +136,7 @@ func ParseConnect(srv *Server) {
 	}
 
 	// local
-	if isbanned, msg := CheckForBan(&srv.bans, p.ip); isbanned == Banned {
+	if isbanned, msg := CheckForBan(&srv.Bans, p.ip); isbanned == Banned {
 		srv.SayPlayer(
 			p.clientid,
 			PRINT_CHAT,
@@ -150,10 +150,10 @@ func ParseConnect(srv *Server) {
  * A player disconnected from a q2 server
  */
 func ParseDisconnect(srv *Server) {
-	clientnum := int(ReadByte(&srv.message))
+	clientnum := int(ReadByte(&srv.Message))
 
-	if clientnum < 0 || clientnum > srv.maxplayers {
-		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(srv.message.buffer))
+	if clientnum < 0 || clientnum > srv.MaxPlayers {
+		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(srv.Message.buffer))
 		return
 	}
 
@@ -167,9 +167,9 @@ func ParseDisconnect(srv *Server) {
  * when the map changes
  */
 func ParseMap(srv *Server) {
-	mapname := ReadString(&srv.message)
-	srv.currentmap = mapname
-	log.Printf("[%s/MAP] %s\n", srv.Name, srv.currentmap)
+	mapname := ReadString(&srv.Message)
+	srv.CurrentMap = mapname
+	log.Printf("[%s/MAP] %s\n", srv.Name, srv.CurrentMap)
 }
 
 func ParseObituary(text string) {
@@ -177,7 +177,7 @@ func ParseObituary(text string) {
 }
 
 func ParsePlayerlist(srv *Server) {
-	count := ReadByte(&srv.message)
+	count := ReadByte(&srv.Message)
 	log.Printf("[%s/PLAYERLIST] %d\n", srv.Name, count)
 	for i := 0; i < int(count); i++ {
 		_ = ParsePlayer(srv)
@@ -185,10 +185,10 @@ func ParsePlayerlist(srv *Server) {
 }
 
 func ParsePlayer(srv *Server) *Player {
-	clientnum := ReadByte(&srv.message)
-	userinfo := ReadString(&srv.message)
+	clientnum := ReadByte(&srv.Message)
+	userinfo := ReadString(&srv.Message)
 
-	if int(clientnum) > srv.maxplayers {
+	if int(clientnum) > srv.MaxPlayers {
 		log.Printf("WARNING: Invalid client number, ignoring\n")
 		return nil
 	}
@@ -211,12 +211,12 @@ func ParsePlayer(srv *Server) *Player {
 
 	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.Name, clientnum, newplayer.hash, userinfo)
 
-	srv.players[newplayer.clientid] = newplayer
+	srv.Players[newplayer.clientid] = newplayer
 	return &newplayer
 }
 
 func ParseCommand(srv *Server) {
-	cmd := ReadByte(&srv.message)
+	cmd := ReadByte(&srv.Message)
 	switch cmd {
 	case PCMDTeleport:
 		Teleport(srv)

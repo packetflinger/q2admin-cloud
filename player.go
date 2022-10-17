@@ -40,7 +40,7 @@ func (srv *Server) FindPlayer(cl int) *Player {
 		return nil
 	}
 
-	p := &srv.players[cl]
+	p := &srv.Players[cl]
 
 	if p.connecttime > 0 {
 		return p
@@ -101,7 +101,7 @@ func LoadPlayerHash(player *Player) {
  * does not care if a valid player structure is located there or not
  */
 func (srv *Server) ValidPlayerID(cl int) bool {
-	return cl >= 0 && cl < len(srv.players)
+	return cl >= 0 && cl < len(srv.Players)
 }
 
 /**
@@ -109,7 +109,7 @@ func (srv *Server) ValidPlayerID(cl int) bool {
  */
 func (srv *Server) RemovePlayer(cl int) {
 	if srv.ValidPlayerID(cl) {
-		srv.players[cl] = Player{}
+		srv.Players[cl] = Player{}
 	}
 }
 
@@ -117,19 +117,19 @@ func (srv *Server) RemovePlayer(cl int) {
  * Send a message to every player on the server
  */
 func (srv *Server) SayEveryone(level int, text string) {
-	WriteByte(SCMDSayAll, &srv.messageout)
-	WriteByte(byte(level), &srv.messageout)
-	WriteString(text, &srv.messageout)
+	WriteByte(SCMDSayAll, &srv.MessageOut)
+	WriteByte(byte(level), &srv.MessageOut)
+	WriteString(text, &srv.MessageOut)
 }
 
 /**
  * Send a message to a particular player
  */
 func (srv *Server) SayPlayer(client int, level int, text string) {
-	WriteByte(SCMDSayClient, &srv.messageout)
-	WriteByte(byte(client), &srv.messageout)
-	WriteByte(byte(level), &srv.messageout)
-	WriteString(text, &srv.messageout)
+	WriteByte(SCMDSayClient, &srv.MessageOut)
+	WriteByte(byte(client), &srv.MessageOut)
+	WriteByte(byte(level), &srv.MessageOut)
+	WriteString(text, &srv.MessageOut)
 }
 
 /**

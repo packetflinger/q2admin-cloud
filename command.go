@@ -17,8 +17,8 @@ import (
  * else send a list of possibilities
  */
 func Teleport(srv *Server) {
-	cl := ReadByte(&srv.message)
-	dest := ReadString(&srv.message)
+	cl := ReadByte(&srv.Message)
+	dest := ReadString(&srv.Message)
 	p := srv.FindPlayer(int(cl))
 
 	now := time.Now().Unix()
@@ -40,16 +40,16 @@ func Teleport(srv *Server) {
 		line := ""
 
 		for _, s := range servers {
-			if len(s.players) == 0 {
+			if len(s.Players) == 0 {
 				continue
 			}
 
 			players := ""
-			for _, p := range s.players {
+			for _, p := range s.Players {
 				players = fmt.Sprintf("%s %s", players, p.name)
 			}
 
-			line = fmt.Sprintf(" %-15s %-15s %s\n", s.Name, s.currentmap, players)
+			line = fmt.Sprintf(" %-15s %-15s %s\n", s.Name, s.CurrentMap, players)
 			srv.SayPlayer(int(cl), PRINT_CHAT, line)
 		}
 		return
@@ -63,9 +63,9 @@ func Teleport(srv *Server) {
 		log.Println("warning,", err)
 		srv.SayPlayer(int(cl), PRINT_HIGH, "Unknown destination\n")
 	} else {
-		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.name, s.Name, s.ipaddress, s.port)
+		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.name, s.Name, s.IPAddress, s.Port)
 		srv.SayEveryone(PRINT_HIGH, txt)
-		st := fmt.Sprintf("connect %s:%d\n", s.ipaddress, s.port)
+		st := fmt.Sprintf("connect %s:%d\n", s.IPAddress, s.Port)
 		StuffPlayer(srv, int(cl), st)
 	}
 
@@ -90,7 +90,7 @@ func TeleportAvailableReply() string {
 	var allservers []string
 
 	for _, s := range servers {
-		if !s.connected {
+		if !s.Connected {
 			continue
 		}
 
@@ -115,8 +115,8 @@ func TeleportAvailableReply() string {
  * Broadcast the invite to all connected servers
  */
 func Invite(srv *Server) {
-	cl := ReadByte(&srv.message)
-	text := ReadString(&srv.message)
+	cl := ReadByte(&srv.Message)
+	text := ReadString(&srv.Message)
 	p := srv.FindPlayer(int(cl))
 	log.Printf("[%s/INVITE/%s] %s\n", srv.Name, p.name, text)
 
@@ -139,9 +139,9 @@ func Invite(srv *Server) {
 		}
 	}
 
-	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.name, srv.Name, srv.ipaddress, srv.port)
+	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.name, srv.Name, srv.IPAddress, srv.Port)
 	for _, s := range servers {
-		if s.enabled && s.connected {
+		if s.Enabled && s.Connected {
 			s.SayEveryone(PRINT_CHAT, inv)
 		}
 	}
@@ -157,8 +157,8 @@ func ConsoleSay(srv *Server, print string) {
 	}
 
 	txt := fmt.Sprintf("say %s\n", print)
-	WriteByte(SCMDCommand, &srv.messageout)
-	WriteString(txt, &srv.messageout)
+	WriteByte(SCMDCommand, &srv.MessageOut)
+	WriteString(txt, &srv.MessageOut)
 }
 
 /**
@@ -166,8 +166,8 @@ func ConsoleSay(srv *Server, print string) {
  */
 func StuffPlayer(srv *Server, cl int, cmd string) {
 	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", cl, cmd)
-	WriteByte(SCMDCommand, &srv.messageout)
-	WriteString(stuffcmd, &srv.messageout)
+	WriteByte(SCMDCommand, &srv.MessageOut)
+	WriteString(stuffcmd, &srv.MessageOut)
 }
 
 /**
@@ -182,8 +182,8 @@ func MutePlayer(srv *Server, cl int, seconds int) {
 	} else {
 		cmd = fmt.Sprintf("sv !mute CL %d %d", cl, seconds)
 	}
-	WriteByte(SCMDCommand, &srv.messageout)
-	WriteString(cmd, &srv.messageout)
+	WriteByte(SCMDCommand, &srv.MessageOut)
+	WriteString(cmd, &srv.MessageOut)
 	player := srv.FindPlayer(cl)
 
 	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", srv.Name, cl, player.name)
@@ -195,8 +195,8 @@ func MutePlayer(srv *Server, cl int, seconds int) {
  */
 func KickPlayer(srv *Server, cl int) {
 	cmd := fmt.Sprintf("kick %d", cl)
-	WriteByte(SCMDCommand, &srv.messageout)
-	WriteString(cmd, &srv.messageout)
+	WriteByte(SCMDCommand, &srv.MessageOut)
+	WriteString(cmd, &srv.MessageOut)
 
 	txt := fmt.Sprintf("KICK [%d] was kicked", cl)
 	LogEventToDatabase(srv.ID, LogTypeCommand, txt)

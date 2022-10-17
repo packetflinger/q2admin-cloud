@@ -87,7 +87,7 @@ func LoadBans(srv *Server) {
 			description: record[2],
 		}
 
-		srv.bans = append(srv.bans, ban)
+		srv.Bans = append(srv.Bans, ban)
 	}
 
 	log.Printf("[%s] banlist loaded: %s\n", srv.Name, banfile)

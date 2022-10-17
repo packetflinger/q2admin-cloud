@@ -48,25 +48,25 @@ type Server struct {
 	ID         int // this is the database index
 	UUID       string
 	Owner      int // user id from database
-	version    int // what version are we running
+	Version    int // what version are we running
 	Name       string
-	ipaddress  string // used for teleporting
-	port       int    // used for teleporting
-	connected  bool   // is it currently connected to us?
-	currentmap string
-	enabled    bool
-	connection *net.Conn
-	players    []Player
-	maxplayers int
-	message    MessageBuffer  // incoming byte stream
-	messageout MessageBuffer  // outgoing byte stream
-	encrypted  bool           // are the messages AES encrypted?
-	trusted    bool           // signature challenge verified
-	publickey  *rsa.PublicKey // supplied by owner via website
-	aeskey     []byte         // 16 (128bit)
-	aesiv      []byte         // 16 bytes (CBC)
-	bans       []Ban
-	pingcount  int
+	IPAddress  string // used for teleporting
+	Port       int    // used for teleporting
+	Connected  bool   // is it currently connected to us?
+	CurrentMap string
+	Enabled    bool
+	Connection *net.Conn
+	Players    []Player
+	MaxPlayers int
+	Message    MessageBuffer  // incoming byte stream
+	MessageOut MessageBuffer  // outgoing byte stream
+	Encrypted  bool           // are the messages AES encrypted?
+	Trusted    bool           // signature challenge verified
+	PublicKey  *rsa.PublicKey // supplied by owner via website
+	AESKey     []byte         // 16 (128bit)
+	AESIV      []byte         // 16 bytes (CBC)
+	Bans       []Ban
+	PingCount  int
 }
 
 /**
@@ -195,25 +195,25 @@ func findserver(lookup string) (*Server, error) {
  * Send all messages in the outgoing queue to the gameserver
  */
 func (srv *Server) SendMessages() {
-	if !srv.connected {
+	if !srv.Connected {
 		return
 	}
 
 	// keys have been exchanged, encrypt the message
-	if srv.trusted && srv.encrypted {
+	if srv.Trusted && srv.Encrypted {
 		cipher := SymmetricEncrypt(
-			srv.aeskey,
-			srv.aesiv,
-			srv.messageout.buffer[:srv.messageout.length])
+			srv.AESKey,
+			srv.AESIV,
+			srv.MessageOut.buffer[:srv.MessageOut.length])
 
-		clearmsg(&srv.messageout)
-		srv.messageout.buffer = cipher
-		srv.messageout.length = len(cipher)
+		clearmsg(&srv.MessageOut)
+		srv.MessageOut.buffer = cipher
+		srv.MessageOut.length = len(cipher)
 	}
 
-	if srv.messageout.length > 0 {
-		(*srv.connection).Write(srv.messageout.buffer)
-		clearmsg(&srv.messageout)
+	if srv.MessageOut.length > 0 {
+		(*srv.Connection).Write(srv.MessageOut.buffer)
+		clearmsg(&srv.MessageOut)
 	}
 }
 
@@ -232,7 +232,7 @@ func GetTimeFromTimestamp(ts int64) time.Time {
 }
 
 func (s *Server) ValidClientID(id int) bool {
-	return id >= 0 && id < s.maxplayers
+	return id >= 0 && id < s.MaxPlayers
 }
 
 /**
@@ -280,12 +280,12 @@ func handleConnection(c net.Conn) {
 	}
 	log.Printf("[%s] connecting...\n", server.Name)
 
-	server.port = int(port)
-	server.encrypted = int(enc) == 1 // stupid bool conversion
-	server.connection = &c
-	server.connected = true
-	server.version = int(ver)
-	server.maxplayers = int(maxplayers)
+	server.Port = int(port)
+	server.Encrypted = int(enc) == 1 // stupid bool conversion
+	server.Connection = &c
+	server.Connected = true
+	server.Version = int(ver)
+	server.MaxPlayers = int(maxplayers)
 	keyname := fmt.Sprintf("keys/%s.pem", uuid)
 
 	log.Printf("[%s] Loading public key: %s\n", server.Name, keyname)
@@ -295,27 +295,27 @@ func handleConnection(c net.Conn) {
 		c.Close()
 		return
 	}
-	server.publickey = pubkey
+	server.PublicKey = pubkey
 
 	challengeCipher := Sign(q2a.privatekey, clNonce)
-	WriteByte(SCMDHelloAck, &server.messageout)
-	WriteShort(len(challengeCipher), &server.messageout)
-	WriteData(challengeCipher, &server.messageout)
+	WriteByte(SCMDHelloAck, &server.MessageOut)
+	WriteShort(len(challengeCipher), &server.MessageOut)
+	WriteData(challengeCipher, &server.MessageOut)
 
 	/**
 	 * if client requests encrypted transit, encrypt the session key/iv
 	 * with the client's public key to keep it confidential
 	 */
-	if server.encrypted {
-		server.aeskey = RandomBytes(AESBlockLength)
-		server.aesiv = RandomBytes(AESIVLength)
-		blob := append(server.aeskey, server.aesiv...)
-		aescipher := PublicEncrypt(server.publickey, blob)
-		WriteData(aescipher, &server.messageout)
+	if server.Encrypted {
+		server.AESKey = RandomBytes(AESBlockLength)
+		server.AESIV = RandomBytes(AESIVLength)
+		blob := append(server.AESKey, server.AESIV...)
+		aescipher := PublicEncrypt(server.PublicKey, blob)
+		WriteData(aescipher, &server.MessageOut)
 	}
 
 	svchallenge := RandomBytes(challengeLength)
-	WriteData(svchallenge, &server.messageout)
+	WriteData(svchallenge, &server.MessageOut)
 
 	server.SendMessages()
 
@@ -333,7 +333,7 @@ func handleConnection(c net.Conn) {
 
 	sigsize := ReadShort(&msg)
 	clientSignature := ReadData(&msg, int(sigsize))
-	verified := VerifySignature(server.publickey, svchallenge, clientSignature)
+	verified := VerifySignature(server.PublicKey, svchallenge, clientSignature)
 
 	if verified {
 		log.Printf("[%s] signature verified, server trusted\n", server.Name)
@@ -344,11 +344,11 @@ func handleConnection(c net.Conn) {
 	}
 
 	LoadBans(server)
-	WriteByte(SCMDTrusted, &server.messageout)
+	WriteByte(SCMDTrusted, &server.MessageOut)
 	server.SendMessages()
-	server.trusted = true
+	server.Trusted = true
 
-	server.players = make([]Player, server.maxplayers)
+	server.Players = make([]Player, server.MaxPlayers)
 
 	for {
 		input := make([]byte, 5000)
@@ -362,20 +362,20 @@ func handleConnection(c net.Conn) {
 		}
 
 		// decrypt if necessary
-		if server.encrypted && server.trusted {
-			input, size = SymmetricDecrypt(server.aeskey, server.aesiv, input[:size])
+		if server.Encrypted && server.Trusted {
+			input, size = SymmetricDecrypt(server.AESKey, server.AESIV, input[:size])
 		}
 
-		server.message.buffer = input
-		server.message.index = 0
-		server.message.length = size
+		server.Message.buffer = input
+		server.Message.index = 0
+		server.Message.length = size
 
 		server.ParseMessage()
 		server.SendMessages()
 	}
 
-	server.connected = false
-	server.trusted = false
+	server.Connected = false
+	server.Trusted = false
 	c.Close()
 }
 
@@ -464,6 +464,6 @@ func init() {
 	log.Println("Loading servers:")
 	servers = LoadServers(db)
 	for _, s := range servers {
-		log.Printf("  %-15s %-21s [%s]", s.Name, fmt.Sprintf("%s:%d", s.ipaddress, s.port), s.UUID)
+		log.Printf("  %-15s %-21s [%s]", s.Name, fmt.Sprintf("%s:%d", s.IPAddress, s.Port), s.UUID)
 	}
 }

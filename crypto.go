@@ -186,7 +186,7 @@ func RandomBytes(length int) []byte {
  * periodically.
  */
 func RotateKeys(server *Server) {
-	if !server.encrypted {
+	if !server.Encrypted {
 		return
 	}
 
@@ -195,12 +195,12 @@ func RotateKeys(server *Server) {
 	blob := append(key, iv...)
 
 	// Send immediately so old keys used for this message
-	WriteByte(SCMDKey, &server.messageout)
-	WriteData(blob, &server.messageout)
+	WriteByte(SCMDKey, &server.MessageOut)
+	WriteData(blob, &server.MessageOut)
 	server.SendMessages()
 
-	server.aeskey = key
-	server.aesiv = iv
+	server.AESKey = key
+	server.AESIV = iv
 }
 
 /**

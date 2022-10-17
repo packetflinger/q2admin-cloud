@@ -5,7 +5,6 @@ import (
 	"log"
 	"time"
 
-	//_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -69,8 +68,8 @@ func LoadServers(db *sql.DB) []Server {
 	var srv Server
 	var disabled int
 	for r.Next() {
-		r.Scan(&srv.ID, &srv.UUID, &srv.Owner, &srv.Name, &srv.ipaddress, &srv.port, &disabled)
-		srv.enabled = disabled == 0
+		r.Scan(&srv.ID, &srv.UUID, &srv.Owner, &srv.Name, &srv.IPAddress, &srv.Port, &disabled)
+		srv.Enabled = disabled == 0
 		srvs = append(srvs, srv)
 	}
 	r.Close()
