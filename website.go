@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -114,6 +115,7 @@ func RunHTTPServer() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", WebsiteHandlerIndex)
+	r.HandleFunc("/add-server", WebAddServer).Methods("POST")
 	r.HandleFunc("/signin", WebsiteHandlerSignin)
 	r.HandleFunc("/dashboard", WebsiteHandlerDashboard)
 	r.HandleFunc("/dashboard/sv/{ServerUUID}", WebsiteHandlerServerView)
@@ -141,12 +143,30 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusFound) // 302
 	}
 
-	for _, sv := range servers {
-		if sv.Owner == page.User.ID {
-			page.MyServers = append(page.MyServers, sv)
-		}
+	sql := "SELECT uuid, name FROM server WHERE owner = ? ORDER BY name ASC"
+	rows, err := db.Query(sql, page.User.ID)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 
+	for rows.Next() {
+		s := Server{}
+		err = rows.Scan(&s.UUID, &s.Name)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		page.MyServers = append(page.MyServers, s)
+	}
+
+	/*
+		for _, sv := range servers {
+			if sv.Owner == page.User.ID {
+				page.MyServers = append(page.MyServers, sv)
+			}
+		}
+	*/
 	tmpl, e := template.ParseFiles("website-templates/dashboard.tmpl")
 	if e != nil {
 		log.Println(e)
@@ -191,7 +211,6 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 			rs.Next()
 			rs.Scan(&UserID)
 			rs.Close()
-			//log.Printf("Userid lookup: %d\n", UserID)
 			sess := CreateSession(UserID)
 			cookieexpire := time.Now().AddDate(0, 0, 2) // years, months, days
 			cookie := http.Cookie{Name: SessionName, Value: sess, Expires: cookieexpire}
@@ -214,8 +233,8 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	var activeservers []ActiveServer
 	for _, s := range servers {
-		if s.connected {
-			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.players)}
+		if s.Connected {
+			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
 			activeservers = append(activeservers, srv)
 		}
 	}
@@ -228,4 +247,28 @@ func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, string(j))
+}
+
+func WebAddServer(w http.ResponseWriter, r *http.Request) {
+	user := GetSessionUser(r)
+	r.ParseForm()
+	name := r.Form.Get("servername")
+	ip := r.Form.Get("ipaddr")
+	port, err := strconv.Atoi(r.Form.Get("port"))
+	if err != nil {
+		return
+	}
+	uuid := uuid.New().String()
+	owner := user.ID
+	code := "abc123"
+
+	sql := "INSERT INTO server (uuid, owner, name, ip, port, disabled, verified, verify_code) VALUES (?,?,?,?,?,0,0,?)"
+	_, err = db.Exec(sql, uuid, owner, name, ip, port, code)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	url := fmt.Sprintf("/dashboard/sv/%s", uuid)
+	http.Redirect(w, r, url, http.StatusFound) // 302
 }
