@@ -118,6 +118,7 @@ func RunHTTPServer() {
 	r.HandleFunc("/add-server", WebAddServer).Methods("POST")
 	r.HandleFunc("/signin", WebsiteHandlerSignin)
 	r.HandleFunc("/dashboard", WebsiteHandlerDashboard)
+	r.HandleFunc("/dashboard/rm/{id}", WebDelServer)
 	r.HandleFunc("/dashboard/sv/{ServerUUID}", WebsiteHandlerServerView)
 	r.HandleFunc("/api/GetConnectedServers", WebsiteAPIGetConnectedServers)
 	r.PathPrefix("/assets/").Handler(http.FileServer(http.Dir(".")))
@@ -271,4 +272,28 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 
 	url := fmt.Sprintf("/dashboard/sv/%s", uuid)
 	http.Redirect(w, r, url, http.StatusFound) // 302
+}
+
+//
+// Handler to delete a user's server
+//
+func WebDelServer(w http.ResponseWriter, r *http.Request) {
+	user := GetSessionUser(r)
+	vars := mux.Vars(r)
+
+	uuid_to_delete := vars["id"]
+	srv, err := findserver(uuid_to_delete)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	// check ownership
+	if srv.Owner != user.ID {
+		log.Printf("%s unsuccessfuly tried to delete %s, non-ownership", user.Email, srv.Name)
+		return
+	}
+
+	RemoveServer(srv.UUID)
+	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }

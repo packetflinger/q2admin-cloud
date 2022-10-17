@@ -11,16 +11,12 @@ import "log"
 //
 func RemoveServer(uuid string) bool {
 	srv, err := findserver(uuid)
-	if err != nil {
-		return false
+	if err == nil {
+		// mark in-ram server object as disabled to prevent reconnects
+		srv.Enabled = false
+
+		// close any connections?
 	}
-
-	// mark in-ram server object as disabled to prevent reconnects
-	srv.Enabled = false
-
-	// close any connections
-	//if srv.Connected {
-	//}
 
 	tr, err := db.Begin()
 	if err != nil {
@@ -28,22 +24,17 @@ func RemoveServer(uuid string) bool {
 		return false
 	}
 
-	sql := "DELETE FROM server WHERE id = ? LIMIT 1"
+	sql := "DELETE FROM server WHERE id = ?"
 	_, err = tr.Exec(sql, srv.ID)
 	if err != nil {
 		log.Println(err)
 		tr.Rollback()
 		return false
 	}
-	/*
-		sql = "DELETE FROM logdata WHERE server = ? LIMIT 1"
-		_, err = tr.Exec(sql, srv.ID)
-		if err != nil {
-			log.Println(err)
-			tr.Rollback()
-			return false
-		}
-	*/
+
+	// log data?
+	// chat data?
+
 	tr.Commit()
 	return true
 }
