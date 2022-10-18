@@ -34,6 +34,11 @@ type DashboardPage struct {
 	OtherServers []Server
 }
 
+type ServerPage struct {
+	User     WebUser
+	MyServer Server
+}
+
 /**
  * Checks if user has an existing session and validates it
  */
@@ -177,6 +182,23 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	uuid := vars["ServerUUID"]
+	page := ServerPage{}
+	page.User = GetSessionUser(r)
+	MyServer, err := findserver(uuid)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	page.MyServer = *MyServer
+
+	tmpl, e := template.ParseFiles("website-templates/dashboard-server-view.tmpl")
+	if e != nil {
+		log.Println(e)
+	} else {
+		tmpl.Execute(w, page)
+	}
 }
 
 //
@@ -270,6 +292,8 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	servers = RehashServers()
+
 	url := fmt.Sprintf("/dashboard/sv/%s", uuid)
 	http.Redirect(w, r, url, http.StatusFound) // 302
 }
@@ -295,5 +319,6 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	RemoveServer(srv.UUID)
+	servers = RehashServers()
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
