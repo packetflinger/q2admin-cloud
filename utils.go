@@ -1,6 +1,35 @@
 package main
 
-import "log"
+import (
+	"log"
+	"net/http"
+	"time"
+)
+
+//
+// Remove any active sessions
+//
+func AuthLogout(w http.ResponseWriter, r *http.Request) {
+	user := GetSessionUser(r)
+
+	// no current session...
+	if user.ID == 0 {
+		return
+	}
+
+	// remove session(s) from database
+	sql := "DELETE FROM websession WHERE id = ?"
+	_, err := db.Exec(sql, user.ID)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	// remove the client's cookie
+	expire := time.Now()
+	cookie := http.Cookie{Name: SessionName, Value: "", Expires: expire}
+	http.SetCookie(w, &cookie)
+}
 
 //
 // Resync servers struct with database

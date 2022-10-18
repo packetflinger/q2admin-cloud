@@ -118,15 +118,7 @@ func ValidateSession(sess string) (int, error) {
 func RunHTTPServer() {
 	port := fmt.Sprintf(":%d", config.APIPort)
 
-	r := mux.NewRouter()
-	r.HandleFunc("/", WebsiteHandlerIndex)
-	r.HandleFunc("/add-server", WebAddServer).Methods("POST")
-	r.HandleFunc("/signin", WebsiteHandlerSignin)
-	r.HandleFunc("/dashboard", WebsiteHandlerDashboard)
-	r.HandleFunc("/dashboard/rm/{id}", WebDelServer)
-	r.HandleFunc("/dashboard/sv/{ServerUUID}", WebsiteHandlerServerView)
-	r.HandleFunc("/api/GetConnectedServers", WebsiteAPIGetConnectedServers)
-	r.PathPrefix("/assets/").Handler(http.FileServer(http.Dir(".")))
+	r := LoadWebsiteRoutes()
 
 	log.Printf("Listening for web requests on %s\n", port)
 
@@ -321,4 +313,12 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 	RemoveServer(srv.UUID)
 	servers = RehashServers()
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
+}
+
+//
+// Log a user out
+//
+func WebSignout(w http.ResponseWriter, r *http.Request) {
+	AuthLogout(w, r)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
