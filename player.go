@@ -110,6 +110,7 @@ func (srv *Server) ValidPlayerID(cl int) bool {
 func (srv *Server) RemovePlayer(cl int) {
 	if srv.ValidPlayerID(cl) {
 		srv.Players[cl] = Player{}
+		srv.PlayerCount--
 	}
 }
 

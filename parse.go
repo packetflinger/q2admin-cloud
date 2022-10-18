@@ -212,6 +212,7 @@ func ParsePlayer(srv *Server) *Player {
 	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.Name, clientnum, newplayer.Hash, userinfo)
 
 	srv.Players[newplayer.ClientID] = newplayer
+	srv.PlayerCount++
 	return &newplayer
 }
 
