@@ -199,11 +199,11 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 	user := GetSessionUser(r)
 	if user.ID != 0 {
-		http.Redirect(w, r, "/dashboard", http.StatusFound) // 302
+		http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
 		return
 	}
 
-	http.Redirect(w, r, "/signin", http.StatusFound) // 302
+	http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
 }
 
 //
@@ -232,7 +232,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 			http.SetCookie(w, &cookie)
 		}
 
-		http.Redirect(w, r, "/dashboard", http.StatusFound) // 302
+		http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
 		return
 	}
 
@@ -286,8 +286,7 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 
 	servers = RehashServers()
 
-	url := fmt.Sprintf("/dashboard/sv/%s", uuid)
-	http.Redirect(w, r, url, http.StatusFound) // 302
+	http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
 }
 
 //
@@ -312,7 +311,7 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 
 	RemoveServer(srv.UUID)
 	servers = RehashServers()
-	http.Redirect(w, r, "/dashboard", http.StatusFound)
+	http.Redirect(w, r, routes.Dashboard, http.StatusFound)
 }
 
 //
@@ -320,5 +319,5 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 //
 func WebSignout(w http.ResponseWriter, r *http.Request) {
 	AuthLogout(w, r)
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, routes.Index, http.StatusFound)
 }
