@@ -146,7 +146,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 
 	page.User = GetSessionUser(r)
 	if page.User.ID == 0 {
-		http.Redirect(w, r, "/login", http.StatusFound) // 302
+		http.Redirect(w, r, "/signin", http.StatusFound) // 302
 	}
 
 	sql := "SELECT uuid, name FROM server WHERE owner = ? ORDER BY name ASC"
