@@ -90,14 +90,12 @@ func CreateSession(user int) string {
 	if err != nil {
 		log.Println(err)
 	}
-	//r.Close()
 
 	sql = "UPDATE user SET last_login = ? WHERE id = ? LIMIT 1"
 	_, err = db.Exec(sql, GetUnixTimestamp(), user)
 	if err != nil {
 		log.Println(err)
 	}
-	//r.Close()
 
 	return sessionid
 }
@@ -158,13 +156,6 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 		page.MyServers = append(page.MyServers, s)
 	}
 
-	/*
-		for _, sv := range servers {
-			if sv.Owner == page.User.ID {
-				page.MyServers = append(page.MyServers, sv)
-			}
-		}
-	*/
 	tmpl, e := template.ParseFiles("website-templates/dashboard.tmpl")
 	if e != nil {
 		log.Println(e)
