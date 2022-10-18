@@ -8,7 +8,6 @@ import "log"
 // via the web interface
 //
 func RehashServers() []Server {
-	//newservers := []Server{}
 	sql := "SELECT id, uuid, owner, name, ip, port, disabled FROM server"
 	r, err := db.Query(sql)
 	if err != nil {
@@ -19,7 +18,6 @@ func RehashServers() []Server {
 	var srvs []Server
 	var srv Server
 	var disabled int
-	//current := Server{}
 	for r.Next() {
 		r.Scan(&srv.ID, &srv.UUID, &srv.Owner, &srv.Name, &srv.IPAddress, &srv.Port, &disabled)
 		srv.Enabled = disabled == 0
