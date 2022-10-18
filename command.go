@@ -22,17 +22,17 @@ func Teleport(srv *Server) {
 	p := srv.FindPlayer(int(cl))
 
 	now := time.Now().Unix()
-	log.Printf("[%s/TELEPORT/%s] %s\n", srv.Name, p.name, dest)
+	log.Printf("[%s/TELEPORT/%s] %s\n", srv.Name, p.Name, dest)
 
 	if dest == "" {
-		listtime := now - p.lastteleportlist
+		listtime := now - p.LastTeleportList
 		if listtime < 30 {
 			txt := fmt.Sprintf("You can't list teleport destinations for %d more seconds\n", 30-listtime)
 			srv.SayPlayer(int(cl), PRINT_HIGH, txt)
 			return
 		}
 
-		p.lastteleportlist = now
+		p.LastTeleportList = now
 		avail := TeleportAvailableReply()
 		srv.SayPlayer(int(cl), PRINT_CHAT, avail)
 
@@ -46,7 +46,7 @@ func Teleport(srv *Server) {
 
 			players := ""
 			for _, p := range s.Players {
-				players = fmt.Sprintf("%s %s", players, p.name)
+				players = fmt.Sprintf("%s %s", players, p.Name)
 			}
 
 			line = fmt.Sprintf(" %-15s %-15s %s\n", s.Name, s.CurrentMap, players)
@@ -56,20 +56,20 @@ func Teleport(srv *Server) {
 	}
 
 	s, err := FindTeleportDestination(dest)
-	p.lastteleport = now
-	p.teleports++
+	p.LastTeleport = now
+	p.Teleports++
 
 	if err != nil {
 		log.Println("warning,", err)
 		srv.SayPlayer(int(cl), PRINT_HIGH, "Unknown destination\n")
 	} else {
-		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.name, s.Name, s.IPAddress, s.Port)
+		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, s.Name, s.IPAddress, s.Port)
 		srv.SayEveryone(PRINT_HIGH, txt)
 		st := fmt.Sprintf("connect %s:%d\n", s.IPAddress, s.Port)
 		StuffPlayer(srv, int(cl), st)
 	}
 
-	txt := fmt.Sprintf("TELEPORT [%d] %s", cl, p.name)
+	txt := fmt.Sprintf("TELEPORT [%d] %s", cl, p.Name)
 	LogEventToDatabase(srv.ID, LogTypeCommand, txt)
 }
 
@@ -118,14 +118,14 @@ func Invite(srv *Server) {
 	cl := ReadByte(&srv.Message)
 	text := ReadString(&srv.Message)
 	p := srv.FindPlayer(int(cl))
-	log.Printf("[%s/INVITE/%s] %s\n", srv.Name, p.name, text)
+	log.Printf("[%s/INVITE/%s] %s\n", srv.Name, p.Name, text)
 
 	now := time.Now().Unix()
-	invtime := now - p.lastinvite
+	invtime := now - p.LastInvite
 
-	if p.invitesavailable == 0 {
+	if p.InvitesAvailable == 0 {
 		if invtime > 600 {
-			p.invitesavailable = 3
+			p.InvitesAvailable = 3
 		} else {
 			txt := fmt.Sprintf("You have no more invites available, wait %d seconds\n", 600-invtime)
 			srv.SayPlayer(int(cl), PRINT_HIGH, txt)
@@ -139,16 +139,16 @@ func Invite(srv *Server) {
 		}
 	}
 
-	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.name, srv.Name, srv.IPAddress, srv.Port)
+	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, srv.Name, srv.IPAddress, srv.Port)
 	for _, s := range servers {
 		if s.Enabled && s.Connected {
 			s.SayEveryone(PRINT_CHAT, inv)
 		}
 	}
 
-	p.invites++
-	p.lastinvite = now
-	p.invitesavailable--
+	p.Invites++
+	p.LastInvite = now
+	p.InvitesAvailable--
 }
 
 func ConsoleSay(srv *Server, print string) {
@@ -186,7 +186,7 @@ func MutePlayer(srv *Server, cl int, seconds int) {
 	WriteString(cmd, &srv.MessageOut)
 	player := srv.FindPlayer(cl)
 
-	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", srv.Name, cl, player.name)
+	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", srv.Name, cl, player.Name)
 	LogEventToDatabase(srv.ID, LogTypeCommand, txt)
 }
 

@@ -65,12 +65,12 @@ func ParseFrag(srv *Server) {
 	log.Printf("[%s/FRAG] %d > %d\n", srv.Name, a, v)
 
 	if attacker == victim || attacker == nil {
-		victim.suicides++
-		victim.frags--
-		victim.deaths++
+		victim.Suicides++
+		victim.Frags--
+		victim.Deaths++
 	} else {
-		attacker.frags++
-		victim.deaths++
+		attacker.Frags++
+		victim.Deaths++
 	}
 }
 
@@ -118,31 +118,31 @@ func ParseConnect(srv *Server) {
 		return
 	}
 
-	info := UserinfoMap(p.userinfo)
+	info := UserinfoMap(p.Userinfo)
 
-	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", srv.Name, p.clientid, info["name"], info["ip"], p.hash)
+	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", srv.Name, p.ClientID, info["name"], info["ip"], p.Hash)
 	log.Printf("%s\n", txt)
 	LogEventToDatabase(srv.ID, LogTypeJoin, txt)
 
 	// global
-	if isbanned, msg := CheckForBan(&globalbans, p.ip); isbanned == Banned {
+	if isbanned, msg := CheckForBan(&globalbans, p.IP); isbanned == Banned {
 		srv.SayPlayer(
-			p.clientid,
+			p.ClientID,
 			PRINT_CHAT,
 			fmt.Sprintf("Your IP/Userinfo matches a global ban: %s\n", msg),
 		)
-		KickPlayer(srv, p.clientid)
+		KickPlayer(srv, p.ClientID)
 		return
 	}
 
 	// local
-	if isbanned, msg := CheckForBan(&srv.Bans, p.ip); isbanned == Banned {
+	if isbanned, msg := CheckForBan(&srv.Bans, p.IP); isbanned == Banned {
 		srv.SayPlayer(
-			p.clientid,
+			p.ClientID,
 			PRINT_CHAT,
 			fmt.Sprintf("Your IP/Userinfo matches a local ban: %s\n", msg),
 		)
-		KickPlayer(srv, p.clientid)
+		KickPlayer(srv, p.ClientID)
 	}
 }
 
@@ -158,7 +158,7 @@ func ParseDisconnect(srv *Server) {
 	}
 
 	pl := srv.FindPlayer(clientnum)
-	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.Name, clientnum, pl.name)
+	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.Name, clientnum, pl.Name)
 	srv.RemovePlayer(clientnum)
 }
 
@@ -197,21 +197,21 @@ func ParsePlayer(srv *Server) *Player {
 	port, _ := strconv.Atoi(info["port"])
 	fov, _ := strconv.Atoi(info["fov"])
 	newplayer := Player{
-		clientid:    int(clientnum),
-		userinfo:    userinfo,
-		userinfomap: info,
-		name:        info["name"],
-		ip:          info["ip"],
-		port:        port,
-		fov:         fov,
-		connecttime: GetUnixTimestamp(),
+		ClientID:    int(clientnum),
+		Userinfo:    userinfo,
+		UserinfoMap: info,
+		Name:        info["name"],
+		IP:          info["ip"],
+		Port:        port,
+		FOV:         fov,
+		ConnectTime: GetUnixTimestamp(),
 	}
 
 	LoadPlayerHash(&newplayer)
 
-	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.Name, clientnum, newplayer.hash, userinfo)
+	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.Name, clientnum, newplayer.Hash, userinfo)
 
-	srv.Players[newplayer.clientid] = newplayer
+	srv.Players[newplayer.ClientID] = newplayer
 	return &newplayer
 }
 

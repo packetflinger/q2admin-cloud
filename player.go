@@ -11,25 +11,25 @@ import (
  * Each game server has a slice of all current players
  */
 type Player struct {
-	clientid         int // ID on the gameserver (0-maxplayers)
-	database_id      int64
-	name             string
-	userinfo         string
-	userinfomap      map[string]string
-	hash             string
-	frags            int
-	deaths           int
-	suicides         int
-	teleports        int
-	lastteleport     int64 // actually going
-	lastteleportlist int64 // viewing the big list of destinations
-	invites          int
-	lastinvite       int64
-	invitesavailable int
-	ip               string
-	port             int
-	fov              int
-	connecttime      int64
+	ClientID         int // ID on the gameserver (0-maxplayers)
+	Database_ID      int64
+	Name             string
+	Userinfo         string
+	UserinfoMap      map[string]string
+	Hash             string
+	Frags            int
+	Deaths           int
+	Suicides         int
+	Teleports        int
+	LastTeleport     int64 // actually going
+	LastTeleportList int64 // viewing the big list of destinations
+	Invites          int
+	LastInvite       int64
+	InvitesAvailable int
+	IP               string
+	Port             int
+	FOV              int
+	ConnectTime      int64
 }
 
 /**
@@ -42,7 +42,7 @@ func (srv *Server) FindPlayer(cl int) *Player {
 
 	p := &srv.Players[cl]
 
-	if p.connecttime > 0 {
+	if p.ConnectTime > 0 {
 		return p
 	}
 
@@ -67,33 +67,33 @@ func (srv *Server) FindPlayer(cl int) *Player {
 func LoadPlayerHash(player *Player) {
 	var database_id int64
 
-	phash := player.userinfomap["phash"]
+	phash := player.UserinfoMap["phash"]
 	if phash != "" {
-		player.hash = phash
+		player.Hash = phash
 	} else {
-		ipslice := strings.Split(player.ip, ".")
+		ipslice := strings.Split(player.IP, ".")
 		ip := fmt.Sprintf("%s.%s.%s", ipslice[0], ipslice[1], ipslice[2])
 
 		pt := []byte(fmt.Sprintf(
 			"%s-%s-%s-%s",
-			player.name,
-			player.userinfomap["skin"],
-			player.userinfomap["fov"],
+			player.Name,
+			player.UserinfoMap["skin"],
+			player.UserinfoMap["fov"],
 			ip,
 		))
 
 		hash := md5.Sum(pt)
-		player.hash = fmt.Sprintf("%x", hash[:8])
+		player.Hash = fmt.Sprintf("%x", hash[:8])
 	}
 
-	database_id = int64(GetPlayerIdFromHash(player.hash))
+	database_id = int64(GetPlayerIdFromHash(player.Hash))
 	if database_id > 0 {
-		player.database_id = database_id
+		player.Database_ID = database_id
 		return
 	}
 
 	database_id = InsertPlayer(player)
-	player.database_id = database_id
+	player.Database_ID = database_id
 }
 
 /**

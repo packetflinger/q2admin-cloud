@@ -40,7 +40,7 @@ func GetPlayerIdFromHash(hash string) int {
 
 func InsertPlayer(p *Player) int64 {
 	sql := "INSERT INTO player (hash) VALUES (?)"
-	r, err := db.Exec(sql, p.hash)
+	r, err := db.Exec(sql, p.Hash)
 	if err != nil {
 		log.Println(err)
 	}
