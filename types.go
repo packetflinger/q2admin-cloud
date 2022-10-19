@@ -23,28 +23,29 @@ type MessageBuffer struct {
 // actually connects
 //
 type Server struct {
-	ID         int // this is the database index
-	UUID       string
-	Owner      int // user id from database
-	Version    int // what version are we running
-	Name       string
-	IPAddress  string // used for teleporting
-	Port       int    // used for teleporting
-	Connected  bool   // is it currently connected to us?
-	CurrentMap string
-	Enabled    bool
-	Connection *net.Conn
-	Players    []Player
-	MaxPlayers int
-	Message    MessageBuffer  // incoming byte stream
-	MessageOut MessageBuffer  // outgoing byte stream
-	Encrypted  bool           // are the messages AES encrypted?
-	Trusted    bool           // signature challenge verified
-	PublicKey  *rsa.PublicKey // supplied by owner via website
-	AESKey     []byte         // 16 (128bit)
-	AESIV      []byte         // 16 bytes (CBC)
-	Bans       []Ban
-	PingCount  int
+	ID          int // this is the database index
+	UUID        string
+	Owner       int // user id from database
+	Version     int // what version are we running
+	Name        string
+	IPAddress   string // used for teleporting
+	Port        int    // used for teleporting
+	Connected   bool   // is it currently connected to us?
+	CurrentMap  string
+	Enabled     bool
+	Connection  *net.Conn
+	Players     []Player
+	PlayerCount int
+	MaxPlayers  int
+	Message     MessageBuffer  // incoming byte stream
+	MessageOut  MessageBuffer  // outgoing byte stream
+	Encrypted   bool           // are the messages AES encrypted?
+	Trusted     bool           // signature challenge verified
+	PublicKey   *rsa.PublicKey // supplied by owner via website
+	AESKey      []byte         // 16 (128bit)
+	AESIV       []byte         // 16 bytes (CBC)
+	Bans        []Ban
+	PingCount   int
 }
 
 //
