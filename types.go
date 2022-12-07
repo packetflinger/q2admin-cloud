@@ -3,6 +3,8 @@ package main
 import (
 	"crypto/rsa"
 	"net"
+
+	"github.com/gorilla/websocket"
 )
 
 //
@@ -46,6 +48,7 @@ type Server struct {
 	AESIV       []byte         // 16 bytes (CBC)
 	Bans        []Ban
 	PingCount   int
+	WSockets    []WebSocketConnection
 }
 
 //
@@ -68,4 +71,12 @@ type Config struct {
 	APIPort    int    `json:"apiport"`
 	Debug      int    `json:"debug"`
 	APIEnabled int    `json:"enableapi"`
+}
+
+//
+// Websocket
+//
+type WebSocketConnection struct {
+	Connected bool
+	Socket    *websocket.Conn
 }

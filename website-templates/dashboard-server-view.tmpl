@@ -4,7 +4,8 @@
         <title>Q2Admin Dashboard</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-
+        <link href="/assets/node_modules/xterm/css/xterm.css" rel="stylesheet">
+        <script src="/assets/node_modules/xterm/lib/xterm.js"></script>
     </head>
     <body>
         <div class="container">
@@ -26,18 +27,45 @@
                     <p>Current Map: <span>{{.MyServer.CurrentMap}}</span></p>
                     <p>Population:</p> 
                             {{range .MyServer.Players}}
+                                {{if .Name}}
                                 <div><a href="#">{{.Name}}</a> [{{.ClientID}}|{{.IP}}]</div>
+                                {{end}}
                             {{end}}
                     {{end}}
-                    
-                    <p>[Current map]</p>
-                    <p>[Player list]</p>
-                    <p>[chat stream]</p>
+
+                    <div id="terminal"></div>
+
+                    <script>
+                        let socket = new WebSocket("ws://127.0.0.1:8087/ChatWS");
+                        console.log("Attempting Connection...");
+                        var term = new Terminal();
+                        term.open(document.getElementById("terminal"));
+
+                        socket.onopen = () => {
+                            console.log("Successfully Connected");
+                            //socket.send("Hi From the Client!")
+                        };
+                        
+                        socket.onclose = event => {
+                            console.log("Socket Closed Connection: ", event);
+                            socket.send("Client Closed!")
+                        };
+
+                        socket.onerror = error => {
+                            console.log("Socket Error: ", error);
+                        };
+
+                        socket.onmessage = function(event) {
+                            term.write(event.data + "\r\n");
+                        }
+
+                    </script>
                 </div>
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.1/dist/jquery.slim.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+        
 
         <div class="modal fade" id="editServerModal" tabindex="-1" aria-labelledby="editServerModalLabel" aria-hidden="true">
             <div class="modal-dialog">

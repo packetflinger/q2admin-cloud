@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
 
 type ActiveServer struct {
@@ -37,6 +38,12 @@ type DashboardPage struct {
 type ServerPage struct {
 	User     WebUser
 	MyServer Server
+}
+
+// needed for upgrading the websockets
+var WSUpgrader = websocket.Upgrader{
+	ReadBufferSize:  1500,
+	WriteBufferSize: 1500,
 }
 
 /**
@@ -311,4 +318,38 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 func WebSignout(w http.ResponseWriter, r *http.Request) {
 	AuthLogout(w, r)
 	http.Redirect(w, r, routes.Index, http.StatusFound)
+}
+
+//
+// Websocket handler for sending chat message to web clients
+//
+func WebChatFeed(w http.ResponseWriter, r *http.Request) {
+	WSUpgrader.CheckOrigin = func(r *http.Request) bool {
+		return true // everyone can connect
+	}
+
+	ws, err := WSUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		err = nil
+	}
+
+	log.Println("Chat Websocket connected")
+	i := 0
+	msg := ""
+
+	for {
+		if i > 50 {
+			break
+		}
+		msg = fmt.Sprintf("Test Message %d", i)
+		err = ws.WriteMessage(1, []byte(msg))
+		if err != nil {
+			log.Println(err)
+			break
+		}
+		i++
+		time.Sleep(1 * time.Second)
+	}
+	ws.Close()
 }
