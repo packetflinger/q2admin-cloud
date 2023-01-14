@@ -11,6 +11,7 @@ type WebRoutes struct {
 	AuthLogin        string
 	AuthLogout       string
 	ChatFeed         string
+	ChatFeedInput    string
 	ConnectedServers string
 	Dashboard        string
 	Index            string
@@ -25,7 +26,8 @@ func LoadWebsiteRoutes() *mux.Router {
 	routes.Assets = "/assets/"
 	routes.AuthLogin = "/signin"
 	routes.AuthLogout = "/signout"
-	routes.ChatFeed = "/ChatWS"
+	routes.ChatFeed = "/dashboard/sv/{ServerUUID}/feed"
+	routes.ChatFeedInput = "/dashboard/sv/{ServerUUID}/input"
 	routes.ConnectedServers = "/api/GetConnectedServers"
 	routes.Dashboard = "/dashboard"
 	routes.Index = "/"
@@ -38,7 +40,8 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(routes.ServerAdd, WebAddServer).Methods("POST")
 	r.HandleFunc(routes.AuthLogin, WebsiteHandlerSignin)
 	r.HandleFunc(routes.AuthLogout, WebSignout)
-	r.HandleFunc(routes.ChatFeed, WebChatFeed)
+	r.HandleFunc(routes.ChatFeed, WebFeed)
+	r.HandleFunc(routes.ChatFeedInput, WebFeedInput)
 	r.HandleFunc(routes.Dashboard, WebsiteHandlerDashboard)
 	r.HandleFunc(routes.ServerRemove, WebDelServer)
 	r.HandleFunc(routes.ServerView, WebsiteHandlerServerView)

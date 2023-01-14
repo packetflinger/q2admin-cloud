@@ -201,3 +201,12 @@ func KickPlayer(srv *Server, cl int) {
 	txt := fmt.Sprintf("KICK [%d] was kicked", cl)
 	LogEventToDatabase(srv.ID, LogTypeCommand, txt)
 }
+
+//
+// Issue a command as if you were typing it into the console.
+// Sanitize cmd before use
+//
+func (srv *Server) ConsoleCommand(cmd string) {
+	WriteByte(SCMDCommand, &srv.MessageOut)
+	WriteString(cmd, &srv.MessageOut)
+}

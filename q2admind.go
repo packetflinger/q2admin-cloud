@@ -15,6 +15,8 @@ import (
 	"net"
 	"os"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -160,6 +162,14 @@ func GetUnixTimestamp() int64 {
 	return time.Now().Unix()
 }
 
+//
+// Get current time in HH:MM:SS format
+//
+func GetTimeNow() string {
+	now := time.Now()
+	return fmt.Sprintf("%02d:%02d:%02d", now.Hour(), now.Minute(), now.Second())
+}
+
 /**
  * Get a time "object" from a database timestamp
  */
@@ -169,6 +179,56 @@ func GetTimeFromTimestamp(ts int64) time.Time {
 
 func (s *Server) ValidClientID(id int) bool {
 	return id >= 0 && id < s.MaxPlayers
+}
+
+//
+// Each server keeps track of the websocket for people "looking at it".
+// When they close the browser or logout, remove the pointer
+// to that socket
+func (srv *Server) DeleteWebSocket(sock *websocket.Conn) {
+	location := -1
+	// find it's index first
+	for i := range srv.WebSockets {
+		if srv.WebSockets[i] == sock {
+			location = i
+			break
+		}
+	}
+
+	// wasn't found, forget it
+	if location == -1 {
+		return
+	}
+
+	tempws := srv.WebSockets[0:location]
+	tempws = append(tempws, srv.WebSockets[location+1:]...)
+	srv.WebSockets = tempws
+}
+
+//
+// Send the txt string to all the websockets listening
+//
+func (srv *Server) SendToWebsiteFeed(txt string, decoration int) {
+	now := GetTimeNow()
+
+	colored := ""
+	switch decoration {
+	case FeedChat:
+		colored = now + " \\\\e[32m" + txt + "\\\\e[0m"
+	case FeedJoinPart:
+		colored = now + " \\\\e[33m\\\\e[42m" + txt + "\\\\e[0m"
+	default:
+		colored = now + " " + txt
+	}
+
+	sockets := srv.WebSockets
+	for i := range sockets {
+		err := sockets[i].WriteMessage(1, []byte(colored))
+		if err != nil {
+			log.Println(err)
+			srv.DeleteWebSocket(srv.WebSockets[i])
+		}
+	}
 }
 
 /**

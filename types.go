@@ -48,7 +48,7 @@ type Server struct {
 	AESIV       []byte         // 16 bytes (CBC)
 	Bans        []Ban
 	PingCount   int
-	WSockets    []WebSocketConnection
+	WebSockets  []*websocket.Conn
 }
 
 //

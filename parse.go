@@ -99,10 +99,14 @@ func ParsePrint(srv *Server) {
 	level := ReadByte(&srv.Message)
 	text := ReadString(&srv.Message)
 
+	// remove newline
+	stripped := text[0 : len(text)-1]
+
 	switch level {
 	case PRINT_CHAT:
+		srv.SendToWebsiteFeed(stripped, FeedChat)
 		LogChat(srv, text)
-		log.Printf("[%s/PRINT] (%d) %s\n", srv.Name, level, text)
+		log.Printf("[%s/PRINT] (%d) %s\n", srv.Name, level, stripped)
 	case PRINT_MEDIUM:
 		ParseObituary(text)
 	}
@@ -123,6 +127,9 @@ func ParseConnect(srv *Server) {
 	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", srv.Name, p.ClientID, info["name"], info["ip"], p.Hash)
 	log.Printf("%s\n", txt)
 	LogEventToDatabase(srv.ID, LogTypeJoin, txt)
+
+	wstxt := fmt.Sprintf("[CONNECT] %s [%s]", info["name"], info["ip"])
+	srv.SendToWebsiteFeed(wstxt, FeedJoinPart)
 
 	// global
 	if isbanned, msg := CheckForBan(&globalbans, p.IP); isbanned == Banned {
@@ -158,6 +165,10 @@ func ParseDisconnect(srv *Server) {
 	}
 
 	pl := srv.FindPlayer(clientnum)
+
+	wstxt := fmt.Sprintf("[DISCONNECT] %s [%s]", pl.Name, pl.IP)
+	srv.SendToWebsiteFeed(wstxt, FeedJoinPart)
+
 	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.Name, clientnum, pl.Name)
 	srv.RemovePlayer(clientnum)
 }

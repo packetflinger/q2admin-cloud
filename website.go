@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+)
+
+const (
+	FeedChat = iota
+	FeedFrag
+	FeedJoinPart
+	FeedBan
+	FeedMute
 )
 
 type ActiveServer struct {
@@ -323,8 +332,19 @@ func WebSignout(w http.ResponseWriter, r *http.Request) {
 //
 // Websocket handler for sending chat message to web clients
 //
-func WebChatFeed(w http.ResponseWriter, r *http.Request) {
+func WebFeed(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	uuid := vars["ServerUUID"]
+	page := ServerPage{}
+	page.User = GetSessionUser(r)
+	srv, err := findserver(uuid)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	WSUpgrader.CheckOrigin = func(r *http.Request) bool {
+		// check for auth here
 		return true // everyone can connect
 	}
 
@@ -334,22 +354,38 @@ func WebChatFeed(w http.ResponseWriter, r *http.Request) {
 		err = nil
 	}
 
-	log.Println("Chat Websocket connected")
-	i := 0
-	msg := ""
+	srv.WebSockets = append(srv.WebSockets, ws)
 
-	for {
-		if i > 50 {
-			break
-		}
-		msg = fmt.Sprintf("Test Message %d", i)
-		err = ws.WriteMessage(1, []byte(msg))
-		if err != nil {
-			log.Println(err)
-			break
-		}
-		i++
-		time.Sleep(1 * time.Second)
+	log.Println("Chat Websocket connected")
+}
+
+//
+//
+//
+func WebFeedInput(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	uuid := vars["ServerUUID"]
+	user := GetSessionUser(r)
+	srv, err := findserver(uuid)
+	if err != nil {
+		log.Println(err)
+		return
 	}
-	ws.Close()
+
+	// make sure user is allowed to give commands to srv
+	// change this
+	if user.ID > 0 {
+
+	}
+
+	//input64 := r.PostForm["input"]
+	input64 := r.URL.Query().Get("input")
+	input, err := base64.StdEncoding.DecodeString(input64)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	preamble := "[" + user.Email + "] "
+	srv.SendToWebsiteFeed(preamble+string(input), FeedChat)
 }
