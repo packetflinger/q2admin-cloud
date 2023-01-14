@@ -3,6 +3,7 @@ package main
 import (
 	//"bufio"
 	"database/sql"
+	"flag"
 	"os/signal"
 
 	//"encoding/hex"
@@ -17,6 +18,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+)
+
+var (
+	Configfile = flag.String("c", "q2a.json", "The main config file")
 )
 
 const (
@@ -425,13 +430,10 @@ func main() {
  * pre-entry point
  */
 func init() {
-	configfile := "q2a.json" // override with cli arg
-	if len(os.Args) > 1 {
-		configfile = os.Args[1]
-	}
+	flag.Parse()
 
-	log.Printf("Loading config from %s\n", configfile)
-	confjson, err := os.ReadFile(configfile)
+	log.Printf("Loading config from %s\n", *Configfile)
+	confjson, err := os.ReadFile(*Configfile)
 	if err != nil {
 		log.Fatal(err)
 	}
