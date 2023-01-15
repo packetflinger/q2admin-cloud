@@ -6,6 +6,6 @@
     "apiport": 8087,
     "debug": 0,
     "enableapi": 1,
-    "serversfile": "servers.txt",
-    "serverdir": "server-configs"
+    "clientsfile": "clients.txt",
+    "clientsdir": "client-configs"
 }

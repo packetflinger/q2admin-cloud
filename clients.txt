@@ -1,0 +1,8 @@
+// packetflinger servers
+pf-tdm-nj
+pf-tdm-dc
+
+# other servers
+  quaketown
+  dm
+  vanilla

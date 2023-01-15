@@ -423,8 +423,8 @@ func main() {
 // The file should be just a list of server names one per line
 // comments (// and #) and blank lines are allowed
 // indenting doesn't matter
-func (c Config) ReadServerFile() []string {
-	contents, err := os.ReadFile(c.ServersFile)
+func (c Config) ReadClientFile() []string {
+	contents, err := os.ReadFile(c.ClientsFile)
 	if err != nil {
 		log.Println(err)
 		os.Exit(0)
@@ -480,9 +480,9 @@ func init() {
 
 	db = DatabaseConnect()
 
-	log.Println("Loading servers from:", q2a.config.ServersFile)
+	log.Println("Loading servers from:", q2a.config.ClientsFile)
 	//servers = LoadServers(db)
-	serverlist := q2a.config.ReadServerFile()
+	serverlist := q2a.config.ReadClientFile()
 	for _, s := range serverlist {
 		fmt.Println(s)
 		//sv := Server{}
