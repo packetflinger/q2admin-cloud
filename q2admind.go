@@ -23,7 +23,8 @@ import (
 
 var (
 	Configfile = flag.String("c", "q2a.json", "The main config file")
-	//Clients    = []Client{}
+	q2a        RemoteAdminServer // this server
+	db         *sql.DB
 )
 
 const (
@@ -35,13 +36,6 @@ const (
 	SessionName     = "q2asess"  // website cookie name
 	TeleportWidth   = 80         // max chars per line for teleport replies
 )
-
-/**
- * Global variables
- */
-//var config Config         // the local config
-var q2a RemoteAdminServer // this server
-var db *sql.DB            // our database connection (sqlite3)
 
 /**
  * Commands sent from the Q2 server to us
