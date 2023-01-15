@@ -447,6 +447,20 @@ func (c Config) ReadClientFile() []string {
 	return srvs
 }
 
+func (q2a *RemoteAdminServer) LoadClients() {
+	clientlist := q2a.config.ReadClientFile()
+	cls := []Client{}
+	for _, c := range clientlist {
+		cl := Client{}
+		err := cl.ReadDiskFormat(c)
+		if err != nil {
+			continue
+		}
+		cls = append(cls, cl)
+	}
+	q2a.clients = cls
+}
+
 /**
  * pre-entry point
  */
@@ -476,107 +490,12 @@ func init() {
 	q2a.privatekey = privkey
 	q2a.publickey = pubkey
 
-	//LoadGlobalBans()
-
 	db = DatabaseConnect()
 
-	log.Println("Loading servers from:", q2a.config.ClientsFile)
-	//servers = LoadServers(db)
-	serverlist := q2a.config.ReadClientFile()
-	for _, s := range serverlist {
-		fmt.Println(s)
-		//sv := Server{}
-		//sv.ReadDiskFormat(s)
-	}
+	log.Println("Loading clients from:", q2a.config.ClientsFile)
+	q2a.LoadClients()
 
-	/* TESTS
-	c1 := ServerControls{
-		Description: "Ban players using Name1 and Name2 from IP subnet for a month",
-		Type:        "ban",
-		Address:     "192.168.3.0/24",
-		Password:    "",
-		Name: []string{
-			"Name1",
-			"Name2",
-		},
-		Client:      []string{},
-		UserInfoKey: []string{},
-		UserinfoVal: []string{},
-		Created:     0,
-		Length:      86400 * 30,
+	for _, c := range q2a.clients {
+		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 	}
-	c2 := ServerControls{
-		Description: "Mute all players using Name3 with specific client, permanently",
-		Type:        "mute",
-		Address:     "0.0.0.0/0",
-		Password:    "",
-		Name: []string{
-			"Name3",
-		},
-		Client: []string{
-			"q2pro r1504~924ff39 Dec  3 2014 Win32 x86",
-		},
-		UserInfoKey: []string{},
-		UserinfoVal: []string{},
-		Created:     0,
-		Length:      0,
-	}
-	c3 := ServerControls{
-		Description: "Ban all when using name 'claire' unless valid password, permanently",
-		Type:        "ban",
-		Address:     "0.0.0.0/0",
-		Password:    "meatpopcicle",
-		Name: []string{
-			"claire",
-		},
-		Client:      []string{},
-		UserInfoKey: []string{},
-		UserinfoVal: []string{},
-		Created:     0,
-		Length:      0,
-	}
-	c4 := ServerControls{
-		Description: "Print msg to client at 10.2.2.2 on connect for a week",
-		Type:        "msg",
-		Address:     "10.2.2.2/32",
-		Message:     "Stop being such an asshole or you'll be muted. Only warning.",
-		Password:    "",
-		Name:        []string{},
-		Client:      []string{},
-		UserInfoKey: []string{},
-		UserinfoVal: []string{},
-		Created:     0,
-		Length:      86400 * 7,
-	}
-
-	s := Server{
-		Name:        "example",
-		UUID:        "bcec70f2-2215-48d9-9499-3b817b9207d6",
-		Owner:       "joe@joereid.com",
-		Description: "Duels and Team Deathmatch in US East",
-		IPAddress:   "10.2.2.2",
-		Port:        27910,
-		Verified:    true,
-		Controls: []ServerControls{
-			c1,
-			c2,
-			c3,
-			c4,
-		},
-	}
-	s.WriteDiskFormat()
-	*/
-
-	/*
-		s2 := Server{}
-		s2.ReadDiskFormat("example")
-		fmt.Println()
-		fmt.Println(s2)
-	*/
-
-	//for _, s := range servers {
-	//	log.Printf("  %-15s %-21s [%s]", s.Name, fmt.Sprintf("%s:%d", s.IPAddress, s.Port), s.UUID)
-	//}
-
-	os.Exit(0)
 }

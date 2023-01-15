@@ -1,5 +1,6 @@
 // packetflinger servers
 pf-tdm-nj
+local-test
 pf-tdm-dc
 
 # other servers

@@ -66,7 +66,7 @@ func (cl *Client) ReadDiskFormat(name string) error {
 	filename := fmt.Sprintf("%s%c%s.json", q2a.config.ClientDirectory, sep, name)
 	filedata, err := os.ReadFile(filename)
 	if err != nil {
-		log.Println("Problems with", name, "skipping")
+		//log.Println("Problems with", name, "skipping")
 		return errors.New("unable to read file")
 	}
 	sf := ServerFormat{}
