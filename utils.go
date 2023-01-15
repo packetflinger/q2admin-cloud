@@ -36,31 +36,31 @@ func AuthLogout(w http.ResponseWriter, r *http.Request) {
 // Should get called when servers are added/removed
 // via the web interface
 //
-func RehashServers() []Server {
+func RehashServers() []Client {
 	sql := "SELECT id, uuid, owner, name, ip, port, disabled FROM server"
 	r, err := db.Query(sql)
 	if err != nil {
 		log.Println(err)
-		return servers // db error, return current struct
+		return Clients // db error, return current struct
 	}
 
-	var srvs []Server
-	var srv Server
+	var cls []Client
+	var cl Client
 	var disabled int
 	for r.Next() {
-		r.Scan(&srv.ID, &srv.UUID, &srv.Owner, &srv.Name, &srv.IPAddress, &srv.Port, &disabled)
-		srv.Enabled = disabled == 0
+		r.Scan(&cl.ID, &cl.UUID, &cl.Owner, &cl.Name, &cl.IPAddress, &cl.Port, &disabled)
+		cl.Enabled = disabled == 0
 
-		current, err := findserver(srv.UUID)
+		current, err := FindClient(cl.UUID)
 		if err != nil { // server in db, but not memory
-			srvs = append(srvs, srv)
+			cls = append(cls, cl)
 		} else {
-			srvs = append(srvs, *current)
+			cls = append(cls, *current)
 		}
 	}
 	r.Close()
 
-	return srvs
+	return cls
 }
 
 //
@@ -71,10 +71,10 @@ func RehashServers() []Server {
 // - remove from active server slice in memory
 //
 func RemoveServer(uuid string) bool {
-	srv, err := findserver(uuid)
+	cl, err := FindClient(uuid)
 	if err == nil {
 		// mark in-ram server object as disabled to prevent reconnects
-		srv.Enabled = false
+		cl.Enabled = false
 
 		// close any connections?
 	}
@@ -86,7 +86,7 @@ func RemoveServer(uuid string) bool {
 	}
 
 	sql := "DELETE FROM server WHERE id = ?"
-	_, err = tr.Exec(sql, srv.ID)
+	_, err = tr.Exec(sql, cl.ID)
 	if err != nil {
 		log.Println(err)
 		tr.Rollback()

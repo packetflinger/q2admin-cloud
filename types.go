@@ -20,11 +20,11 @@ type MessageBuffer struct {
 //
 // This is a Quake 2 Gameserver, and also a client to us.
 //
-// This struct is partially populated by the database on
-// init and the rest is filled in when the game server
-// actually connects
+// This struct is partially populated by parsing disk a file
+// on disk on init and the rest is filled in when the game
+// server actually connects
 //
-type Server struct {
+type Client struct {
 	ID          int // this is the database index
 	UUID        string
 	Owner       string // email addr
@@ -41,15 +41,14 @@ type Server struct {
 	Players     []Player
 	PlayerCount int
 	MaxPlayers  int
-	Message     MessageBuffer  // incoming byte stream
-	MessageOut  MessageBuffer  // outgoing byte stream
-	Encrypted   bool           // are the messages AES encrypted?
-	Trusted     bool           // signature challenge verified
-	PublicKey   *rsa.PublicKey // supplied by owner via website
-	AESKey      []byte         // 16 (128bit)
-	AESIV       []byte         // 16 bytes (CBC)
-	Bans        []Ban
-	Controls    []ServerControls // bans, mutes, etc
+	Message     MessageBuffer    // incoming byte stream
+	MessageOut  MessageBuffer    // outgoing byte stream
+	Encrypted   bool             // are the messages AES encrypted?
+	Trusted     bool             // signature challenge verified
+	PublicKey   *rsa.PublicKey   // supplied by owner via website
+	AESKey      []byte           // 16 (128bit)
+	AESIV       []byte           // 16 bytes (CBC)
+	Controls    []ClientControls // bans, mutes, etc
 	PingCount   int
 	WebSockets  []*websocket.Conn
 }
@@ -86,7 +85,7 @@ type WebSocketConnection struct {
 	Socket    *websocket.Conn
 }
 
-type ServerControls struct {
+type ClientControls struct {
 	Type         string // ["ban","mute","stifle","msg"]
 	Address      string
 	Name         []string // optional

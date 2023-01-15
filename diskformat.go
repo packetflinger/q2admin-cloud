@@ -61,7 +61,7 @@ type ServerGroupFormat struct {
 }
 
 // read a server "object" from disk and into memory
-func (s *Server) ReadDiskFormat(name string) error {
+func (cl *Client) ReadDiskFormat(name string) error {
 	sep := os.PathSeparator
 	filename := fmt.Sprintf("%s%c%s.json", config.ServerDirectory, sep, name)
 	filedata, err := os.ReadFile(filename)
@@ -78,21 +78,21 @@ func (s *Server) ReadDiskFormat(name string) error {
 
 	addr := strings.Split(sf.Address, ":")
 	if len(addr) == 2 {
-		s.Port, _ = strconv.Atoi(addr[1])
+		cl.Port, _ = strconv.Atoi(addr[1])
 	} else {
-		s.Port = 27910
+		cl.Port = 27910
 	}
-	s.IPAddress = addr[0]
-	s.Enabled = sf.Enabled
-	s.Owner = sf.Owner
-	s.Description = sf.Description
-	s.UUID = sf.UUID
-	s.Name = sf.Name
-	s.Verified = sf.Verified
+	cl.IPAddress = addr[0]
+	cl.Enabled = sf.Enabled
+	cl.Owner = sf.Owner
+	cl.Description = sf.Description
+	cl.UUID = sf.UUID
+	cl.Name = sf.Name
+	cl.Verified = sf.Verified
 
-	controls := []ServerControls{}
+	controls := []ClientControls{}
 	for _, c := range sf.Controls {
-		control := ServerControls{}
+		control := ClientControls{}
 		control.Address = c.Address
 		control.Client = c.Client
 		control.Created = c.Created
@@ -107,15 +107,15 @@ func (s *Server) ReadDiskFormat(name string) error {
 		control.UserinfoVal = c.UserinfoVal
 		controls = append(controls, control)
 	}
-	s.Controls = controls
+	cl.Controls = controls
 	return nil
 }
 
 // Write the current server "object" to disk as JSON
-func (s *Server) WriteDiskFormat() {
+func (cl *Client) WriteDiskFormat() {
 
 	dfcontrols := []ServerControlFormat{}
-	for _, sc := range s.Controls {
+	for _, sc := range cl.Controls {
 		c := ServerControlFormat{}
 		c.Type = sc.Type
 		c.Address = sc.Address
@@ -132,13 +132,13 @@ func (s *Server) WriteDiskFormat() {
 	}
 
 	d := ServerFormat{
-		Enabled:     s.Enabled,
-		Address:     fmt.Sprintf("%s:%d", s.IPAddress, s.Port),
-		Name:        s.Name,
-		UUID:        s.UUID,
-		Owner:       s.Owner,
-		Description: s.Description,
-		Verified:    s.Verified,
+		Enabled:     cl.Enabled,
+		Address:     fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port),
+		Name:        cl.Name,
+		UUID:        cl.UUID,
+		Owner:       cl.Owner,
+		Description: cl.Description,
+		Verified:    cl.Verified,
 		Controls:    dfcontrols,
 	}
 

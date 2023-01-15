@@ -58,31 +58,31 @@ func InsertPlayer(p *Player) int64 {
  * Pull all the servers from the database and load them
  * into a structure
  */
-func LoadServers(db *sql.DB) []Server {
+func LoadServers(db *sql.DB) []Client {
 	sql := "SELECT id, uuid, owner, name, ip, port, disabled FROM server"
 	r, err := db.Query(sql)
 	if err != nil {
 		panic(err)
 	}
-	var srvs []Server
-	var srv Server
+	var cls []Client
+	var cl Client
 	var disabled int
 	for r.Next() {
-		r.Scan(&srv.ID, &srv.UUID, &srv.Owner, &srv.Name, &srv.IPAddress, &srv.Port, &disabled)
-		srv.Enabled = disabled == 0
-		srvs = append(srvs, srv)
+		r.Scan(&cl.ID, &cl.UUID, &cl.Owner, &cl.Name, &cl.IPAddress, &cl.Port, &disabled)
+		cl.Enabled = disabled == 0
+		cls = append(cls, cl)
 	}
 	r.Close()
 
-	return srvs
+	return cls
 }
 
 /**
  * A player said something, record to use against them later
  */
-func LogChat(srv *Server, chat string) {
+func LogChat(cl *Client, chat string) {
 	sql := "INSERT INTO chat (server, time, chat) VALUES (?,?,?)"
-	_, err := db.Exec(sql, srv.ID, GetUnixTimestamp(), chat)
+	_, err := db.Exec(sql, cl.ID, GetUnixTimestamp(), chat)
 	if err != nil {
 		log.Println(err)
 		return
@@ -92,7 +92,7 @@ func LogChat(srv *Server, chat string) {
 /**
  * Save frags for stats
  */
-func LogFrag(srv *Server, victim int, attacker int) {
+func LogFrag(cl *Client, victim int, attacker int) {
 	/*
 		sql := "INSERT INTO frag (victim,attacker,server,fragdate) VALUES (?,?,?,?)"
 		_, err := db.Exec(sql, server, logtype, logentry, now)
@@ -103,10 +103,10 @@ func LogFrag(srv *Server, victim int, attacker int) {
 	*/
 }
 
-func LogEventToDatabase(server int, logtype int, logentry string) {
+func LogEventToDatabase(cid int, logtype int, logentry string) {
 	now := time.Now().Unix()
 	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,?)"
-	_, err := db.Exec(sql, server, logtype, logentry, now)
+	_, err := db.Exec(sql, cid, logtype, logentry, now)
 	if err != nil {
 		log.Println(err)
 		return

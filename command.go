@@ -16,41 +16,41 @@ import (
  * If a destination is supplied, just send the player there,
  * else send a list of possibilities
  */
-func Teleport(srv *Server) {
-	cl := ReadByte(&srv.Message)
-	dest := ReadString(&srv.Message)
-	p := srv.FindPlayer(int(cl))
+func Teleport(cl *Client) {
+	pl := ReadByte(&cl.Message)
+	dest := ReadString(&cl.Message)
+	p := cl.FindPlayer(int(pl))
 
 	now := time.Now().Unix()
-	log.Printf("[%s/TELEPORT/%s] %s\n", srv.Name, p.Name, dest)
+	log.Printf("[%s/TELEPORT/%s] %s\n", p.Name, p.Name, dest)
 
 	if dest == "" {
 		listtime := now - p.LastTeleportList
 		if listtime < 30 {
 			txt := fmt.Sprintf("You can't list teleport destinations for %d more seconds\n", 30-listtime)
-			srv.SayPlayer(int(cl), PRINT_HIGH, txt)
+			cl.SayPlayer(int(pl), PRINT_HIGH, txt)
 			return
 		}
 
 		p.LastTeleportList = now
 		avail := TeleportAvailableReply()
-		srv.SayPlayer(int(cl), PRINT_CHAT, avail)
+		cl.SayPlayer(int(pl), PRINT_CHAT, avail)
 
-		srv.SayPlayer(int(cl), PRINT_CHAT, "Active Servers\n")
+		cl.SayPlayer(int(pl), PRINT_CHAT, "Active Servers\n")
 		line := ""
 
-		for _, s := range servers {
-			if len(s.Players) == 0 {
+		for _, c := range Clients {
+			if len(c.Players) == 0 {
 				continue
 			}
 
 			players := ""
-			for _, p := range s.Players {
+			for _, p := range c.Players {
 				players = fmt.Sprintf("%s %s", players, p.Name)
 			}
 
-			line = fmt.Sprintf(" %-15s %-15s %s\n", s.Name, s.CurrentMap, players)
-			srv.SayPlayer(int(cl), PRINT_CHAT, line)
+			line = fmt.Sprintf(" %-15s %-15s %s\n", c.Name, c.CurrentMap, players)
+			cl.SayPlayer(int(pl), PRINT_CHAT, line)
 		}
 		return
 	}
@@ -61,25 +61,25 @@ func Teleport(srv *Server) {
 
 	if err != nil {
 		log.Println("warning,", err)
-		srv.SayPlayer(int(cl), PRINT_HIGH, "Unknown destination\n")
+		cl.SayPlayer(int(pl), PRINT_HIGH, "Unknown destination\n")
 	} else {
 		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, s.Name, s.IPAddress, s.Port)
-		srv.SayEveryone(PRINT_HIGH, txt)
+		cl.SayEveryone(PRINT_HIGH, txt)
 		st := fmt.Sprintf("connect %s:%d\n", s.IPAddress, s.Port)
-		StuffPlayer(srv, int(cl), st)
+		StuffPlayer(cl, int(pl), st)
 	}
 
-	txt := fmt.Sprintf("TELEPORT [%d] %s", cl, p.Name)
-	LogEventToDatabase(srv.ID, LogTypeCommand, txt)
+	txt := fmt.Sprintf("TELEPORT [%d] %s", pl, p.Name)
+	LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
 /**
  * Resolve a teleport name to an ip:port
  */
-func FindTeleportDestination(dest string) (*Server, error) {
-	for _, s := range servers {
-		if s.Name == dest {
-			return &s, nil
+func FindTeleportDestination(dest string) (*Client, error) {
+	for _, c := range Clients {
+		if c.Name == dest {
+			return &c, nil
 		}
 	}
 
@@ -89,12 +89,12 @@ func FindTeleportDestination(dest string) (*Server, error) {
 func TeleportAvailableReply() string {
 	var allservers []string
 
-	for _, s := range servers {
-		if !s.Connected {
+	for _, c := range Clients {
+		if !c.Connected {
 			continue
 		}
 
-		allservers = append(allservers, s.Name)
+		allservers = append(allservers, c.Name)
 	}
 
 	// alphabetize the list
@@ -114,11 +114,11 @@ func TeleportAvailableReply() string {
  *
  * Broadcast the invite to all connected servers
  */
-func Invite(srv *Server) {
-	cl := ReadByte(&srv.Message)
-	text := ReadString(&srv.Message)
-	p := srv.FindPlayer(int(cl))
-	log.Printf("[%s/INVITE/%s] %s\n", srv.Name, p.Name, text)
+func Invite(cl *Client) {
+	client := ReadByte(&cl.Message)
+	text := ReadString(&cl.Message)
+	p := cl.FindPlayer(int(client))
+	log.Printf("[%s/INVITE/%s] %s\n", cl.Name, p.Name, text)
 
 	now := time.Now().Unix()
 	invtime := now - p.LastInvite
@@ -128,19 +128,19 @@ func Invite(srv *Server) {
 			p.InvitesAvailable = 3
 		} else {
 			txt := fmt.Sprintf("You have no more invites available, wait %d seconds\n", 600-invtime)
-			srv.SayPlayer(int(cl), PRINT_HIGH, txt)
+			cl.SayPlayer(int(client), PRINT_HIGH, txt)
 			return
 		}
 	} else {
 		if invtime < 30 {
 			txt := fmt.Sprintf("Invite used too recently, wait %d seconds\n", 30-invtime)
-			srv.SayPlayer(int(cl), PRINT_HIGH, txt)
+			cl.SayPlayer(int(client), PRINT_HIGH, txt)
 			return
 		}
 	}
 
-	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, srv.Name, srv.IPAddress, srv.Port)
-	for _, s := range servers {
+	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, cl.Name, cl.IPAddress, cl.Port)
+	for _, s := range Clients {
 		if s.Enabled && s.Connected {
 			s.SayEveryone(PRINT_CHAT, inv)
 		}
@@ -151,23 +151,23 @@ func Invite(srv *Server) {
 	p.InvitesAvailable--
 }
 
-func ConsoleSay(srv *Server, print string) {
+func ConsoleSay(cl *Client, print string) {
 	if print == "" {
 		return
 	}
 
 	txt := fmt.Sprintf("say %s\n", print)
-	WriteByte(SCMDCommand, &srv.MessageOut)
-	WriteString(txt, &srv.MessageOut)
+	WriteByte(SCMDCommand, &cl.MessageOut)
+	WriteString(txt, &cl.MessageOut)
 }
 
 /**
  * Force a player to do a command
  */
-func StuffPlayer(srv *Server, cl int, cmd string) {
-	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", cl, cmd)
-	WriteByte(SCMDCommand, &srv.MessageOut)
-	WriteString(stuffcmd, &srv.MessageOut)
+func StuffPlayer(cl *Client, client int, cmd string) {
+	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", client, cmd)
+	WriteByte(SCMDCommand, &cl.MessageOut)
+	WriteString(stuffcmd, &cl.MessageOut)
 }
 
 /**
@@ -175,38 +175,38 @@ func StuffPlayer(srv *Server, cl int, cmd string) {
  * using a negative number of seconds makes it
  * permanent.
  */
-func MutePlayer(srv *Server, cl int, seconds int) {
+func MutePlayer(cl *Client, cid int, seconds int) {
 	cmd := ""
 	if seconds < 0 {
-		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", cl)
+		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", cid)
 	} else {
-		cmd = fmt.Sprintf("sv !mute CL %d %d", cl, seconds)
+		cmd = fmt.Sprintf("sv !mute CL %d %d", cid, seconds)
 	}
-	WriteByte(SCMDCommand, &srv.MessageOut)
-	WriteString(cmd, &srv.MessageOut)
-	player := srv.FindPlayer(cl)
+	WriteByte(SCMDCommand, &cl.MessageOut)
+	WriteString(cmd, &cl.MessageOut)
+	player := cl.FindPlayer(cid)
 
-	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", srv.Name, cl, player.Name)
-	LogEventToDatabase(srv.ID, LogTypeCommand, txt)
+	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", cl.Name, cid, player.Name)
+	LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
 /**
  *
  */
-func KickPlayer(srv *Server, cl int) {
-	cmd := fmt.Sprintf("kick %d", cl)
-	WriteByte(SCMDCommand, &srv.MessageOut)
-	WriteString(cmd, &srv.MessageOut)
+func KickPlayer(cl *Client, cid int) {
+	cmd := fmt.Sprintf("kick %d", cid)
+	WriteByte(SCMDCommand, &cl.MessageOut)
+	WriteString(cmd, &cl.MessageOut)
 
-	txt := fmt.Sprintf("KICK [%d] was kicked", cl)
-	LogEventToDatabase(srv.ID, LogTypeCommand, txt)
+	txt := fmt.Sprintf("KICK [%d] was kicked", cid)
+	LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
 //
 // Issue a command as if you were typing it into the console.
 // Sanitize cmd before use
 //
-func (srv *Server) ConsoleCommand(cmd string) {
-	WriteByte(SCMDCommand, &srv.MessageOut)
-	WriteString(cmd, &srv.MessageOut)
+func (cl *Client) ConsoleCommand(cmd string) {
+	WriteByte(SCMDCommand, &cl.MessageOut)
+	WriteString(cmd, &cl.MessageOut)
 }

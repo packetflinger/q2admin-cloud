@@ -40,13 +40,13 @@ type WebUser struct {
 
 type DashboardPage struct {
 	User         WebUser
-	MyServers    []Server
-	OtherServers []Server
+	MyServers    []Client
+	OtherServers []Client
 }
 
 type ServerPage struct {
 	User     WebUser
-	MyServer Server
+	MyServer Client
 }
 
 // needed for upgrading the websockets
@@ -163,7 +163,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for rows.Next() {
-		s := Server{}
+		s := Client{}
 		err = rows.Scan(&s.UUID, &s.Name)
 		if err != nil {
 			log.Println(err)
@@ -185,7 +185,7 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	uuid := vars["ServerUUID"]
 	page := ServerPage{}
 	page.User = GetSessionUser(r)
-	MyServer, err := findserver(uuid)
+	MyServer, err := FindClient(uuid)
 	if err != nil {
 		log.Println(err)
 		return
@@ -254,7 +254,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	var activeservers []ActiveServer
-	for _, s := range servers {
+	for _, s := range Clients {
 		if s.Connected {
 			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
 			activeservers = append(activeservers, srv)
@@ -291,7 +291,7 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	servers = RehashServers()
+	Clients = RehashServers()
 
 	http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
 }
@@ -304,7 +304,7 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	uuid_to_delete := vars["id"]
-	srv, err := findserver(uuid_to_delete)
+	srv, err := FindClient(uuid_to_delete)
 	if err != nil {
 		log.Println(err)
 		return
@@ -317,7 +317,7 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 	//}
 
 	RemoveServer(srv.UUID)
-	servers = RehashServers()
+	Clients = RehashServers()
 	http.Redirect(w, r, routes.Dashboard, http.StatusFound)
 }
 
@@ -337,7 +337,7 @@ func WebFeed(w http.ResponseWriter, r *http.Request) {
 	uuid := vars["ServerUUID"]
 	page := ServerPage{}
 	page.User = GetSessionUser(r)
-	srv, err := findserver(uuid)
+	srv, err := FindClient(uuid)
 	if err != nil {
 		log.Println(err)
 		return
@@ -366,7 +366,7 @@ func WebFeedInput(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["ServerUUID"]
 	user := GetSessionUser(r)
-	srv, err := findserver(uuid)
+	srv, err := FindClient(uuid)
 	if err != nil {
 		log.Println(err)
 		return

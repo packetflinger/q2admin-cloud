@@ -62,35 +62,37 @@ func LoadGlobalBans() {
  * Load gameserver local banlist
  * Happens after gameserver connects and authenticates
  */
-func LoadBans(srv *Server) {
-	banfile := fmt.Sprintf("bans/%s.csv", srv.Name)
+func LoadBans(cl *Client) {
+	/*
+		banfile := fmt.Sprintf("bans/%s.csv", cl.Name)
 
-	bandata, err := os.ReadFile(banfile)
-	if err != nil {
-		log.Printf("[%s] problems loading banlist: %s\n", srv.Name, err)
-		return
-	}
-
-	r := csv.NewReader(strings.NewReader(string(bandata)))
-	for {
-		r.Comment = '#'
-		record, err := r.Read()
-		if err == io.EOF {
-			break
-		}
+		bandata, err := os.ReadFile(banfile)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("[%s] problems loading banlist: %s\n", cl.Name, err)
+			return
 		}
 
-		ban := Ban{
-			address:     record[0],
-			description: record[2],
+		r := csv.NewReader(strings.NewReader(string(bandata)))
+		for {
+			r.Comment = '#'
+			record, err := r.Read()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			ban := Ban{
+				address:     record[0],
+				description: record[2],
+			}
+
+			cl.Bans = append(srv.Bans, ban)
 		}
 
-		srv.Bans = append(srv.Bans, ban)
-	}
-
-	log.Printf("[%s] banlist loaded: %s\n", srv.Name, banfile)
+		log.Printf("[%s] banlist loaded: %s\n", srv.Name, banfile)
+	*/
 }
 
 /**

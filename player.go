@@ -35,12 +35,12 @@ type Player struct {
 /**
  * Get a pointer to a player based on a client number
  */
-func (srv *Server) FindPlayer(cl int) *Player {
-	if !srv.ValidPlayerID(cl) {
+func (cl *Client) FindPlayer(client int) *Player {
+	if !cl.ValidPlayerID(client) {
 		return nil
 	}
 
-	p := &srv.Players[cl]
+	p := &cl.Players[client]
 
 	if p.ConnectTime > 0 {
 		return p
@@ -100,37 +100,37 @@ func LoadPlayerHash(player *Player) {
  * Check if a client ID is valid for a particular server context,
  * does not care if a valid player structure is located there or not
  */
-func (srv *Server) ValidPlayerID(cl int) bool {
-	return cl >= 0 && cl < len(srv.Players)
+func (cl *Client) ValidPlayerID(client int) bool {
+	return client >= 0 && client < len(cl.Players)
 }
 
 /**
  * Remove a player from the players slice (used when player quits)
  */
-func (srv *Server) RemovePlayer(cl int) {
-	if srv.ValidPlayerID(cl) {
-		srv.Players[cl] = Player{}
-		srv.PlayerCount--
+func (cl *Client) RemovePlayer(client int) {
+	if cl.ValidPlayerID(client) {
+		cl.Players[client] = Player{}
+		cl.PlayerCount--
 	}
 }
 
 /**
  * Send a message to every player on the server
  */
-func (srv *Server) SayEveryone(level int, text string) {
-	WriteByte(SCMDSayAll, &srv.MessageOut)
-	WriteByte(byte(level), &srv.MessageOut)
-	WriteString(text, &srv.MessageOut)
+func (cl *Client) SayEveryone(level int, text string) {
+	WriteByte(SCMDSayAll, &cl.MessageOut)
+	WriteByte(byte(level), &cl.MessageOut)
+	WriteString(text, &cl.MessageOut)
 }
 
 /**
  * Send a message to a particular player
  */
-func (srv *Server) SayPlayer(client int, level int, text string) {
-	WriteByte(SCMDSayClient, &srv.MessageOut)
-	WriteByte(byte(client), &srv.MessageOut)
-	WriteByte(byte(level), &srv.MessageOut)
-	WriteString(text, &srv.MessageOut)
+func (cl *Client) SayPlayer(client int, level int, text string) {
+	WriteByte(SCMDSayClient, &cl.MessageOut)
+	WriteByte(byte(client), &cl.MessageOut)
+	WriteByte(byte(level), &cl.MessageOut)
+	WriteString(text, &cl.MessageOut)
 }
 
 /**

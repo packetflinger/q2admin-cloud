@@ -11,8 +11,8 @@ import (
  * Loop through all the data from the client
  * and act accordingly
  */
-func (srv *Server) ParseMessage() {
-	msg := &srv.Message
+func (cl *Client) ParseMessage() {
+	msg := &cl.Message
 	for {
 		if msg.index >= len(msg.buffer) {
 			break
@@ -20,28 +20,28 @@ func (srv *Server) ParseMessage() {
 
 		switch b := ReadByte(msg); b {
 		case CMDPing:
-			Pong(srv)
+			Pong(cl)
 
 		case CMDPrint:
-			ParsePrint(srv)
+			ParsePrint(cl)
 
 		case CMDMap:
-			ParseMap(srv)
+			ParseMap(cl)
 
 		case CMDPlayerList:
-			ParsePlayerlist(srv)
+			ParsePlayerlist(cl)
 
 		case CMDConnect:
-			ParseConnect(srv)
+			ParseConnect(cl)
 
 		case CMDDisconnect:
-			ParseDisconnect(srv)
+			ParseDisconnect(cl)
 
 		case CMDCommand:
-			ParseCommand(srv)
+			ParseCommand(cl)
 
 		case CMDFrag:
-			ParseFrag(srv)
+			ParseFrag(cl)
 		}
 	}
 }
@@ -51,18 +51,18 @@ func (srv *Server) ParseMessage() {
  * Only two bytes are sent: the clientID of the victim,
  * and of the attacker
  */
-func ParseFrag(srv *Server) {
-	v := int(ReadByte(&srv.Message))
-	a := int(ReadByte(&srv.Message))
+func ParseFrag(cl *Client) {
+	v := int(ReadByte(&cl.Message))
+	a := int(ReadByte(&cl.Message))
 
-	victim := srv.FindPlayer(v)
-	attacker := srv.FindPlayer(a)
+	victim := cl.FindPlayer(v)
+	attacker := cl.FindPlayer(a)
 
 	if victim == nil {
 		return
 	}
 
-	log.Printf("[%s/FRAG] %d > %d\n", srv.Name, a, v)
+	log.Printf("[%s/FRAG] %d > %d\n", cl.Name, a, v)
 
 	if attacker == victim || attacker == nil {
 		victim.Suicides++
@@ -77,16 +77,16 @@ func ParseFrag(srv *Server) {
 /**
  * Received a ping from a client, send a pong to show we're alive
  */
-func Pong(srv *Server) {
+func Pong(cl *Client) {
 	if config.Debug > 1 {
-		log.Printf("[%s/PING]\n", srv.Name)
+		log.Printf("[%s/PING]\n", cl.Name)
 	}
-	srv.PingCount++
-	WriteByte(SCMDPong, &srv.MessageOut)
+	cl.PingCount++
+	WriteByte(SCMDPong, &cl.MessageOut)
 
 	// close to once per hour
-	if (srv.PingCount & 63) == 0 {
-		RotateKeys(srv)
+	if (cl.PingCount & 63) == 0 {
+		RotateKeys(cl)
 	}
 }
 
@@ -95,18 +95,18 @@ func Pong(srv *Server) {
  * 1 byte: print level
  * string: the actual message
  */
-func ParsePrint(srv *Server) {
-	level := ReadByte(&srv.Message)
-	text := ReadString(&srv.Message)
+func ParsePrint(cl *Client) {
+	level := ReadByte(&cl.Message)
+	text := ReadString(&cl.Message)
 
 	// remove newline
 	stripped := text[0 : len(text)-1]
 
 	switch level {
 	case PRINT_CHAT:
-		srv.SendToWebsiteFeed(stripped, FeedChat)
-		LogChat(srv, text)
-		log.Printf("[%s/PRINT] (%d) %s\n", srv.Name, level, stripped)
+		cl.SendToWebsiteFeed(stripped, FeedChat)
+		LogChat(cl, text)
+		log.Printf("[%s/PRINT] (%d) %s\n", cl.Name, level, stripped)
 	case PRINT_MEDIUM:
 		ParseObituary(text)
 	}
@@ -115,8 +115,8 @@ func ParsePrint(srv *Server) {
 /**
  * A player connected to the a q2 server
  */
-func ParseConnect(srv *Server) {
-	p := ParsePlayer(srv)
+func ParseConnect(cl *Client) {
+	p := ParsePlayer(cl)
 
 	if p == nil {
 		return
@@ -124,82 +124,84 @@ func ParseConnect(srv *Server) {
 
 	info := UserinfoMap(p.Userinfo)
 
-	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", srv.Name, p.ClientID, info["name"], info["ip"], p.Hash)
+	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", cl.Name, p.ClientID, info["name"], info["ip"], p.Hash)
 	log.Printf("%s\n", txt)
-	LogEventToDatabase(srv.ID, LogTypeJoin, txt)
+	LogEventToDatabase(cl.ID, LogTypeJoin, txt)
 
 	wstxt := fmt.Sprintf("[CONNECT] %s [%s]", info["name"], info["ip"])
-	srv.SendToWebsiteFeed(wstxt, FeedJoinPart)
+	cl.SendToWebsiteFeed(wstxt, FeedJoinPart)
 
 	// global
 	if isbanned, msg := CheckForBan(&globalbans, p.IP); isbanned == Banned {
-		srv.SayPlayer(
+		cl.SayPlayer(
 			p.ClientID,
 			PRINT_CHAT,
 			fmt.Sprintf("Your IP/Userinfo matches a global ban: %s\n", msg),
 		)
-		KickPlayer(srv, p.ClientID)
+		KickPlayer(cl, p.ClientID)
 		return
 	}
 
 	// local
-	if isbanned, msg := CheckForBan(&srv.Bans, p.IP); isbanned == Banned {
-		srv.SayPlayer(
-			p.ClientID,
-			PRINT_CHAT,
-			fmt.Sprintf("Your IP/Userinfo matches a local ban: %s\n", msg),
-		)
-		KickPlayer(srv, p.ClientID)
-	}
+	/*
+		if isbanned, msg := CheckForBan(&cl.Bans, p.IP); isbanned == Banned {
+			cl.SayPlayer(
+				p.ClientID,
+				PRINT_CHAT,
+				fmt.Sprintf("Your IP/Userinfo matches a local ban: %s\n", msg),
+			)
+			KickPlayer(srv, p.ClientID)
+		}
+	*/
 }
 
 /**
  * A player disconnected from a q2 server
  */
-func ParseDisconnect(srv *Server) {
-	clientnum := int(ReadByte(&srv.Message))
+func ParseDisconnect(cl *Client) {
+	clientnum := int(ReadByte(&cl.Message))
 
-	if clientnum < 0 || clientnum > srv.MaxPlayers {
-		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(srv.Message.buffer))
+	if clientnum < 0 || clientnum > cl.MaxPlayers {
+		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(cl.Message.buffer))
 		return
 	}
 
-	pl := srv.FindPlayer(clientnum)
+	pl := cl.FindPlayer(clientnum)
 
 	wstxt := fmt.Sprintf("[DISCONNECT] %s [%s]", pl.Name, pl.IP)
-	srv.SendToWebsiteFeed(wstxt, FeedJoinPart)
+	cl.SendToWebsiteFeed(wstxt, FeedJoinPart)
 
-	log.Printf("[%s/DISCONNECT] %d|%s\n", srv.Name, clientnum, pl.Name)
-	srv.RemovePlayer(clientnum)
+	log.Printf("[%s/DISCONNECT] %d|%s\n", cl.Name, clientnum, pl.Name)
+	cl.RemovePlayer(clientnum)
 }
 
 /**
  * Server told us what map is currently running. Typically happens
  * when the map changes
  */
-func ParseMap(srv *Server) {
-	mapname := ReadString(&srv.Message)
-	srv.CurrentMap = mapname
-	log.Printf("[%s/MAP] %s\n", srv.Name, srv.CurrentMap)
+func ParseMap(cl *Client) {
+	mapname := ReadString(&cl.Message)
+	cl.CurrentMap = mapname
+	log.Printf("[%s/MAP] %s\n", cl.Name, cl.CurrentMap)
 }
 
 func ParseObituary(text string) {
 	log.Printf("Obit: %s\n", text)
 }
 
-func ParsePlayerlist(srv *Server) {
-	count := ReadByte(&srv.Message)
-	log.Printf("[%s/PLAYERLIST] %d\n", srv.Name, count)
+func ParsePlayerlist(cl *Client) {
+	count := ReadByte(&cl.Message)
+	log.Printf("[%s/PLAYERLIST] %d\n", cl.Name, count)
 	for i := 0; i < int(count); i++ {
-		_ = ParsePlayer(srv)
+		_ = ParsePlayer(cl)
 	}
 }
 
-func ParsePlayer(srv *Server) *Player {
-	clientnum := ReadByte(&srv.Message)
-	userinfo := ReadString(&srv.Message)
+func ParsePlayer(cl *Client) *Player {
+	clientnum := ReadByte(&cl.Message)
+	userinfo := ReadString(&cl.Message)
 
-	if int(clientnum) > srv.MaxPlayers {
+	if int(clientnum) > cl.MaxPlayers {
 		log.Printf("WARNING: Invalid client number, ignoring\n")
 		return nil
 	}
@@ -220,20 +222,20 @@ func ParsePlayer(srv *Server) *Player {
 
 	LoadPlayerHash(&newplayer)
 
-	log.Printf("[%s/PLAYER] %d|%s|%s\n", srv.Name, clientnum, newplayer.Hash, userinfo)
+	log.Printf("[%s/PLAYER] %d|%s|%s\n", cl.Name, clientnum, newplayer.Hash, userinfo)
 
-	srv.Players[newplayer.ClientID] = newplayer
-	srv.PlayerCount++
+	cl.Players[newplayer.ClientID] = newplayer
+	cl.PlayerCount++
 	return &newplayer
 }
 
-func ParseCommand(srv *Server) {
-	cmd := ReadByte(&srv.Message)
+func ParseCommand(cl *Client) {
+	cmd := ReadByte(&cl.Message)
 	switch cmd {
 	case PCMDTeleport:
-		Teleport(srv)
+		Teleport(cl)
 
 	case PCMDInvite:
-		Invite(srv)
+		Invite(cl)
 	}
 }

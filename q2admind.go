@@ -23,7 +23,7 @@ import (
 
 var (
 	Configfile = flag.String("c", "q2a.json", "The main config file")
-	Servers    = []Server{}
+	Clients    = []Client{}
 )
 
 const (
@@ -39,10 +39,9 @@ const (
 /**
  * Global variables
  */
-var config Config        // the local config
-var q2a AdminServer      // this server
-var db *sql.DB           // our database connection (sqlite3)
-var servers = []Server{} // the slice of game servers we manage
+var config Config   // the local config
+var q2a AdminServer // this server
+var db *sql.DB      // our database connection (sqlite3)
 
 /**
  * Commands sent from the Q2 server to us
@@ -126,10 +125,10 @@ func clearmsg(msg *MessageBuffer) {
  * Locate the struct of the server for a particular
  * ID, get a pointer to it
  */
-func findserver(lookup string) (*Server, error) {
-	for i, srv := range servers {
-		if srv.UUID == lookup {
-			return &servers[i], nil
+func FindClient(lookup string) (*Client, error) {
+	for i, cl := range Clients {
+		if cl.UUID == lookup {
+			return &Clients[i], nil
 		}
 	}
 
@@ -139,26 +138,26 @@ func findserver(lookup string) (*Server, error) {
 /**
  * Send all messages in the outgoing queue to the gameserver
  */
-func (srv *Server) SendMessages() {
-	if !srv.Connected {
+func (cl *Client) SendMessages() {
+	if !cl.Connected {
 		return
 	}
 
 	// keys have been exchanged, encrypt the message
-	if srv.Trusted && srv.Encrypted {
+	if cl.Trusted && cl.Encrypted {
 		cipher := SymmetricEncrypt(
-			srv.AESKey,
-			srv.AESIV,
-			srv.MessageOut.buffer[:srv.MessageOut.length])
+			cl.AESKey,
+			cl.AESIV,
+			cl.MessageOut.buffer[:cl.MessageOut.length])
 
-		clearmsg(&srv.MessageOut)
-		srv.MessageOut.buffer = cipher
-		srv.MessageOut.length = len(cipher)
+		clearmsg(&cl.MessageOut)
+		cl.MessageOut.buffer = cipher
+		cl.MessageOut.length = len(cipher)
 	}
 
-	if srv.MessageOut.length > 0 {
-		(*srv.Connection).Write(srv.MessageOut.buffer)
-		clearmsg(&srv.MessageOut)
+	if cl.MessageOut.length > 0 {
+		(*cl.Connection).Write(cl.MessageOut.buffer)
+		clearmsg(&cl.MessageOut)
 	}
 }
 
@@ -184,19 +183,19 @@ func GetTimeFromTimestamp(ts int64) time.Time {
 	return time.Unix(ts, 0)
 }
 
-func (s *Server) ValidClientID(id int) bool {
-	return id >= 0 && id < s.MaxPlayers
+func (cl *Client) ValidClientID(id int) bool {
+	return id >= 0 && id < cl.MaxPlayers
 }
 
 //
 // Each server keeps track of the websocket for people "looking at it".
 // When they close the browser or logout, remove the pointer
 // to that socket
-func (srv *Server) DeleteWebSocket(sock *websocket.Conn) {
+func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
 	location := -1
 	// find it's index first
-	for i := range srv.WebSockets {
-		if srv.WebSockets[i] == sock {
+	for i := range cl.WebSockets {
+		if cl.WebSockets[i] == sock {
 			location = i
 			break
 		}
@@ -207,15 +206,15 @@ func (srv *Server) DeleteWebSocket(sock *websocket.Conn) {
 		return
 	}
 
-	tempws := srv.WebSockets[0:location]
-	tempws = append(tempws, srv.WebSockets[location+1:]...)
-	srv.WebSockets = tempws
+	tempws := cl.WebSockets[0:location]
+	tempws = append(tempws, cl.WebSockets[location+1:]...)
+	cl.WebSockets = tempws
 }
 
 //
 // Send the txt string to all the websockets listening
 //
-func (srv *Server) SendToWebsiteFeed(txt string, decoration int) {
+func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
 	now := GetTimeNow()
 
 	colored := ""
@@ -228,12 +227,12 @@ func (srv *Server) SendToWebsiteFeed(txt string, decoration int) {
 		colored = now + " " + txt
 	}
 
-	sockets := srv.WebSockets
+	sockets := cl.WebSockets
 	for i := range sockets {
 		err := sockets[i].WriteMessage(1, []byte(colored))
 		if err != nil {
 			log.Println(err)
-			srv.DeleteWebSocket(srv.WebSockets[i])
+			cl.DeleteWebSocket(cl.WebSockets[i])
 		}
 	}
 }
@@ -274,53 +273,53 @@ func handleConnection(c net.Conn) {
 		return
 	}
 
-	server, err := findserver(uuid)
+	cl, err := FindClient(uuid)
 	if err != nil {
 		// write an error, close socket, returns
 		log.Println(err)
 		c.Close()
 		return
 	}
-	log.Printf("[%s] connecting...\n", server.Name)
+	log.Printf("[%s] connecting...\n", cl.Name)
 
-	server.Port = int(port)
-	server.Encrypted = int(enc) == 1 // stupid bool conversion
-	server.Connection = &c
-	server.Connected = true
-	server.Version = int(ver)
-	server.MaxPlayers = int(maxplayers)
+	cl.Port = int(port)
+	cl.Encrypted = int(enc) == 1 // stupid bool conversion
+	cl.Connection = &c
+	cl.Connected = true
+	cl.Version = int(ver)
+	cl.MaxPlayers = int(maxplayers)
 	keyname := fmt.Sprintf("keys/%s.pem", uuid)
 
-	log.Printf("[%s] Loading public key: %s\n", server.Name, keyname)
+	log.Printf("[%s] Loading public key: %s\n", cl.Name, keyname)
 	pubkey, err := LoadPublicKey(keyname)
 	if err != nil {
 		log.Printf("Public key error: %s\n", err.Error())
 		c.Close()
 		return
 	}
-	server.PublicKey = pubkey
+	cl.PublicKey = pubkey
 
 	challengeCipher := Sign(q2a.privatekey, clNonce)
-	WriteByte(SCMDHelloAck, &server.MessageOut)
-	WriteShort(len(challengeCipher), &server.MessageOut)
-	WriteData(challengeCipher, &server.MessageOut)
+	WriteByte(SCMDHelloAck, &cl.MessageOut)
+	WriteShort(len(challengeCipher), &cl.MessageOut)
+	WriteData(challengeCipher, &cl.MessageOut)
 
 	/**
 	 * if client requests encrypted transit, encrypt the session key/iv
 	 * with the client's public key to keep it confidential
 	 */
-	if server.Encrypted {
-		server.AESKey = RandomBytes(AESBlockLength)
-		server.AESIV = RandomBytes(AESIVLength)
-		blob := append(server.AESKey, server.AESIV...)
-		aescipher := PublicEncrypt(server.PublicKey, blob)
-		WriteData(aescipher, &server.MessageOut)
+	if cl.Encrypted {
+		cl.AESKey = RandomBytes(AESBlockLength)
+		cl.AESIV = RandomBytes(AESIVLength)
+		blob := append(cl.AESKey, cl.AESIV...)
+		aescipher := PublicEncrypt(cl.PublicKey, blob)
+		WriteData(aescipher, &cl.MessageOut)
 	}
 
 	svchallenge := RandomBytes(challengeLength)
-	WriteData(svchallenge, &server.MessageOut)
+	WriteData(svchallenge, &cl.MessageOut)
 
-	server.SendMessages()
+	cl.SendMessages()
 
 	// read the client signature
 	size, _ := c.Read(input)
@@ -336,22 +335,21 @@ func handleConnection(c net.Conn) {
 
 	sigsize := ReadShort(&msg)
 	clientSignature := ReadData(&msg, int(sigsize))
-	verified := VerifySignature(server.PublicKey, svchallenge, clientSignature)
+	verified := VerifySignature(cl.PublicKey, svchallenge, clientSignature)
 
 	if verified {
-		log.Printf("[%s] signature verified, server trusted\n", server.Name)
+		log.Printf("[%s] signature verified, server trusted\n", cl.Name)
 	} else {
-		log.Printf("[%s] signature verifcation failed...", server.Name)
+		log.Printf("[%s] signature verifcation failed...", cl.Name)
 		c.Close()
 		return
 	}
 
-	LoadBans(server)
-	WriteByte(SCMDTrusted, &server.MessageOut)
-	server.SendMessages()
-	server.Trusted = true
+	WriteByte(SCMDTrusted, &cl.MessageOut)
+	cl.SendMessages()
+	cl.Trusted = true
 
-	server.Players = make([]Player, server.MaxPlayers)
+	cl.Players = make([]Player, cl.MaxPlayers)
 
 	for {
 		input := make([]byte, 5000)
@@ -365,20 +363,20 @@ func handleConnection(c net.Conn) {
 		}
 
 		// decrypt if necessary
-		if server.Encrypted && server.Trusted {
-			input, size = SymmetricDecrypt(server.AESKey, server.AESIV, input[:size])
+		if cl.Encrypted && cl.Trusted {
+			input, size = SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
 		}
 
-		server.Message.buffer = input
-		server.Message.index = 0
-		server.Message.length = size
+		cl.Message.buffer = input
+		cl.Message.index = 0
+		cl.Message.length = size
 
-		server.ParseMessage()
-		server.SendMessages()
+		cl.ParseMessage()
+		cl.SendMessages()
 	}
 
-	server.Connected = false
-	server.Trusted = false
+	cl.Connected = false
+	cl.Trusted = false
 	c.Close()
 }
 
