@@ -23,7 +23,7 @@ import (
 
 var (
 	Configfile = flag.String("c", "q2a.json", "The main config file")
-	Clients    = []Client{}
+	//Clients    = []Client{}
 )
 
 const (
@@ -126,9 +126,9 @@ func clearmsg(msg *MessageBuffer) {
  * ID, get a pointer to it
  */
 func FindClient(lookup string) (*Client, error) {
-	for i, cl := range Clients {
+	for i, cl := range q2a.clients {
 		if cl.UUID == lookup {
-			return &Clients[i], nil
+			return &q2a.clients[i], nil
 		}
 	}
 

@@ -41,7 +41,7 @@ func RehashServers() []Client {
 	r, err := db.Query(sql)
 	if err != nil {
 		log.Println(err)
-		return Clients // db error, return current struct
+		return q2a.clients // db error, return current struct
 	}
 
 	var cls []Client

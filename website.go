@@ -254,7 +254,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	var activeservers []ActiveServer
-	for _, s := range Clients {
+	for _, s := range q2a.clients {
 		if s.Connected {
 			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
 			activeservers = append(activeservers, srv)
@@ -291,7 +291,7 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Clients = RehashServers()
+	q2a.clients = RehashServers()
 
 	http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
 }
@@ -317,7 +317,7 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 	//}
 
 	RemoveServer(srv.UUID)
-	Clients = RehashServers()
+	q2a.clients = RehashServers()
 	http.Redirect(w, r, routes.Dashboard, http.StatusFound)
 }
 

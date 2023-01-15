@@ -39,7 +39,7 @@ func Teleport(cl *Client) {
 		cl.SayPlayer(int(pl), PRINT_CHAT, "Active Servers\n")
 		line := ""
 
-		for _, c := range Clients {
+		for _, c := range q2a.clients {
 			if len(c.Players) == 0 {
 				continue
 			}
@@ -77,7 +77,7 @@ func Teleport(cl *Client) {
  * Resolve a teleport name to an ip:port
  */
 func FindTeleportDestination(dest string) (*Client, error) {
-	for _, c := range Clients {
+	for _, c := range q2a.clients {
 		if c.Name == dest {
 			return &c, nil
 		}
@@ -89,7 +89,7 @@ func FindTeleportDestination(dest string) (*Client, error) {
 func TeleportAvailableReply() string {
 	var allservers []string
 
-	for _, c := range Clients {
+	for _, c := range q2a.clients {
 		if !c.Connected {
 			continue
 		}
@@ -140,7 +140,7 @@ func Invite(cl *Client) {
 	}
 
 	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, cl.Name, cl.IPAddress, cl.Port)
-	for _, s := range Clients {
+	for _, s := range q2a.clients {
 		if s.Enabled && s.Connected {
 			s.SayEveryone(PRINT_CHAT, inv)
 		}
