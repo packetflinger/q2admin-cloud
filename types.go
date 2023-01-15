@@ -27,12 +27,14 @@ type MessageBuffer struct {
 type Server struct {
 	ID          int // this is the database index
 	UUID        string
-	Owner       int // user id from database
-	Version     int // what version are we running
+	Owner       string // email addr
+	Version     int    // what version are we running
 	Name        string
+	Description string // used in teleporting
 	IPAddress   string // used for teleporting
 	Port        int    // used for teleporting
 	Connected   bool   // is it currently connected to us?
+	Verified    bool
 	CurrentMap  string
 	Enabled     bool
 	Connection  *net.Conn
@@ -47,6 +49,7 @@ type Server struct {
 	AESKey      []byte         // 16 (128bit)
 	AESIV       []byte         // 16 bytes (CBC)
 	Bans        []Ban
+	Controls    []ServerControls // bans, mutes, etc
 	PingCount   int
 	WebSockets  []*websocket.Conn
 }
@@ -63,14 +66,16 @@ type AdminServer struct {
 // The config file once parsed
 //
 type Config struct {
-	Address    string `json:"address"`
-	Port       int    `json:"port"`
-	Database   string `json:"database"`
-	DBString   string `json:"dbstring"`
-	PrivateKey string `json:"privatekey"`
-	APIPort    int    `json:"apiport"`
-	Debug      int    `json:"debug"`
-	APIEnabled int    `json:"enableapi"`
+	Address         string `json:"address"`
+	Port            int    `json:"port"`
+	Database        string `json:"database"`
+	DBString        string `json:"dbstring"`
+	PrivateKey      string `json:"privatekey"`
+	APIPort         int    `json:"apiport"`
+	Debug           int    `json:"debug"`
+	APIEnabled      int    `json:"enableapi"`
+	ServersFile     string `json:"serversfile"`
+	ServerDirectory string `json:"serverdir"` // folder for json files
 }
 
 //
@@ -79,4 +84,19 @@ type Config struct {
 type WebSocketConnection struct {
 	Connected bool
 	Socket    *websocket.Conn
+}
+
+type ServerControls struct {
+	Type         string // ["ban","mute","stifle","msg"]
+	Address      string
+	Name         []string // optional
+	Client       []string // optional
+	UserInfoKey  []string // optional
+	UserinfoVal  []string // optional
+	Description  string
+	Message      string
+	Password     string
+	StifleLength int   // secs
+	Created      int64 // unix timestamp
+	Length       int64 // secs after Created before expiring
 }

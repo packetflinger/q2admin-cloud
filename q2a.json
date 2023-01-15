@@ -2,9 +2,10 @@
     "address": "0.0.0.0",
     "port": 9988,
     "database": "server.sqlite",
-    "dbstring": "q2a:q2a@tcp(localhost:3306)/q2admin",
     "privatekey": "private.pem",
     "apiport": 8087,
     "debug": 0,
-    "enableapi": 1
+    "enableapi": 1,
+    "serversfile": "servers.txt",
+    "serverdir": "server-configs"
 }

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"os/signal"
+	"strings"
 
 	//"encoding/hex"
 	"crypto/rsa"
@@ -22,6 +23,7 @@ import (
 
 var (
 	Configfile = flag.String("c", "q2a.json", "The main config file")
+	Servers    = []Server{}
 )
 
 const (
@@ -426,13 +428,40 @@ func main() {
 	}
 }
 
+// The file should be just a list of server names one per line
+// comments (// and #) and blank lines are allowed
+// indenting doesn't matter
+func (c Config) ReadServerFile() []string {
+	contents, err := os.ReadFile(c.ServersFile)
+	if err != nil {
+		log.Println(err)
+		os.Exit(0)
+	}
+
+	srvs := []string{}
+	lines := strings.Split(string(contents), "\n")
+	for i := range lines {
+		trimmed := strings.Trim(lines[i], " \t")
+		// remove empty lines
+		if trimmed == "" {
+			continue
+		}
+		// remove comments
+		if trimmed[0] == '#' || trimmed[0:2] == "//" {
+			continue
+		}
+		srvs = append(srvs, trimmed)
+	}
+	return srvs
+}
+
 /**
  * pre-entry point
  */
 func init() {
 	flag.Parse()
 
-	log.Printf("Loading config from %s\n", *Configfile)
+	log.Println("Loading config:", *Configfile)
 	confjson, err := os.ReadFile(*Configfile)
 	if err != nil {
 		log.Fatal(err)
@@ -445,7 +474,7 @@ func init() {
 
 	rand.Seed(time.Now().Unix())
 
-	log.Printf("Loading private key %s\n", config.PrivateKey)
+	log.Println("Loading private key:", config.PrivateKey)
 	privkey, err := LoadPrivateKey(config.PrivateKey)
 	if err != nil {
 		log.Fatalf("Problems loading private key: %s\n", err.Error())
@@ -455,13 +484,107 @@ func init() {
 	q2a.privatekey = privkey
 	q2a.publickey = pubkey
 
-	LoadGlobalBans()
+	//LoadGlobalBans()
 
 	db = DatabaseConnect()
 
-	log.Println("Loading servers:")
-	servers = LoadServers(db)
-	for _, s := range servers {
-		log.Printf("  %-15s %-21s [%s]", s.Name, fmt.Sprintf("%s:%d", s.IPAddress, s.Port), s.UUID)
+	log.Println("Loading servers from:", config.ServersFile)
+	//servers = LoadServers(db)
+	serverlist := config.ReadServerFile()
+	for _, s := range serverlist {
+		fmt.Println(s)
+		//sv := Server{}
+		//sv.ReadDiskFormat(s)
 	}
+
+	/* TESTS
+	c1 := ServerControls{
+		Description: "Ban players using Name1 and Name2 from IP subnet for a month",
+		Type:        "ban",
+		Address:     "192.168.3.0/24",
+		Password:    "",
+		Name: []string{
+			"Name1",
+			"Name2",
+		},
+		Client:      []string{},
+		UserInfoKey: []string{},
+		UserinfoVal: []string{},
+		Created:     0,
+		Length:      86400 * 30,
+	}
+	c2 := ServerControls{
+		Description: "Mute all players using Name3 with specific client, permanently",
+		Type:        "mute",
+		Address:     "0.0.0.0/0",
+		Password:    "",
+		Name: []string{
+			"Name3",
+		},
+		Client: []string{
+			"q2pro r1504~924ff39 Dec  3 2014 Win32 x86",
+		},
+		UserInfoKey: []string{},
+		UserinfoVal: []string{},
+		Created:     0,
+		Length:      0,
+	}
+	c3 := ServerControls{
+		Description: "Ban all when using name 'claire' unless valid password, permanently",
+		Type:        "ban",
+		Address:     "0.0.0.0/0",
+		Password:    "meatpopcicle",
+		Name: []string{
+			"claire",
+		},
+		Client:      []string{},
+		UserInfoKey: []string{},
+		UserinfoVal: []string{},
+		Created:     0,
+		Length:      0,
+	}
+	c4 := ServerControls{
+		Description: "Print msg to client at 10.2.2.2 on connect for a week",
+		Type:        "msg",
+		Address:     "10.2.2.2/32",
+		Message:     "Stop being such an asshole or you'll be muted. Only warning.",
+		Password:    "",
+		Name:        []string{},
+		Client:      []string{},
+		UserInfoKey: []string{},
+		UserinfoVal: []string{},
+		Created:     0,
+		Length:      86400 * 7,
+	}
+
+	s := Server{
+		Name:        "example",
+		UUID:        "bcec70f2-2215-48d9-9499-3b817b9207d6",
+		Owner:       "joe@joereid.com",
+		Description: "Duels and Team Deathmatch in US East",
+		IPAddress:   "10.2.2.2",
+		Port:        27910,
+		Verified:    true,
+		Controls: []ServerControls{
+			c1,
+			c2,
+			c3,
+			c4,
+		},
+	}
+	s.WriteDiskFormat()
+	*/
+
+	/*
+		s2 := Server{}
+		s2.ReadDiskFormat("example")
+		fmt.Println()
+		fmt.Println(s2)
+	*/
+
+	//for _, s := range servers {
+	//	log.Printf("  %-15s %-21s [%s]", s.Name, fmt.Sprintf("%s:%d", s.IPAddress, s.Port), s.UUID)
+	//}
+
+	os.Exit(0)
 }

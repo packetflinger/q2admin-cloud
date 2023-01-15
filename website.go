@@ -300,7 +300,7 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 // Handler to delete a user's server
 //
 func WebDelServer(w http.ResponseWriter, r *http.Request) {
-	user := GetSessionUser(r)
+	//user := GetSessionUser(r)
 	vars := mux.Vars(r)
 
 	uuid_to_delete := vars["id"]
@@ -311,10 +311,10 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check ownership
-	if srv.Owner != user.ID {
-		log.Printf("%s unsuccessfuly tried to delete %s, non-ownership", user.Email, srv.Name)
-		return
-	}
+	//if srv.Owner != user.ID {
+	//	log.Printf("%s unsuccessfuly tried to delete %s, non-ownership", user.Email, srv.Name)
+	//	return
+	//}
 
 	RemoveServer(srv.UUID)
 	servers = RehashServers()
