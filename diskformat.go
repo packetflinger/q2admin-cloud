@@ -63,7 +63,7 @@ type ServerGroupFormat struct {
 // read a server "object" from disk and into memory
 func (cl *Client) ReadDiskFormat(name string) error {
 	sep := os.PathSeparator
-	filename := fmt.Sprintf("%s%c%s.json", config.ServerDirectory, sep, name)
+	filename := fmt.Sprintf("%s%c%s.json", q2a.config.ServerDirectory, sep, name)
 	filedata, err := os.ReadFile(filename)
 	if err != nil {
 		log.Println("Problems with", name, "skipping")
@@ -152,7 +152,7 @@ func (cl *Client) WriteDiskFormat() {
 		d.Name = hex.EncodeToString(RandomBytes(20))
 	}
 	sep := os.PathSeparator
-	filename := fmt.Sprintf("%s%c%s.json", config.ServerDirectory, sep, d.Name)
+	filename := fmt.Sprintf("%s%c%s.json", q2a.config.ServerDirectory, sep, d.Name)
 	err = os.WriteFile(filename, filecontents, 0644)
 	if err != nil {
 		log.Println(err)

@@ -9,7 +9,7 @@ import (
 )
 
 func DatabaseConnect() *sql.DB {
-	db, err := sql.Open("sqlite3", config.Database)
+	db, err := sql.Open("sqlite3", q2a.config.Database)
 	if err != nil {
 		panic(err)
 	}
@@ -52,29 +52,6 @@ func InsertPlayer(p *Player) int64 {
 	}
 
 	return id
-}
-
-/**
- * Pull all the servers from the database and load them
- * into a structure
- */
-func LoadServers(db *sql.DB) []Client {
-	sql := "SELECT id, uuid, owner, name, ip, port, disabled FROM server"
-	r, err := db.Query(sql)
-	if err != nil {
-		panic(err)
-	}
-	var cls []Client
-	var cl Client
-	var disabled int
-	for r.Next() {
-		r.Scan(&cl.ID, &cl.UUID, &cl.Owner, &cl.Name, &cl.IPAddress, &cl.Port, &disabled)
-		cl.Enabled = disabled == 0
-		cls = append(cls, cl)
-	}
-	r.Close()
-
-	return cls
 }
 
 /**

@@ -56,7 +56,9 @@ type Client struct {
 //
 // "This" admin server
 //
-type AdminServer struct {
+type RemoteAdminServer struct {
+	config     Config
+	clients    []Client
 	privatekey *rsa.PrivateKey
 	publickey  *rsa.PublicKey
 }

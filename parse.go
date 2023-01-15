@@ -78,7 +78,7 @@ func ParseFrag(cl *Client) {
  * Received a ping from a client, send a pong to show we're alive
  */
 func Pong(cl *Client) {
-	if config.Debug > 1 {
+	if q2a.config.Debug > 1 {
 		log.Printf("[%s/PING]\n", cl.Name)
 	}
 	cl.PingCount++

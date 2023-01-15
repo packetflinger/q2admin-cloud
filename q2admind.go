@@ -39,9 +39,9 @@ const (
 /**
  * Global variables
  */
-var config Config   // the local config
-var q2a AdminServer // this server
-var db *sql.DB      // our database connection (sqlite3)
+//var config Config         // the local config
+var q2a RemoteAdminServer // this server
+var db *sql.DB            // our database connection (sqlite3)
 
 /**
  * Commands sent from the Q2 server to us
@@ -401,7 +401,7 @@ func main() {
 		os.Exit(1)
 	}()
 
-	port := fmt.Sprintf("%s:%d", config.Address, config.Port)
+	port := fmt.Sprintf("%s:%d", q2a.config.Address, q2a.config.Port)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
 		fmt.Println(err)
@@ -412,7 +412,7 @@ func main() {
 
 	log.Printf("Listening for gameservers on %s\n", port)
 
-	if config.APIEnabled > 0 {
+	if q2a.config.APIEnabled > 0 {
 		go RunHTTPServer()
 	}
 
@@ -465,15 +465,15 @@ func init() {
 		log.Fatal(err)
 	}
 
-	err = json.Unmarshal(confjson, &config)
+	err = json.Unmarshal(confjson, &q2a.config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	rand.Seed(time.Now().Unix())
 
-	log.Println("Loading private key:", config.PrivateKey)
-	privkey, err := LoadPrivateKey(config.PrivateKey)
+	log.Println("Loading private key:", q2a.config.PrivateKey)
+	privkey, err := LoadPrivateKey(q2a.config.PrivateKey)
 	if err != nil {
 		log.Fatalf("Problems loading private key: %s\n", err.Error())
 	}
@@ -486,9 +486,9 @@ func init() {
 
 	db = DatabaseConnect()
 
-	log.Println("Loading servers from:", config.ServersFile)
+	log.Println("Loading servers from:", q2a.config.ServersFile)
 	//servers = LoadServers(db)
-	serverlist := config.ReadServerFile()
+	serverlist := q2a.config.ReadServerFile()
 	for _, s := range serverlist {
 		fmt.Println(s)
 		//sv := Server{}
