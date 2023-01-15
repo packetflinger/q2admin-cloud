@@ -91,6 +91,7 @@ type WebSocketConnection struct {
 type ClientControls struct {
 	Type         string // ["ban","mute","stifle","msg"]
 	Address      string
+	Network      *net.IPNet
 	Name         []string // optional
 	Client       []string // optional
 	UserInfoKey  []string // optional

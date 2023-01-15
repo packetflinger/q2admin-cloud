@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -94,6 +95,10 @@ func (cl *Client) ReadDiskFormat(name string) error {
 	for _, c := range sf.Controls {
 		control := ClientControls{}
 		control.Address = c.Address
+		_, control.Network, err = net.ParseCIDR(c.Address)
+		if err != nil {
+			log.Println(err)
+		}
 		control.Client = c.Client
 		control.Created = c.Created
 		control.Description = c.Description
