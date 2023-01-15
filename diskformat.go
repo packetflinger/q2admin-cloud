@@ -67,13 +67,13 @@ func (cl *Client) ReadDiskFormat(name string) error {
 	filedata, err := os.ReadFile(filename)
 	if err != nil {
 		log.Println("Problems with", name, "skipping")
-		return errors.New("Unable to read file")
+		return errors.New("unable to read file")
 	}
 	sf := ServerFormat{}
 	err = json.Unmarshal([]byte(filedata), &sf)
 	if err != nil {
 		log.Println(err)
-		return errors.New("Unable to parse data")
+		return errors.New("unable to parse data")
 	}
 
 	addr := strings.Split(sf.Address, ":")
