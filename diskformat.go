@@ -23,22 +23,22 @@ type UserFormat struct {
 
 // JSON structure for persistent storage
 type ServerFormat struct {
-	UUID          string                `json:"UUID"` // match client to server config
-	AllowTeleport bool                  `json:"AllowTeleport"`
-	AllowInvite   bool                  `json:"AllowInvite"`
-	Enabled       bool                  `json:"Enabled"`
-	Verified      bool                  `json:"Verified"`
-	Address       string                `json:"Address"`
-	Name          string                `json:"Name"`        // teleport name, must be unique
-	Owner         string                `json:"Owner"`       // ID from UserFormat
-	Description   string                `json:"Description"` // shows up in teleport
-	Contacts      string                `json:"Contacts"`    // for getting ahold of operator
-	PublicKey     string                `json:"PublicKey"`   // relative path to file
-	Controls      []ServerControlFormat `json:"Controls"`
+	UUID          string             `json:"UUID"` // match client to server config
+	AllowTeleport bool               `json:"AllowTeleport"`
+	AllowInvite   bool               `json:"AllowInvite"`
+	Enabled       bool               `json:"Enabled"`
+	Verified      bool               `json:"Verified"`
+	Address       string             `json:"Address"`
+	Name          string             `json:"Name"`        // teleport name, must be unique
+	Owner         string             `json:"Owner"`       // ID from UserFormat
+	Description   string             `json:"Description"` // shows up in teleport
+	Contacts      string             `json:"Contacts"`    // for getting ahold of operator
+	PublicKey     string             `json:"PublicKey"`   // relative path to file
+	Rules         []ServerRuleFormat `json:"Controls"`
 }
 
 // for bans, mutes, onjoin msgs
-type ServerControlFormat struct {
+type ServerRuleFormat struct {
 	Type         string   `json:"Type"` // ["ban","mute","stifle","msg"]
 	Address      string   `json:"Address"`
 	Name         []string `json:"Name"`        // optional
@@ -91,9 +91,9 @@ func (cl *Client) ReadDiskFormat(name string) error {
 	cl.Name = sf.Name
 	cl.Verified = sf.Verified
 
-	controls := []ClientControls{}
-	for _, c := range sf.Controls {
-		control := ClientControls{}
+	controls := []ClientRule{}
+	for _, c := range sf.Rules {
+		control := ClientRule{}
 		control.Address = c.Address
 		_, control.Network, err = net.ParseCIDR(c.Address)
 		if err != nil {
@@ -112,16 +112,16 @@ func (cl *Client) ReadDiskFormat(name string) error {
 		control.UserinfoVal = c.UserinfoVal
 		controls = append(controls, control)
 	}
-	cl.Controls = controls
+	cl.Rules = controls
 	return nil
 }
 
 // Write the current server "object" to disk as JSON
 func (cl *Client) WriteDiskFormat() {
 
-	dfcontrols := []ServerControlFormat{}
-	for _, sc := range cl.Controls {
-		c := ServerControlFormat{}
+	dfrules := []ServerRuleFormat{}
+	for _, sc := range cl.Rules {
+		c := ServerRuleFormat{}
 		c.Type = sc.Type
 		c.Address = sc.Address
 		c.Name = sc.Name
@@ -133,7 +133,7 @@ func (cl *Client) WriteDiskFormat() {
 		c.Created = sc.Created
 		c.Length = sc.Length
 		c.Message = sc.Message
-		dfcontrols = append(dfcontrols, c)
+		dfrules = append(dfrules, c)
 	}
 
 	d := ServerFormat{
@@ -144,7 +144,7 @@ func (cl *Client) WriteDiskFormat() {
 		Owner:       cl.Owner,
 		Description: cl.Description,
 		Verified:    cl.Verified,
-		Controls:    dfcontrols,
+		Rules:       dfrules,
 	}
 
 	filecontents, err := json.MarshalIndent(d, "", " ")

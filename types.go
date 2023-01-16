@@ -41,14 +41,14 @@ type Client struct {
 	Players     []Player
 	PlayerCount int
 	MaxPlayers  int
-	Message     MessageBuffer    // incoming byte stream
-	MessageOut  MessageBuffer    // outgoing byte stream
-	Encrypted   bool             // are the messages AES encrypted?
-	Trusted     bool             // signature challenge verified
-	PublicKey   *rsa.PublicKey   // supplied by owner via website
-	AESKey      []byte           // 16 (128bit)
-	AESIV       []byte           // 16 bytes (CBC)
-	Controls    []ClientControls // bans, mutes, etc
+	Message     MessageBuffer  // incoming byte stream
+	MessageOut  MessageBuffer  // outgoing byte stream
+	Encrypted   bool           // are the messages AES encrypted?
+	Trusted     bool           // signature challenge verified
+	PublicKey   *rsa.PublicKey // supplied by owner via website
+	AESKey      []byte         // 16 (128bit)
+	AESIV       []byte         // 16 bytes (CBC)
+	Rules       []ClientRule   // bans, mutes, etc
 	PingCount   int
 	WebSockets  []*websocket.Conn
 }
@@ -60,6 +60,7 @@ type RemoteAdminServer struct {
 	//users      []User
 	config     Config
 	clients    []Client
+	rules      []ClientRule
 	privatekey *rsa.PrivateKey
 	publickey  *rsa.PublicKey
 }
@@ -88,7 +89,7 @@ type WebSocketConnection struct {
 	Socket    *websocket.Conn
 }
 
-type ClientControls struct {
+type ClientRule struct {
 	Type         string // ["ban","mute","stifle","msg"]
 	Address      string
 	Network      *net.IPNet
