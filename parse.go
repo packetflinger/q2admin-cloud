@@ -250,7 +250,7 @@ func ParseCommand(cl *Client) {
 	cmd := ReadByte(&cl.Message)
 	switch cmd {
 	case PCMDTeleport:
-		Teleport(cl)
+		cl.Teleport()
 
 	case PCMDInvite:
 		cl.Invite()

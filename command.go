@@ -16,7 +16,7 @@ import (
  * If a destination is supplied, just send the player there,
  * else send a list of possibilities
  */
-func Teleport(cl *Client) {
+func (cl *Client) Teleport() {
 	pl := ReadByte(&cl.Message)
 	dest := ReadString(&cl.Message)
 	p := cl.FindPlayer(int(pl))
