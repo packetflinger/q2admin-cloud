@@ -28,15 +28,15 @@ func (cl *Client) Teleport() {
 		listtime := now - p.LastTeleportList
 		if listtime < 30 {
 			txt := fmt.Sprintf("You can't list teleport destinations for %d more seconds\n", 30-listtime)
-			cl.SayPlayer(int(pl), PRINT_HIGH, txt)
+			cl.SayPlayer(p, PRINT_HIGH, txt)
 			return
 		}
 
 		p.LastTeleportList = now
 		avail := TeleportAvailableReply()
-		cl.SayPlayer(int(pl), PRINT_CHAT, avail)
+		cl.SayPlayer(p, PRINT_CHAT, avail)
 
-		cl.SayPlayer(int(pl), PRINT_CHAT, "Active Servers\n")
+		cl.SayPlayer(p, PRINT_CHAT, "Active Servers\n")
 		line := ""
 
 		for _, c := range q2a.clients {
@@ -50,7 +50,7 @@ func (cl *Client) Teleport() {
 			}
 
 			line = fmt.Sprintf(" %-15s %-15s %s\n", c.Name, c.CurrentMap, players)
-			cl.SayPlayer(int(pl), PRINT_CHAT, line)
+			cl.SayPlayer(p, PRINT_CHAT, line)
 		}
 		return
 	}
@@ -61,7 +61,7 @@ func (cl *Client) Teleport() {
 
 	if err != nil {
 		log.Println("warning,", err)
-		cl.SayPlayer(int(pl), PRINT_HIGH, "Unknown destination\n")
+		cl.SayPlayer(p, PRINT_HIGH, "Unknown destination\n")
 	} else {
 		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, s.Name, s.IPAddress, s.Port)
 		cl.SayEveryone(PRINT_HIGH, txt)
@@ -128,13 +128,13 @@ func (cl *Client) Invite() {
 			p.InvitesAvailable = 3
 		} else {
 			txt := fmt.Sprintf("You have no more invites available, wait %d seconds\n", 600-invtime)
-			cl.SayPlayer(int(client), PRINT_HIGH, txt)
+			cl.SayPlayer(p, PRINT_HIGH, txt)
 			return
 		}
 	} else {
 		if invtime < 30 {
 			txt := fmt.Sprintf("Invite used too recently, wait %d seconds\n", 30-invtime)
-			cl.SayPlayer(int(client), PRINT_HIGH, txt)
+			cl.SayPlayer(p, PRINT_HIGH, txt)
 			return
 		}
 	}
@@ -175,7 +175,7 @@ func (cl *Client) StuffPlayer(p Player, cmd string) {
  * using a negative number of seconds makes it
  * permanent.
  */
-func (cl *Client) MutePlayer(p Player, seconds int) {
+func (cl *Client) MutePlayer(p *Player, seconds int) {
 	cmd := ""
 	if seconds < 0 {
 		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)

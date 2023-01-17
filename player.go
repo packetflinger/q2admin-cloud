@@ -128,9 +128,9 @@ func (cl *Client) SayEveryone(level int, text string) {
 /**
  * Send a message to a particular player
  */
-func (cl *Client) SayPlayer(client int, level int, text string) {
+func (cl *Client) SayPlayer(p *Player, level int, text string) {
 	WriteByte(SCMDSayClient, &cl.MessageOut)
-	WriteByte(byte(client), &cl.MessageOut)
+	WriteByte(byte(p.ClientID), &cl.MessageOut)
 	WriteByte(byte(level), &cl.MessageOut)
 	WriteString(text, &cl.MessageOut)
 }

@@ -99,6 +99,48 @@ func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRul
 	return matched, rules
 }
 
+func (cl *Client) ApplyRules(p *Player) {
+	// local rules first
+	matched1, rules1 := cl.CheckRules(p, cl.Rules)
+	if matched1 {
+		for _, r := range rules1 {
+			switch r.Type {
+			case "msg":
+				log.Printf("[%s/MSG/%s] %s\n", cl.Name, p.Name, r.Message)
+				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+			case "ban":
+				log.Printf("[%s/KICK/%s] %s\n", cl.Name, p.Name, r.Message)
+				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				cl.KickPlayer(p, r.Message)
+			case "mute":
+				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
+				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				cl.MutePlayer(p, -1)
+			}
+		}
+	}
+
+	// global
+	matched2, rules2 := cl.CheckRules(p, cl.Rules)
+	if matched2 {
+		for _, r := range rules2 {
+			switch r.Type {
+			case "msg":
+				log.Printf("[%s/MSG/%s] %s\n", cl.Name, p.Name, r.Message)
+				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+			case "ban":
+				log.Printf("[%s/KICK/%s] %s\n", cl.Name, p.Name, r.Message)
+				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				cl.KickPlayer(p, r.Message)
+			case "mute":
+				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
+				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				cl.MutePlayer(p, -1)
+			}
+		}
+	}
+}
+
 func (q2a *RemoteAdminServer) ReadGlobalRules() {
 	filedata, err := os.ReadFile("rules.json")
 	if err != nil {

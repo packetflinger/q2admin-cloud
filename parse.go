@@ -131,45 +131,7 @@ func ParseConnect(cl *Client) {
 	wstxt := fmt.Sprintf("[CONNECT] %s [%s]", info["name"], info["ip"])
 	cl.SendToWebsiteFeed(wstxt, FeedJoinPart)
 
-	// local rules first
-	matched, rules := cl.CheckRules(p, cl.Rules)
-	if matched {
-		for _, r := range rules {
-			switch r.Type {
-			case "msg":
-				cl.SayPlayer(p.ClientID, PRINT_CHAT, r.Message)
-			case "ban":
-				cl.KickPlayer(p, r.Message)
-			case "mute":
-				cl.SayPlayer(p.ClientID, PRINT_CHAT, r.Message)
-				//MutePlayer(cl, p.ClientID, 9999)
-			}
-		}
-	}
-
-	// global
-	/*
-		if isbanned, msg := CheckForBan(&globalbans, p.IP); isbanned == Banned {
-			cl.SayPlayer(
-				p.ClientID,
-				PRINT_CHAT,
-				fmt.Sprintf("Your IP/Userinfo matches a global ban: %s\n", msg),
-			)
-			cl.KickPlayer(p)
-			return
-		}*/
-
-	// local
-	/*
-		if isbanned, msg := CheckForBan(&cl.Bans, p.IP); isbanned == Banned {
-			cl.SayPlayer(
-				p.ClientID,
-				PRINT_CHAT,
-				fmt.Sprintf("Your IP/Userinfo matches a local ban: %s\n", msg),
-			)
-			KickPlayer(srv, p.ClientID)
-		}
-	*/
+	cl.ApplyRules(p)
 }
 
 /**
