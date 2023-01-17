@@ -77,9 +77,9 @@ func (cl *Client) Teleport() {
  * Resolve a teleport name to an ip:port
  */
 func FindTeleportDestination(dest string) (*Client, error) {
-	for _, c := range q2a.clients {
+	for i, c := range q2a.clients {
 		if c.Name == dest {
-			return &c, nil
+			return &q2a.clients[i], nil
 		}
 	}
 
