@@ -34,11 +34,12 @@ type ServerFormat struct {
 	Description   string             `json:"Description"` // shows up in teleport
 	Contacts      string             `json:"Contacts"`    // for getting ahold of operator
 	PublicKey     string             `json:"PublicKey"`   // relative path to file
-	Rules         []ServerRuleFormat `json:"Controls"`
+	Rules         []ClientRuleFormat `json:"Controls"`
 }
 
 // for bans, mutes, onjoin msgs
-type ServerRuleFormat struct {
+type ClientRuleFormat struct {
+	ID           string   `json:"ID"`   // UUID
 	Type         string   `json:"Type"` // ["ban","mute","stifle","msg"]
 	Address      string   `json:"Address"`
 	Name         []string `json:"Name"`        // optional
@@ -119,9 +120,9 @@ func (cl *Client) ReadDiskFormat(name string) error {
 // Write the current server "object" to disk as JSON
 func (cl *Client) WriteDiskFormat() {
 
-	dfrules := []ServerRuleFormat{}
+	dfrules := []ClientRuleFormat{}
 	for _, sc := range cl.Rules {
-		c := ServerRuleFormat{}
+		c := ClientRuleFormat{}
 		c.Type = sc.Type
 		c.Address = sc.Address
 		c.Name = sc.Name

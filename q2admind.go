@@ -492,6 +492,9 @@ func init() {
 
 	db = DatabaseConnect()
 
+	log.Println("Loading global rules...")
+	q2a.ReadGlobalRules()
+
 	log.Println("Loading clients from:", q2a.config.ClientsFile)
 	q2a.LoadClients()
 

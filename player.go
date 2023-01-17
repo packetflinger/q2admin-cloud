@@ -14,6 +14,7 @@ type Player struct {
 	ClientID         int // ID on the gameserver (0-maxplayers)
 	Database_ID      int64
 	Name             string
+	Version          string // q2 client flavor + version
 	Userinfo         string
 	UserinfoMap      map[string]string
 	Hash             string
@@ -30,6 +31,7 @@ type Player struct {
 	Port             int
 	FOV              int
 	ConnectTime      int64
+	Rules            []ClientRule // rules that match this player
 }
 
 /**
