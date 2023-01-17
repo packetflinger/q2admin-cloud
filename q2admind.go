@@ -1,13 +1,11 @@
 package main
 
 import (
-	//"bufio"
 	"database/sql"
 	"flag"
 	"os/signal"
 	"strings"
 
-	//"encoding/hex"
 	"crypto/rsa"
 	"encoding/json"
 	"errors"
