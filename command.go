@@ -66,7 +66,7 @@ func Teleport(cl *Client) {
 		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, s.Name, s.IPAddress, s.Port)
 		cl.SayEveryone(PRINT_HIGH, txt)
 		st := fmt.Sprintf("connect %s:%d\n", s.IPAddress, s.Port)
-		StuffPlayer(cl, int(pl), st)
+		cl.StuffPlayer(*p, st)
 	}
 
 	txt := fmt.Sprintf("TELEPORT [%d] %s", pl, p.Name)
@@ -114,7 +114,7 @@ func TeleportAvailableReply() string {
  *
  * Broadcast the invite to all connected servers
  */
-func Invite(cl *Client) {
+func (cl *Client) Invite() {
 	client := ReadByte(&cl.Message)
 	text := ReadString(&cl.Message)
 	p := cl.FindPlayer(int(client))
@@ -151,7 +151,7 @@ func Invite(cl *Client) {
 	p.InvitesAvailable--
 }
 
-func ConsoleSay(cl *Client, print string) {
+func (cl *Client) ConsoleSay(print string) {
 	if print == "" {
 		return
 	}
@@ -164,8 +164,8 @@ func ConsoleSay(cl *Client, print string) {
 /**
  * Force a player to do a command
  */
-func StuffPlayer(cl *Client, client int, cmd string) {
-	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", client, cmd)
+func (cl *Client) StuffPlayer(p Player, cmd string) {
+	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.ClientID, cmd)
 	WriteByte(SCMDCommand, &cl.MessageOut)
 	WriteString(stuffcmd, &cl.MessageOut)
 }
@@ -175,30 +175,30 @@ func StuffPlayer(cl *Client, client int, cmd string) {
  * using a negative number of seconds makes it
  * permanent.
  */
-func MutePlayer(cl *Client, cid int, seconds int) {
+func (cl *Client) MutePlayer(p Player, seconds int) {
 	cmd := ""
 	if seconds < 0 {
-		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", cid)
+		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)
 	} else {
-		cmd = fmt.Sprintf("sv !mute CL %d %d", cid, seconds)
+		cmd = fmt.Sprintf("sv !mute CL %d %d", p.ClientID, seconds)
 	}
 	WriteByte(SCMDCommand, &cl.MessageOut)
 	WriteString(cmd, &cl.MessageOut)
-	player := cl.FindPlayer(cid)
+	player := cl.FindPlayer(p.ClientID)
 
-	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", cl.Name, cid, player.Name)
+	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", cl.Name, p.ClientID, player.Name)
 	LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
 /**
  *
  */
-func KickPlayer(cl *Client, cid int) {
-	cmd := fmt.Sprintf("kick %d", cid)
+func (cl *Client) KickPlayer(p *Player, msg string) {
+	cmd := fmt.Sprintf("kick %d", p.ClientID)
 	WriteByte(SCMDCommand, &cl.MessageOut)
 	WriteString(cmd, &cl.MessageOut)
 
-	txt := fmt.Sprintf("KICK [%d] was kicked", cid)
+	txt := fmt.Sprintf("KICK [%d] was kicked", p.ClientID)
 	LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 

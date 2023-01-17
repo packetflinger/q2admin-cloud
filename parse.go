@@ -139,7 +139,7 @@ func ParseConnect(cl *Client) {
 			case "msg":
 				cl.SayPlayer(p.ClientID, PRINT_CHAT, r.Message)
 			case "ban":
-				KickPlayer(cl, p.ClientID)
+				cl.KickPlayer(p, r.Message)
 			case "mute":
 				cl.SayPlayer(p.ClientID, PRINT_CHAT, r.Message)
 				//MutePlayer(cl, p.ClientID, 9999)
@@ -148,15 +148,16 @@ func ParseConnect(cl *Client) {
 	}
 
 	// global
-	if isbanned, msg := CheckForBan(&globalbans, p.IP); isbanned == Banned {
-		cl.SayPlayer(
-			p.ClientID,
-			PRINT_CHAT,
-			fmt.Sprintf("Your IP/Userinfo matches a global ban: %s\n", msg),
-		)
-		KickPlayer(cl, p.ClientID)
-		return
-	}
+	/*
+		if isbanned, msg := CheckForBan(&globalbans, p.IP); isbanned == Banned {
+			cl.SayPlayer(
+				p.ClientID,
+				PRINT_CHAT,
+				fmt.Sprintf("Your IP/Userinfo matches a global ban: %s\n", msg),
+			)
+			cl.KickPlayer(p)
+			return
+		}*/
 
 	// local
 	/*
@@ -252,6 +253,6 @@ func ParseCommand(cl *Client) {
 		Teleport(cl)
 
 	case PCMDInvite:
-		Invite(cl)
+		cl.Invite()
 	}
 }
