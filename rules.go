@@ -147,6 +147,7 @@ func (cl *Client) ApplyRules(p *Player) {
 				log.Printf("[%s/KICK/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
 				cl.KickPlayer(p, r.Message)
+				return
 			case "mute":
 				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
@@ -171,6 +172,7 @@ func (cl *Client) ApplyRules(p *Player) {
 				log.Printf("[%s/KICK/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
 				cl.KickPlayer(p, r.Message)
+				return
 			case "mute":
 				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
