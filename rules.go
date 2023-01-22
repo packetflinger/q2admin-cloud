@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -111,7 +110,6 @@ func (cl *Client) CheckRulesSimple(p *Player, ruleset []ClientRule) (bool, []Cli
 
 		// Match the actual IP address
 		if r.Network.Contains(net.ParseIP(p.IP)) {
-			fmt.Println("ip matched")
 			if p.UserinfoMap["pw"] == r.Password {
 				continue
 			}
