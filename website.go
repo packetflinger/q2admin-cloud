@@ -130,7 +130,7 @@ func ValidateSession(sess string) (int, error) {
 }
 
 func RunHTTPServer() {
-	port := fmt.Sprintf(":%d", q2a.config.APIPort)
+	port := fmt.Sprintf("0.0.0.0:%d", q2a.config.APIPort)
 
 	r := LoadWebsiteRoutes()
 
