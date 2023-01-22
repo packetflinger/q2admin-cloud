@@ -13,6 +13,7 @@ import (
 	"strings"
 )
 
+// These are users who will be admining the clients
 type UserFormat struct {
 	ID          string `json:"ID"` // uuid
 	Email       string `json:"Email"`
@@ -56,13 +57,16 @@ type ClientRuleFormat struct {
 	Length       int64    `json:"Length"`       // seconds after created before expires
 }
 
+// Collections of clients
 type ServerGroupFormat struct {
 	Name    string   `json:"Name"`    // group name
 	Owner   string   `json:"Owner"`   // user email/name
-	Servers []string `json:"Servers"` // server name
+	Clients []string `json:"Clients"` // server name
 }
 
-// read a server "object" from disk and into memory
+// Read a client "object" from disk and into memory.
+//
+// Called at startup for each client
 func (cl *Client) ReadDiskFormat(name string) error {
 	sep := os.PathSeparator
 	filename := fmt.Sprintf("%s%c%s.json", q2a.config.ClientDirectory, sep, name)
