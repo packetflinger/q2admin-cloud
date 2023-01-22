@@ -230,5 +230,41 @@ func (q2a *RemoteAdminServer) ReadGlobalRules() {
 		rules = append(rules, out)
 	}
 
-	q2a.rules = rules
+	q2a.rules = SortRules(rules)
+}
+
+// Put ban rules first for fast failing.
+// Order:
+// 1. Bans
+// 2. Mutes
+// 3. Stifles
+// 4. Messages
+//
+// Called from ReadGlobalRules() and LoadClients() on startup.
+// Also called as new rules are added while running
+func SortRules(rules []ClientRule) []ClientRule {
+	newruleset := []ClientRule{}
+	bans := []ClientRule{}
+	mutes := []ClientRule{}
+	stifles := []ClientRule{}
+	msgs := []ClientRule{}
+
+	for _, r := range rules {
+		switch r.Type {
+		case "ban":
+			bans = append(bans, r)
+		case "mute":
+			mutes = append(mutes, r)
+		case "stifle":
+			stifles = append(stifles, r)
+		case "msg":
+			msgs = append(msgs, r)
+		}
+	}
+
+	newruleset = append(newruleset, bans...)
+	newruleset = append(newruleset, mutes...)
+	newruleset = append(newruleset, stifles...)
+	newruleset = append(newruleset, msgs...)
+	return newruleset
 }

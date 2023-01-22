@@ -117,7 +117,7 @@ func (cl *Client) ReadDiskFormat(name string) error {
 		control.UserinfoVal = c.UserinfoVal
 		controls = append(controls, control)
 	}
-	cl.Rules = controls
+	cl.Rules = SortRules(controls)
 	return nil
 }
 

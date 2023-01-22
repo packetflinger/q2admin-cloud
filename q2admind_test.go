@@ -260,3 +260,36 @@ func TestUserInfo1(t *testing.T) {
 		t.Error("1 rule should match:", len(mrules), "\n", mrules)
 	}
 }
+
+func TestRuleSort1(t *testing.T) {
+	rules := []ClientRule{
+		{
+			ID:      "rule1",
+			Address: "10.1.1.0/25",
+			Length:  0,
+			Type:    "mute",
+		},
+		{
+			ID:      "rule2",
+			Address: "100.1.2.0/22",
+			Length:  0,
+			Type:    "ban",
+		},
+		{
+			ID:      "rule3",
+			Address: "24.6.0.0/16",
+			Length:  0,
+			Type:    "mute",
+		},
+	}
+
+	rules2 := SortRules(rules)
+
+	if len(rules) != len(rules2) {
+		t.Error("ins and outs don't match")
+	}
+
+	if rules2[0].ID != "rule2" {
+		t.Error("ban not first", rules2)
+	}
+}
