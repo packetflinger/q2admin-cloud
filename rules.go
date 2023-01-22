@@ -134,8 +134,9 @@ func (cl *Client) CheckRulesSimple(p *Player, ruleset []ClientRule) (bool, []Cli
 // Called immediately after CheckRules() on ParseConnect() twice,
 // for local server rules and then again for global ones
 func (cl *Client) ApplyRules(p *Player) {
-	// local rules first
-	matched1, rules1 := cl.CheckRules(p, cl.Rules)
+	matched1, rules1 := cl.CheckRules(p, cl.Rules)  // local
+	matched2, rules2 := cl.CheckRules(p, q2a.rules) // global
+
 	if matched1 {
 		for _, r := range rules1 {
 			switch r.Type {
@@ -160,7 +161,6 @@ func (cl *Client) ApplyRules(p *Player) {
 		}
 	}
 
-	matched2, rules2 := cl.CheckRules(p, q2a.rules)
 	if matched2 {
 		for _, r := range rules2 {
 			switch r.Type {
