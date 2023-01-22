@@ -384,6 +384,7 @@ func Shutdown() {
  * Entry point
  */
 func main() {
+	start()
 	// catch stuff like ctrl+c
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -462,7 +463,7 @@ func (q2a *RemoteAdminServer) LoadClients() {
 /**
  * pre-entry point
  */
-func init() {
+func start() {
 	flag.Parse()
 
 	log.Println("Loading config:", *Configfile)
