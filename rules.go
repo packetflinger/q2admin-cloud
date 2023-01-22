@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -9,24 +10,28 @@ import (
 	"time"
 )
 
-// check a client against the rules, returns whether there were
+// Check a client against the rules, returns whether there were
 // any matches and what specific rules matched, for processing
+// later
+//
+// Called every time a player connects from ApplyRules() in ParseConnect()
 func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRule) {
 	matched := false        // whether any rules in the set matched
-	rules := []ClientRule{} // which ones matches
+	rules := []ClientRule{} // which ones matche
 	need := 0               // the criteria we need to be considered a match
 	have := 0               // how many criteria we have
 	now := time.Now().Unix()
 
 	for _, r := range ruleset {
 		// expired rule
-		if now-r.Created > r.Length {
+		if r.Length > 0 && now-r.Created > r.Length {
 			continue
 		}
 
-		// Match the actual IP address
+		// Match IP address by bitwise ANDing
 		if r.Network.Contains(net.ParseIP(p.IP)) {
-			if p.UserinfoMap["pw"] == r.Password {
+			// if user has the password, the rule will never match
+			if r.Password != "" && p.UserinfoMap["pw"] == r.Password {
 				continue
 			}
 			need++
@@ -42,7 +47,7 @@ func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRul
 							have++
 						}
 					} else {
-						if strings.Contains(p.Name, name) {
+						if strings.Contains(name, p.Name) {
 							matched = true
 							have++
 						}
@@ -66,39 +71,70 @@ func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRul
 				}
 			}
 
-			/* CLIENT STUFF HERE
-			if len(r.Client) > 0 {
-				reqs_unmet = true
-				for _, q2cl := range r.Client {
-					if r.Exact {
-						if p. == q2cl {
-							return true, &cl.Rules[i]
-						}
-					} else {
-						if strings.Contains(p.Name, name) {
-							return true, &cl.Rules[i]
-						}
-					}
-				}
-			}
-			*/
-
 			// if the match is a ban, no point in processing the rest of the rules
-			if have == need && r.Type == "ban" {
-				rules = append(rules, r)
-				return true, rules
-			}
+			/*
+				if have == need && r.Type == "ban" {
+					rules = append(rules, r)
+					return true, rules
+				}
+			*/
 
 			if have == need {
 				matched = true
 				rules = append(rules, r)
 			}
 		}
+
+		have = 0
+		need = 0
 	}
 
 	return matched, rules
 }
 
+// Check a client against the rules, returns whether there were
+// any matches and what specific rules matched, for processing.
+//
+// This one only checks if IP addresses match. Only called in unit tests
+func (cl *Client) CheckRulesSimple(p *Player, ruleset []ClientRule) (bool, []ClientRule) {
+	matched := false        // whether any rules in the set matched
+	rules := []ClientRule{} // which ones matches
+	need := 0               // the criteria we need to be considered a match
+	have := 0               // how many criteria we have
+	now := time.Now().Unix()
+
+	for _, r := range ruleset {
+		// expired rule
+		if r.Length > 0 && now-r.Created > r.Length {
+			continue
+		}
+
+		// Match the actual IP address
+		if r.Network.Contains(net.ParseIP(p.IP)) {
+			fmt.Println("ip matched")
+			if p.UserinfoMap["pw"] == r.Password {
+				continue
+			}
+			need++
+			have++
+
+			if have >= need {
+				matched = true
+				rules = append(rules, r)
+			}
+		}
+
+		have = 0
+		need = 0
+	}
+
+	return matched, rules
+}
+
+// Player should already match each rule, just apply the action.
+//
+// Called immediately after CheckRules() on ParseConnect() twice,
+// for local server rules and then again for global ones
 func (cl *Client) ApplyRules(p *Player) {
 	// local rules first
 	matched1, rules1 := cl.CheckRules(p, cl.Rules)
@@ -116,12 +152,17 @@ func (cl *Client) ApplyRules(p *Player) {
 				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
 				cl.MutePlayer(p, -1)
+			case "stifle":
+				p.Stifled = true
+				p.StifleLength = r.StifleLength
+				log.Printf("[%s/STIFLE/%s] %s\n", cl.Name, p.Name, r.Message)
+				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				cl.MutePlayer(p, r.StifleLength)
 			}
 		}
 	}
 
-	// global
-	matched2, rules2 := cl.CheckRules(p, cl.Rules)
+	matched2, rules2 := cl.CheckRules(p, q2a.rules)
 	if matched2 {
 		for _, r := range rules2 {
 			switch r.Type {
@@ -136,11 +177,20 @@ func (cl *Client) ApplyRules(p *Player) {
 				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
 				cl.MutePlayer(p, -1)
+			case "stifle":
+				p.Stifled = true
+				p.StifleLength = r.StifleLength
+				log.Printf("[%s/STIFLE/%s] %s\n", cl.Name, p.Name, r.Message)
+				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				cl.MutePlayer(p, r.StifleLength)
 			}
 		}
 	}
 }
 
+// Reads and parses the global rules from disk into memory.
+//
+// Called once at startup
 func (q2a *RemoteAdminServer) ReadGlobalRules() {
 	filedata, err := os.ReadFile("rules.json")
 	if err != nil {
