@@ -16,8 +16,8 @@
    "Exact": false,
    "Password": "",
    "StifleLength": 0,
-   "Created": 0,
-   "Length": 2592000
+   "Created": 1257894000,
+   "Length": 0
   },
   {
    "ID": "c416f4da-4904-41d7-aea8-e9129460b938",
@@ -37,7 +37,7 @@
    "Exact": false,
    "Password": "",
    "StifleLength": 0,
-   "Created": 0,
+   "Created": 1257894000,
    "Length": 0
   },
   {
@@ -56,13 +56,13 @@
    "Exact": false,
    "Password": "armpitfarts",
    "StifleLength": 0,
-   "Created": 0,
+   "Created": 1257894000,
    "Length": 0
   },
   {
    "ID": "dccfa2fe-b939-48a4-ae2f-02aa3765e232",
    "Type": "msg",
-   "Address": "10.2.2.6/32",
+   "Address": "10.2.2.0/24",
    "Name": [],
    "Client": [],
    "Message": "Stop being such an asshole or you'll be muted. Only warning.",
@@ -73,7 +73,7 @@
    "Exact": false,
    "Password": "",
    "StifleLength": 0,
-   "Created": 0,
+   "Created": 1257894000,
    "Length": 604800
   }
  ]
