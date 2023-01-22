@@ -35,9 +35,7 @@ const (
 	TeleportWidth   = 80         // max chars per line for teleport replies
 )
 
-/**
- * Commands sent from the Q2 server to us
- */
+// Commands sent from the Q2 server to us
 const (
 	_             = iota
 	CMDHello      // server connect
@@ -55,9 +53,7 @@ const (
 	CMDAuth
 )
 
-/**
- * Commands we send back to the Q2 server
- */
+// Commands we send back to the Q2 server
 const (
 	_ = iota
 	SCMDHelloAck
@@ -72,9 +68,7 @@ const (
 	SCMDGetPlayers
 )
 
-/**
- * Player commands, players can issue this from their client
- */
+// Player commands, players can issue this from their client
 const (
 	PCMDTeleport = iota
 	PCMDInvite
@@ -82,9 +76,7 @@ const (
 	PCMDReport
 )
 
-/**
- * Print levels
- */
+// Print levels
 const (
 	PRINT_LOW    = iota // pickups
 	PRINT_MEDIUM        // obituaries (white/grey, no sound)
@@ -92,9 +84,7 @@ const (
 	PRINT_CHAT          // highlighted, sound
 )
 
-/**
- * Log types, used in the database
- */
+// Log types, used in the database
 const (
 	LogTypePrint = iota
 	LogTypeJoin
@@ -104,19 +94,15 @@ const (
 	LogTypeCommand
 )
 
-/**
- * Initialize a message buffer
- */
+// Initialize a message buffer
 func clearmsg(msg *MessageBuffer) {
 	msg.buffer = nil
 	msg.index = 0
 	msg.length = 0
 }
 
-/**
- * Locate the struct of the server for a particular
- * ID, get a pointer to it
- */
+// Locate the struct of the server for a particular
+// ID, get a pointer to it
 func FindClient(lookup string) (*Client, error) {
 	for i, cl := range q2a.clients {
 		if cl.UUID == lookup {
@@ -127,9 +113,7 @@ func FindClient(lookup string) (*Client, error) {
 	return nil, errors.New("unknown server")
 }
 
-/**
- * Send all messages in the outgoing queue to the gameserver
- */
+// Send all messages in the outgoing queue to the client (gameserver)
 func (cl *Client) SendMessages() {
 	if !cl.Connected {
 		return
@@ -147,39 +131,34 @@ func (cl *Client) SendMessages() {
 		cl.MessageOut.length = len(cipher)
 	}
 
+	// only send if there is something to send
 	if cl.MessageOut.length > 0 {
 		(*cl.Connection).Write(cl.MessageOut.buffer)
 		clearmsg(&cl.MessageOut)
 	}
 }
 
-/**
- * Dates are stored in the database as unix timestamps
- */
+// Dates are stored in the database as unix timestamps
 func GetUnixTimestamp() int64 {
 	return time.Now().Unix()
 }
 
-//
 // Get current time in HH:MM:SS format
-//
 func GetTimeNow() string {
 	now := time.Now()
 	return fmt.Sprintf("%02d:%02d:%02d", now.Hour(), now.Minute(), now.Second())
 }
 
-/**
- * Get a time "object" from a database timestamp
- */
+// Convert unix timestamp to a time struct
 func GetTimeFromTimestamp(ts int64) time.Time {
 	return time.Unix(ts, 0)
 }
 
+// Client number is between 0 and maxplayers
 func (cl *Client) ValidClientID(id int) bool {
 	return id >= 0 && id < cl.MaxPlayers
 }
 
-//
 // Each server keeps track of the websocket for people "looking at it".
 // When they close the browser or logout, remove the pointer
 // to that socket
@@ -229,11 +208,12 @@ func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
 	}
 }
 
-/**
- * Setup the connection
- * The first message sent should identify the game server
- * and trigger the authentication process
- */
+// Setup the connection
+// The first message sent should identify the game server
+// and trigger the authentication process. Connection
+// persists in a goroutine from this function.
+//
+// Called from main loop when a new connection is made
 func handleConnection(c net.Conn) {
 	log.Printf("Serving %s\n", c.RemoteAddr().String())
 
@@ -296,10 +276,8 @@ func handleConnection(c net.Conn) {
 	WriteShort(len(challengeCipher), &cl.MessageOut)
 	WriteData(challengeCipher, &cl.MessageOut)
 
-	/**
-	 * if client requests encrypted transit, encrypt the session key/iv
-	 * with the client's public key to keep it confidential
-	 */
+	// If client requests encrypted transit, encrypt the session key/iv
+	// with the client's public key to keep it confidential
 	if cl.Encrypted {
 		cl.AESKey = RandomBytes(AESBlockLength)
 		cl.AESIV = RandomBytes(AESIVLength)
@@ -343,6 +321,7 @@ func handleConnection(c net.Conn) {
 
 	cl.Players = make([]Player, cl.MaxPlayers)
 
+	// main connection loop
 	for {
 		input := make([]byte, 5000)
 		size, err := c.Read(input)
@@ -372,19 +351,15 @@ func handleConnection(c net.Conn) {
 	c.Close()
 }
 
-/**
- * Gracefully shutdown everything
- */
+// Gracefully shut everything down
 func Shutdown() {
 	log.Println("Shutting down...")
 	db.Close() // not sure if this is necessary
 }
 
-/**
- * Entry point
- */
+// start here
 func main() {
-	start()
+	initialize()
 	// catch stuff like ctrl+c
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -422,6 +397,8 @@ func main() {
 // The file should be just a list of server names one per line
 // comments (// and #) and blank lines are allowed
 // indenting doesn't matter
+//
+// Called from initialize() at startup
 func (c Config) ReadClientFile() []string {
 	contents, err := os.ReadFile(c.ClientsFile)
 	if err != nil {
@@ -446,6 +423,10 @@ func (c Config) ReadClientFile() []string {
 	return srvs
 }
 
+// Read all client names from disk, load their diskformats
+// into memory. Add each to
+//
+// Called from initialize() at startup
 func (q2a *RemoteAdminServer) LoadClients() {
 	clientlist := q2a.config.ReadClientFile()
 	cls := []Client{}
@@ -460,10 +441,11 @@ func (q2a *RemoteAdminServer) LoadClients() {
 	q2a.clients = cls
 }
 
-/**
- * pre-entry point
- */
-func start() {
+// This is a renamed "init()" function. Having it named init
+// was messing up the unit tests.
+//
+// Called from main() at startup
+func initialize() {
 	flag.Parse()
 
 	log.Println("Loading config:", *Configfile)
