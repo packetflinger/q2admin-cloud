@@ -32,6 +32,8 @@ type Player struct {
 	FOV              int
 	ConnectTime      int64
 	Rules            []ClientRule // rules that match this player
+	Stifled          bool
+	StifleLength     int // seconds
 }
 
 /**
