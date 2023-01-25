@@ -79,7 +79,9 @@ type Config struct {
 	Debug           int    `json:"debug"`
 	APIEnabled      int    `json:"enableapi"`
 	ClientsFile     string `json:"clientsfile"`
-	ClientDirectory string `json:"clientdir"` // folder for json files
+	ClientDirectory string `json:"clientdir"`  // folder for json files
+	UsersFile       string `json:"usersfile"`  // web users
+	AccessFile      string `json:"accessfile"` // their permissions
 }
 
 //

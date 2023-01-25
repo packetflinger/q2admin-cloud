@@ -16,6 +16,7 @@ type User struct {
 	Description string       // ?
 	Disabled    bool         // user globally cut off
 	Permissions []UserAccess // client access
+	Session     UserSession
 }
 
 // These are users who will be admining the clients
@@ -34,6 +35,13 @@ type UserAccess struct {
 	User       string `json:"User"`       // uuid
 	Client     string `json:"Client"`     // uuid
 	Permission int    `json:"Permission"` // bitmask
+}
+
+// A website session
+type UserSession struct {
+	ID      string // uuid
+	Created int64  // unix timestamp
+	Expires int64  // unix timestamp
 }
 
 // Get a pointer to a user based on their ID
@@ -70,12 +78,18 @@ func (q2a RemoteAdminServer) GetUserByName(n string) (*User, error) {
 
 // write all User objects to json format on disk
 func WriteUsersToDisk(users []User, filename string) {
-	df := []UserDiskFormat{}
+	dusers := []UserDiskFormat{}
 	for _, u := range users {
-		df = append(df, UserDiskFormat(u))
+		df := UserDiskFormat{}
+		df.ID = u.ID
+		df.Name = u.Name
+		df.Email = u.Email
+		df.Description = u.Description
+		df.Disabled = u.Disabled
+		dusers = append(dusers, df)
 	}
 
-	filecontents, err := json.MarshalIndent(df, "", "  ")
+	filecontents, err := json.MarshalIndent(dusers, "", "  ")
 	if err != nil {
 		log.Println(err)
 	}
@@ -86,7 +100,8 @@ func WriteUsersToDisk(users []User, filename string) {
 	}
 }
 
-// Read a json file containing users and parse into a struct
+// Read a json file containing users and parse into a struct.
+// Called at startup
 func ReadUsersFromDisk(filename string) ([]User, error) {
 	filedata, err := os.ReadFile(filename)
 	if err != nil {
@@ -103,7 +118,14 @@ func ReadUsersFromDisk(filename string) ([]User, error) {
 
 	users := []User{}
 	for _, u := range df {
-		users = append(users, User(u))
+		newuser := User{
+			ID:          u.ID,
+			Email:       u.Email,
+			Name:        u.Name,
+			Description: u.Description,
+			Disabled:    u.Disabled,
+		}
+		users = append(users, newuser)
 	}
 
 	return users, nil
