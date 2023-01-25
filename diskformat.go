@@ -13,15 +13,6 @@ import (
 	"strings"
 )
 
-// These are users who will be admining the clients
-type UserFormat struct {
-	ID          string `json:"ID"` // uuid
-	Email       string `json:"Email"`
-	Description string `json:"Description"`
-	LoginCount  int    `json:"LoginCount"`
-	LastLogin   int64  `json:"LastLogin"` // unix timestamp
-}
-
 // JSON structure for persistent storage
 type ServerFormat struct {
 	UUID          string             `json:"UUID"` // match client to server config

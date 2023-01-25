@@ -57,7 +57,7 @@ type Client struct {
 // "This" admin server
 //
 type RemoteAdminServer struct {
-	//users      []User
+	users      []User
 	config     Config
 	clients    []Client
 	rules      []ClientRule
@@ -105,12 +105,4 @@ type ClientRule struct {
 	StifleLength int   // secs
 	Created      int64 // unix timestamp
 	Length       int64 // secs after Created before expiring
-}
-
-type User struct {
-	ID          string
-	Email       string
-	Description string
-	LoginCount  int
-	LastLogin   int64
 }
