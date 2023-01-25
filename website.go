@@ -244,7 +244,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ...or show the form
-	tmpl, e := template.ParseFiles("website-templates/login.tmpl")
+	tmpl, e := template.ParseFiles("website/templates/sign-in.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {

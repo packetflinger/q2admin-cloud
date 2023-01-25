@@ -7,7 +7,8 @@ import (
 )
 
 type WebRoutes struct {
-	Assets           string
+	Static           string
+	Static2          string
 	AuthLogin        string
 	AuthLogout       string
 	ChatFeed         string
@@ -23,7 +24,8 @@ type WebRoutes struct {
 var routes WebRoutes
 
 func LoadWebsiteRoutes() *mux.Router {
-	routes.Assets = "/assets/"
+	routes.Static = "/static/"
+	routes.Static2 = "/static2/"
 	routes.AuthLogin = "/signin"
 	routes.AuthLogout = "/signout"
 	routes.ChatFeed = "/dashboard/sv/{ServerUUID}/feed"
@@ -46,7 +48,8 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(routes.ServerRemove, WebDelServer)
 	r.HandleFunc(routes.ServerView, WebsiteHandlerServerView)
 	r.HandleFunc(routes.ConnectedServers, WebsiteAPIGetConnectedServers)
-	r.PathPrefix(routes.Assets).Handler(http.FileServer(http.Dir(".")))
+	r.PathPrefix(routes.Static).Handler(http.FileServer(http.Dir("./website")))
+	r.PathPrefix(routes.Static2).Handler(http.FileServer(http.Dir("./website")))
 
 	return r
 }
