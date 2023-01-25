@@ -27,7 +27,7 @@ var (
 
 const (
 	ProtocolMagic   = 1128346193 // "Q2AC"
-	versionRequired = 300        // git revision number
+	versionRequired = 342        // git revision number
 	challengeLength = 16         // bytes
 	AESBlockLength  = 16         // 128 bit
 	AESIVLength     = 16         // 128 bit
