@@ -1,17 +1,14 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -39,13 +36,13 @@ type WebUser struct {
 }
 
 type DashboardPage struct {
-	User         WebUser
+	WebUser      *User
 	MyServers    []Client
 	OtherServers []Client
 }
 
 type ServerPage struct {
-	User     WebUser
+	WebUser  *User
 	MyServer Client
 }
 
@@ -58,21 +55,22 @@ var WSUpgrader = websocket.Upgrader{
 /**
  * Checks if user has an existing session and validates it
  */
-func GetSessionUser(r *http.Request) WebUser {
-	var userid int
+
+func GetSessionUser(r *http.Request) (*User, error) {
+	var user *User
 	var cookie *http.Cookie
 	var e error
-	niluser := &WebUser{}
+	niluser := &User{}
 
 	if cookie, e = r.Cookie(SessionName); e != nil {
-		return *niluser
+		return niluser, e
 	}
 
-	if userid, e = ValidateSession(cookie.Value); e != nil {
-		return *niluser
+	if user, e = ValidateSession(cookie.Value); e != nil {
+		return niluser, e
 	}
 
-	return GetUser(userid)
+	return user, nil
 }
 
 func GetUser(id int) WebUser {
@@ -94,39 +92,31 @@ func GetUser(id int) WebUser {
 	return *niluser
 }
 
-/**
- * User just successfully authed, insert a new session
- */
-func CreateSession(user int) string {
-	sessionid := uuid.New().String()
-	expires := GetUnixTimestamp() + (86400 * 2) // two day from now
-
-	sql := "INSERT INTO websession (session, user, expiration) VALUES (?, ?, ?)"
-	_, err := db.Exec(sql, sessionid, user, expires)
-	if err != nil {
-		log.Println(err)
+// Make a new session for a user
+func CreateSession() UserSession {
+	sess := UserSession{
+		ID:      GenerateUUID(),
+		Created: GetUnixTimestamp(),
+		Expires: GetUnixTimestamp() + (86400 * 2), // 2 days from now
 	}
 
-	sql = "UPDATE user SET last_login = ? WHERE id = ? LIMIT 1"
-	_, err = db.Exec(sql, GetUnixTimestamp(), user)
-	if err != nil {
-		log.Println(err)
-	}
-
-	return sessionid
+	return sess
 }
 
-func ValidateSession(sess string) (int, error) {
-	var UserID int
-	sql := "SELECT user FROM websession WHERE session = ? AND expiration >= ? LIMIT 1"
-	if r, e := db.Query(sql, sess, GetUnixTimestamp()); e == nil {
-		r.Next()
-		r.Scan(&UserID)
-		r.Close()
-		return UserID, nil
-	} else {
-		return 0, errors.New(e.Error())
+// Make sure the session presented is valid.
+// 1. Current date is after the session creation date
+// 2. Current date is before the session expiration
+func ValidateSession(sess string) (*User, error) {
+	for i := range q2a.Users {
+		u := q2a.Users[i]
+		if u.Session.ID == sess {
+			now := GetUnixTimestamp()
+			if now > u.Session.Created && now < u.Session.Expires {
+				return &u, nil
+			}
+		}
 	}
+	return &User{}, errors.New("invalid session")
 }
 
 func RunHTTPServer() {
@@ -150,27 +140,14 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 
 	page := DashboardPage{}
 
-	page.User = GetSessionUser(r)
-	if page.User.ID == 0 {
-		http.Redirect(w, r, "/signin", http.StatusFound) // 302
-	}
-
-	sql := "SELECT uuid, name FROM server WHERE owner = ? ORDER BY name ASC"
-	rows, err := db.Query(sql, page.User.ID)
+	u, err := GetSessionUser(r)
 	if err != nil {
 		log.Println(err)
+		http.Redirect(w, r, "/signin", http.StatusFound) // 302
 		return
 	}
 
-	for rows.Next() {
-		s := Client{}
-		err = rows.Scan(&s.UUID, &s.Name)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		page.MyServers = append(page.MyServers, s)
-	}
+	page.WebUser = u
 
 	tmpl, e := template.ParseFiles("website/templates/home.tmpl")
 	if e != nil {
@@ -184,7 +161,13 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["ServerUUID"]
 	page := ServerPage{}
-	page.User = GetSessionUser(r)
+	u, e := GetSessionUser(r)
+	if e != nil {
+		log.Println(e)
+		http.Redirect(w, r, "/signin", http.StatusFound) // 302
+		return
+	}
+	page.WebUser = u
 	MyServer, err := FindClient(uuid)
 	if err != nil {
 		log.Println(err)
@@ -204,13 +187,13 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 // the "index" handler
 //
 func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
-	user := GetSessionUser(r)
-	if user.ID != 0 {
-		http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
-		return
+	_, e := GetSessionUser(r)
+	if e != nil {
+		log.Println(e)
+		http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
 	}
 
-	http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
+	http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
 }
 
 //
@@ -224,20 +207,22 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		email := r.FormValue("email")
-
-		// lookup the user's ID
-		var UserID int
-		sql := "SELECT id FROM user WHERE email = ? LIMIT 1"
-		rs, e := db.Query(sql, email)
-		if e == nil {
-			rs.Next()
-			rs.Scan(&UserID)
-			rs.Close()
-			sess := CreateSession(UserID)
-			cookieexpire := time.Now().AddDate(0, 0, 2) // years, months, days
-			cookie := http.Cookie{Name: SessionName, Value: sess, Expires: cookieexpire}
-			http.SetCookie(w, &cookie)
+		user, err := q2a.GetUserByEmail(email)
+		if err != nil {
+			log.Println(err)
+			return
 		}
+
+		// DO LATER
+		// actually check their auth
+		//
+
+		session := CreateSession()
+		user.Session = session
+
+		cookieexpire := time.Now().AddDate(0, 0, 2) // years, months, days
+		cookie := http.Cookie{Name: SessionName, Value: session.ID, Expires: cookieexpire}
+		http.SetCookie(w, &cookie)
 
 		http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
 		return
@@ -272,28 +257,30 @@ func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 }
 
 func WebAddServer(w http.ResponseWriter, r *http.Request) {
-	user := GetSessionUser(r)
-	r.ParseForm()
-	name := r.Form.Get("servername")
-	ip := r.Form.Get("ipaddr")
-	port, err := strconv.Atoi(r.Form.Get("port"))
-	if err != nil {
-		return
-	}
-	uuid := uuid.New().String()
-	owner := user.ID
-	code := "abc123"
+	/*
+		user := GetSessionUser(r)
+		r.ParseForm()
+		name := r.Form.Get("servername")
+		ip := r.Form.Get("ipaddr")
+		port, err := strconv.Atoi(r.Form.Get("port"))
+		if err != nil {
+			return
+		}
+		uuid := uuid.New().String()
+		owner := user.ID
+		code := "abc123"
 
-	sql := "INSERT INTO server (uuid, owner, name, ip, port, disabled, verified, verify_code) VALUES (?,?,?,?,?,0,0,?)"
-	_, err = db.Exec(sql, uuid, owner, name, ip, port, code)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+		sql := "INSERT INTO server (uuid, owner, name, ip, port, disabled, verified, verify_code) VALUES (?,?,?,?,?,0,0,?)"
+		_, err = db.Exec(sql, uuid, owner, name, ip, port, code)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 
-	q2a.clients = RehashServers()
+		q2a.clients = RehashServers()
 
-	http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
+		http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
+	*/
 }
 
 //
@@ -333,59 +320,63 @@ func WebSignout(w http.ResponseWriter, r *http.Request) {
 // Websocket handler for sending chat message to web clients
 //
 func WebFeed(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["ServerUUID"]
-	page := ServerPage{}
-	page.User = GetSessionUser(r)
-	srv, err := FindClient(uuid)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	/*
+		vars := mux.Vars(r)
+		uuid := vars["ServerUUID"]
+		page := ServerPage{}
+		page.User = GetSessionUser(r)
+		srv, err := FindClient(uuid)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 
-	WSUpgrader.CheckOrigin = func(r *http.Request) bool {
-		// check for auth here
-		return true // everyone can connect
-	}
+		WSUpgrader.CheckOrigin = func(r *http.Request) bool {
+			// check for auth here
+			return true // everyone can connect
+		}
 
-	ws, err := WSUpgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		err = nil
-	}
+		ws, err := WSUpgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Println(err)
+			err = nil
+		}
 
-	srv.WebSockets = append(srv.WebSockets, ws)
+		srv.WebSockets = append(srv.WebSockets, ws)
 
-	log.Println("Chat Websocket connected")
+		log.Println("Chat Websocket connected")
+	*/
 }
 
 //
 //
 //
 func WebFeedInput(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["ServerUUID"]
-	user := GetSessionUser(r)
-	srv, err := FindClient(uuid)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	/*
+		vars := mux.Vars(r)
+		uuid := vars["ServerUUID"]
+		user := GetSessionUser(r)
+		srv, err := FindClient(uuid)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 
-	// make sure user is allowed to give commands to srv
-	// change this
-	if user.ID > 0 {
+		// make sure user is allowed to give commands to srv
+		// change this
+		if user.ID > 0 {
 
-	}
+		}
 
-	//input64 := r.PostForm["input"]
-	input64 := r.URL.Query().Get("input")
-	input, err := base64.StdEncoding.DecodeString(input64)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+		//input64 := r.PostForm["input"]
+		input64 := r.URL.Query().Get("input")
+		input, err := base64.StdEncoding.DecodeString(input64)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 
-	preamble := "[" + user.Email + "] "
-	srv.SendToWebsiteFeed(preamble+string(input), FeedChat)
+		preamble := "[" + user.Email + "] "
+		srv.SendToWebsiteFeed(preamble+string(input), FeedChat)
+	*/
 }

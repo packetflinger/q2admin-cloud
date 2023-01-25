@@ -4,26 +4,26 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	uuid "github.com/google/uuid"
 )
+
+func GenerateUUID() string {
+	return uuid.NewString()
+}
 
 //
 // Remove any active sessions
 //
 func AuthLogout(w http.ResponseWriter, r *http.Request) {
-	user := GetSessionUser(r)
-
-	// no current session...
-	if user.ID == 0 {
-		return
-	}
-
-	// remove session(s) from database
-	sql := "DELETE FROM websession WHERE id = ?"
-	_, err := db.Exec(sql, user.ID)
+	user, err := GetSessionUser(r)
+	// no current session
 	if err != nil {
-		log.Println(err)
 		return
 	}
+
+	// remove current session
+	user.Session = UserSession{}
 
 	// remove the client's cookie
 	expire := time.Now()
