@@ -172,7 +172,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 		page.MyServers = append(page.MyServers, s)
 	}
 
-	tmpl, e := template.ParseFiles("website-templates/dashboard.tmpl")
+	tmpl, e := template.ParseFiles("website/templates/home.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
