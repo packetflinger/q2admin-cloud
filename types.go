@@ -57,12 +57,13 @@ type Client struct {
 // "This" admin server
 //
 type RemoteAdminServer struct {
-	users      []User
-	config     Config
-	clients    []Client
-	rules      []ClientRule
-	privatekey *rsa.PrivateKey
-	publickey  *rsa.PublicKey
+	Users      []User          // website users
+	config     Config          // global config
+	clients    []Client        // managed quake 2 servers
+	access     []UserAccess    // permissions
+	rules      []ClientRule    // bans/mutes/etc
+	privatekey *rsa.PrivateKey // private to us
+	publickey  *rsa.PublicKey  // known to clients
 }
 
 //
