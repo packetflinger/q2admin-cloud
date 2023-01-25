@@ -479,6 +479,24 @@ func initialize() {
 	log.Println("Loading clients from:", q2a.config.ClientsFile)
 	q2a.LoadClients()
 
+	// Read users
+	log.Println("Loading users from:", q2a.config.UsersFile)
+	users, err := ReadUsersFromDisk(q2a.config.UsersFile)
+	if err != nil {
+		log.Println(err)
+	} else {
+		q2a.Users = users
+	}
+
+	// Read permissions
+	log.Println("Loading user access from:", q2a.config.AccessFile)
+	useraccess, err := ReadAccessFromDisk(q2a.config.AccessFile)
+	if err != nil {
+		log.Println(err)
+	} else {
+		q2a.access = useraccess
+	}
+
 	for _, c := range q2a.clients {
 		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 	}

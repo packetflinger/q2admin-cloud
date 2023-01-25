@@ -7,5 +7,7 @@
     "debug": 0,
     "enableapi": 1,
     "clientsfile": "clients.txt",
-    "clientdir": "client-configs"
+    "clientdir": "client-configs",
+    "usersfile": "users.json",
+    "accessfile": "access.json"
 }
