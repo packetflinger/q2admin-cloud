@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Q2Admin Dashboard</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    </head>
+    <body>
+        <div class="container">
+            <div style="background-color: #aaa;"><h1>Q2Admin Dashboard</h1></div>
+            <p>{{.User.Email}}</p>
+            <h3>My Servers <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addServerModal">Add</button></h3>
+            <p id="my-servers">
+                <img src="/assets/img/loading.svg" style="width:32px; height: 32px;">
+                <ul>
+                {{range .MyServers}}
+                    <li><a href="/dashboard/sv/{{.UUID}}">{{.Name}}</a></li>
+                {{end}}
+                </ul>
+            </p>
+            <h3>Delegated Servers</h3>
+            <p id="delegated-servers">
+                <img src="/assets/img/loading.svg" style="width:32px; height: 32px;">
+                <ul>
+                {{range .OtherServers}}
+                    <li><a href="/dashboard/sv/{{.UUID}}">{{.Name}}</a></li>
+                {{end}}
+                </ul>
+            </p>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.1/dist/jquery.slim.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+
+        <div class="modal fade" id="addServerModal" tabindex="-1" aria-labelledby="addServerModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <form action="/add-server" method="post">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="exampleModalLabel">Add Server</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="servername" class="form-label">Name</label>
+                                <input type="text" class="form-control" name="servername" id="servername" placeholder="pf-tdm-antartica">
+                            </div>
+                            <div class="mb-3">
+                                <label for="ipaddr" class="form-label">IP Address</label>
+                                <input type="text" class="form-control" name="ipaddr" id="ipaddr" placeholder="100.64.2.5">
+                            </div>
+                            <div class="mb-3">
+                                <label for="port" class="form-label">Port</label>
+                                <input type="text" class="form-control" name="port" id="port" placeholder="27910">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Add</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </body>
+</html>
