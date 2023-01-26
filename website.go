@@ -46,6 +46,12 @@ type ServerPage struct {
 	MyServer Client
 }
 
+// Represents the website
+type WebInterface struct {
+	GCreds Credentials
+	DCreds Credentials
+}
+
 // needed for upgrading the websockets
 var WSUpgrader = websocket.Upgrader{
 	ReadBufferSize:  1500,
@@ -119,12 +125,14 @@ func ValidateSession(sess string) (*User, error) {
 	return &User{}, errors.New("invalid session")
 }
 
+// Load everything needed to start the web interface
 func RunHTTPServer() {
+	website := WebInterface{}
+	website.GCreds = LoadOAuthCredentials("google.cred")
+	website.DCreds = LoadOAuthCredentials("discord.cred")
+
 	port := fmt.Sprintf("0.0.0.0:%d", q2a.config.APIPort)
-
 	r := LoadWebsiteRoutes()
-
-	log.Printf("Listening for web requests on %s\n", port)
 
 	httpsrv := &http.Server{
 		Handler:      r,
@@ -132,7 +140,7 @@ func RunHTTPServer() {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-
+	log.Printf("Listening for web requests on %s\n", port)
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
@@ -142,8 +150,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 
 	u, err := GetSessionUser(r)
 	if err != nil {
-		log.Println(err)
-		http.Redirect(w, r, "/signin", http.StatusFound) // 302
+		http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
 		return
 	}
 
@@ -189,8 +196,8 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 	_, e := GetSessionUser(r)
 	if e != nil {
-		log.Println(e)
 		http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
+		return
 	}
 
 	http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
