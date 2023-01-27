@@ -232,6 +232,9 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 			ID:      token.AccessToken,
 			Expires: token.Expiry.Unix(),
 		}
+		user.Avatar = fmt.Sprintf(
+			"https://cdn.discordapp.com/avatars/%s/%s.png", profres.ID, profres.Avatar,
+		)
 		cookie := http.Cookie{Name: SessionName, Value: token.AccessToken, Expires: token.Expiry}
 		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302

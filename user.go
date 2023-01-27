@@ -14,6 +14,7 @@ type User struct {
 	Email       string       // can change
 	Name        string       // main q2 alias, can change
 	Description string       // ?
+	Avatar      string       // from auth provider
 	Disabled    bool         // user globally cut off
 	Permissions []UserAccess // client access
 	Session     UserSession
