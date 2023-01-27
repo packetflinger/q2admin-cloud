@@ -82,6 +82,7 @@ type Config struct {
 	ClientDirectory string `json:"clientdir"`  // folder for json files
 	UsersFile       string `json:"usersfile"`  // web users
 	AccessFile      string `json:"accessfile"` // their permissions
+	OAuthFile       string `json:"oauthfile"`  // api credentials
 }
 
 //

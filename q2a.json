@@ -9,5 +9,6 @@
     "clientsfile": "clients.txt",
     "clientdir": "client-configs",
     "usersfile": "users.json",
-    "accessfile": "access.json"
+    "accessfile": "access.json",
+    "oauthfile": "oauthcreds.json"
 }

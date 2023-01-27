@@ -11,6 +11,8 @@ type WebRoutes struct {
 	Static2          string
 	AuthLogin        string
 	AuthLogout       string
+	AuthGoogle       string
+	AuthDiscord      string
 	ChatFeed         string
 	ChatFeedInput    string
 	ConnectedServers string
@@ -28,6 +30,8 @@ func LoadWebsiteRoutes() *mux.Router {
 	routes.Static2 = "/static2/"
 	routes.AuthLogin = "/signin"
 	routes.AuthLogout = "/signout"
+	routes.AuthGoogle = "/auth/google"
+	routes.AuthDiscord = "/auth/discord"
 	routes.ChatFeed = "/dashboard/sv/{ServerUUID}/feed"
 	routes.ChatFeedInput = "/dashboard/sv/{ServerUUID}/input"
 	routes.ConnectedServers = "/api/GetConnectedServers"
@@ -42,12 +46,15 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(routes.ServerAdd, WebAddServer).Methods("POST")
 	r.HandleFunc(routes.AuthLogin, WebsiteHandlerSignin)
 	r.HandleFunc(routes.AuthLogout, WebSignout)
+	r.HandleFunc(routes.AuthDiscord, ProcessDiscordLogin)
+	r.HandleFunc(routes.AuthGoogle, ProcessGoogleLogin)
 	r.HandleFunc(routes.ChatFeed, WebFeed)
 	r.HandleFunc(routes.ChatFeedInput, WebFeedInput)
 	r.HandleFunc(routes.Dashboard, WebsiteHandlerDashboard)
 	r.HandleFunc(routes.ServerRemove, WebDelServer)
 	r.HandleFunc(routes.ServerView, WebsiteHandlerServerView)
 	r.HandleFunc(routes.ConnectedServers, WebsiteAPIGetConnectedServers)
+
 	r.PathPrefix(routes.Static).Handler(http.FileServer(http.Dir("./website")))
 	r.PathPrefix(routes.Static2).Handler(http.FileServer(http.Dir("./website")))
 

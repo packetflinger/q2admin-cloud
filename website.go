@@ -7,10 +7,15 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+)
+
+var (
+	website = WebInterface{}
 )
 
 const (
@@ -48,8 +53,7 @@ type ServerPage struct {
 
 // Represents the website
 type WebInterface struct {
-	GCreds Credentials
-	DCreds Credentials
+	creds []Credentials
 }
 
 // needed for upgrading the websockets
@@ -127,9 +131,13 @@ func ValidateSession(sess string) (*User, error) {
 
 // Load everything needed to start the web interface
 func RunHTTPServer() {
-	website := WebInterface{}
-	website.GCreds = LoadOAuthCredentials("google.cred")
-	website.DCreds = LoadOAuthCredentials("discord.cred")
+	// load our OAuth2 stuff
+	cr, err := ReadOAuthCredsFromDisk(q2a.config.OAuthFile)
+	if err != nil {
+		log.Println(err)
+		os.Exit(0)
+	}
+	website.creds = cr
 
 	port := fmt.Sprintf("0.0.0.0:%d", q2a.config.APIPort)
 	r := LoadWebsiteRoutes()
@@ -235,12 +243,16 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ...or show the form
+	// ...or show the sign-in form
 	tmpl, e := template.ParseFiles("website/templates/sign-in.tmpl")
+	for i := range website.creds {
+		website.creds[i].URL = BuildAuthURL(website.creds[i], i)
+	}
+
 	if e != nil {
 		log.Println(e)
 	} else {
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, website.creds)
 	}
 }
 
