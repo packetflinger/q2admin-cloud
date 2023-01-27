@@ -399,3 +399,21 @@ func WebFeedInput(w http.ResponseWriter, r *http.Request) {
 		srv.SendToWebsiteFeed(preamble+string(input), FeedChat)
 	*/
 }
+
+func GroupsHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, e := template.ParseFiles("website/templates/my-groups.tmpl")
+	if e != nil {
+		log.Println(e)
+	} else {
+		tmpl.Execute(w, nil)
+	}
+}
+
+func ServersHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, e := template.ParseFiles("website/templates/my-servers.tmpl")
+	if e != nil {
+		log.Println(e)
+	} else {
+		tmpl.Execute(w, nil)
+	}
+}

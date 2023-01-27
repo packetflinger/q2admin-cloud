@@ -18,8 +18,10 @@ type WebRoutes struct {
 	ConnectedServers string
 	Dashboard        string
 	Index            string
+	Groups           string
 	ServerAdd        string
 	ServerRemove     string
+	Servers          string
 	ServerView       string
 }
 
@@ -37,8 +39,10 @@ func LoadWebsiteRoutes() *mux.Router {
 	routes.ConnectedServers = "/api/GetConnectedServers"
 	routes.Dashboard = "/dashboard"
 	routes.Index = "/"
+	routes.Groups = "/my-groups"
 	routes.ServerAdd = "/add-server"
 	routes.ServerRemove = "/dashboard/rm/{id}"
+	routes.Servers = "/my-servers"
 	routes.ServerView = "/dashboard/sv/{ServerUUID}"
 
 	r := mux.NewRouter()
@@ -54,6 +58,8 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(routes.ServerRemove, WebDelServer)
 	r.HandleFunc(routes.ServerView, WebsiteHandlerServerView)
 	r.HandleFunc(routes.ConnectedServers, WebsiteAPIGetConnectedServers)
+	r.HandleFunc(routes.Groups, GroupsHandler)
+	r.HandleFunc(routes.Servers, ServersHandler)
 
 	r.PathPrefix(routes.Static).Handler(http.FileServer(http.Dir("./website")))
 	r.PathPrefix(routes.Static2).Handler(http.FileServer(http.Dir("./website")))
