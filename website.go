@@ -497,3 +497,61 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
+func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+
+	data := WebpageData{
+		Title:       "Privacy Policy | Q2Admin CloudAdmin",
+		HeaderTitle: "Privacy Policy",
+		SessionUser: user,
+	}
+
+	tmpl, e := template.ParseFiles(
+		"website/templates/header-main.tmpl",
+		"website/templates/privacy-policy.tmpl",
+		"website/templates/footer.tmpl",
+	)
+
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "privacy-policy", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func TermsHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+
+	data := WebpageData{
+		Title:       "Terms of Use | Q2Admin CloudAdmin",
+		HeaderTitle: "Terms of Use",
+		SessionUser: user,
+	}
+
+	tmpl, e := template.ParseFiles(
+		"website/templates/header-main.tmpl",
+		"website/templates/terms-of-use.tmpl",
+		"website/templates/footer.tmpl",
+	)
+
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "terms-of-use", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
