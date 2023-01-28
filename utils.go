@@ -99,3 +99,7 @@ func RemoveServer(uuid string) bool {
 	tr.Commit()
 	return true
 }
+
+func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
+}

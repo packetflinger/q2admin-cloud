@@ -26,6 +26,28 @@ const (
 	FeedMute
 )
 
+type WebpageMessage struct {
+	Quantity int
+	Icon     string
+	Name     string
+	Content  string
+	Timing   string
+}
+type WebpageNotification struct {
+	Icon    string
+	Title   string
+	Content string
+	Timing  string
+}
+type WebpageData struct {
+	Title        string
+	HeaderTitle  string
+	Notification []WebpageNotification
+	Message      []WebpageMessage
+	SessionUser  *User
+	Gameservers  []*Client
+}
+
 type ActiveServer struct {
 	UUID        string
 	Name        string
@@ -62,10 +84,11 @@ var WSUpgrader = websocket.Upgrader{
 	WriteBufferSize: 1500,
 }
 
-/**
- * Checks if user has an existing session and validates it
- */
-
+// Gets a pointer to the user associated with the current
+// session. If no session exists, error will be set.
+// Session validit is also checked: expiration, user mismatch
+//
+// Called at the start of each website request
 func GetSessionUser(r *http.Request) (*User, error) {
 	var user *User
 	var cookie *http.Cookie
@@ -153,22 +176,31 @@ func RunHTTPServer() {
 }
 
 func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
-
-	page := DashboardPage{}
-
 	u, err := GetSessionUser(r)
 	if err != nil {
 		http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
 		return
 	}
 
-	page.WebUser = u
+	data := WebpageData{
+		Title:       "My Servers | Q2Admin CloudAdmin",
+		HeaderTitle: "My Servers",
+		SessionUser: u,
+	}
 
-	tmpl, e := template.ParseFiles("website/templates/home.tmpl")
+	tmpl, e := template.ParseFiles(
+		"website/templates/home.tmpl",
+		"website/templates/header-main.tmpl",
+		"website/templates/footer.tmpl",
+	)
+
 	if e != nil {
 		log.Println(e)
 	} else {
-		tmpl.Execute(w, page)
+		err = tmpl.ExecuteTemplate(w, "home", data)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 
@@ -401,19 +433,58 @@ func WebFeedInput(w http.ResponseWriter, r *http.Request) {
 }
 
 func GroupsHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl, e := template.ParseFiles("website/templates/my-groups.tmpl")
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+
+	data := WebpageData{
+		Title:       "My Groups | Q2Admin CloudAdmin",
+		HeaderTitle: "My Groups",
+		SessionUser: user,
+	}
+
+	tmpl, e := template.ParseFiles(
+		"website/templates/header-main.tmpl",
+		"website/templates/my-groups.tmpl",
+		"website/templates/footer.tmpl",
+	)
 	if e != nil {
 		log.Println(e)
 	} else {
-		tmpl.Execute(w, nil)
+		err := tmpl.ExecuteTemplate(w, "my-groups", data)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 
 func ServersHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl, e := template.ParseFiles("website/templates/my-servers.tmpl")
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+
+	data := WebpageData{
+		Title:       "My Servers | Q2Admin CloudAdmin",
+		HeaderTitle: "My Servers",
+		SessionUser: user,
+	}
+
+	tmpl, e := template.ParseFiles(
+		"website/templates/header-main.tmpl",
+		"website/templates/my-servers.tmpl",
+		"website/templates/footer.tmpl",
+	)
+
 	if e != nil {
 		log.Println(e)
 	} else {
-		tmpl.Execute(w, nil)
+		err = tmpl.ExecuteTemplate(w, "my-servers", data)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
