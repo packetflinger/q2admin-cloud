@@ -46,6 +46,11 @@ type WebpageData struct {
 	Message      []WebpageMessage
 	SessionUser  *User
 	Gameservers  []*Client
+	NavHighlight struct {
+		Dashboard string
+		Servers   string
+		Groups    string
+	}
 }
 
 type ActiveServer struct {
@@ -187,6 +192,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 		HeaderTitle: "My Servers",
 		SessionUser: u,
 	}
+	data.NavHighlight.Dashboard = "active"
 
 	tmpl, e := template.ParseFiles(
 		"website/templates/home.tmpl",
@@ -444,6 +450,7 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 		HeaderTitle: "My Groups",
 		SessionUser: user,
 	}
+	data.NavHighlight.Groups = "active"
 
 	tmpl, e := template.ParseFiles(
 		"website/templates/header-main.tmpl",
@@ -472,6 +479,8 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 		HeaderTitle: "My Servers",
 		SessionUser: user,
 	}
+
+	data.NavHighlight.Servers = "active"
 
 	tmpl, e := template.ParseFiles(
 		"website/templates/header-main.tmpl",
