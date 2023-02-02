@@ -40,13 +40,14 @@ type WebpageNotification struct {
 	Timing  string
 }
 type WebpageData struct {
-	Title        string
-	HeaderTitle  string
-	Notification []WebpageNotification
-	Message      []WebpageMessage
-	SessionUser  *User
-	Gameservers  []*Client
-	NavHighlight struct {
+	Title           string
+	HeaderTitle     string
+	Notification    []WebpageNotification
+	Message         []WebpageMessage
+	SessionUser     *User
+	Gameservers     []*Client
+	GameserverCount int
+	NavHighlight    struct {
 		Dashboard string
 		Servers   string
 		Groups    string
@@ -482,10 +483,21 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 
 	data.NavHighlight.Servers = "active"
 
+	// build server list
+	svs := []*Client{}
+	for i := range q2a.clients {
+		if q2a.clients[i].Owner == user.ID {
+			svs = append(svs, &q2a.clients[i])
+		}
+	}
+	data.GameserverCount = len(svs)
+	data.Gameservers = svs
+
 	tmpl, e := template.ParseFiles(
 		"website/templates/header-main.tmpl",
 		"website/templates/my-servers.tmpl",
 		"website/templates/footer.tmpl",
+		"website/templates/server_templates.tmpl",
 	)
 
 	if e != nil {
