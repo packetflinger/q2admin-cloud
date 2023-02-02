@@ -47,6 +47,18 @@ func genrules() []ClientRule {
 			Length:  1,
 			Type:    "ban",
 		},
+		{
+			ID: "NotName1",
+			Address: []string{
+				"100.64.1.200/32",
+			},
+			Name: []string{
+				"jimbob",
+			},
+			NameNot: true,
+			Length:  0,
+			Type:    "mute",
+		},
 	}
 
 	for i := range rules {
@@ -174,5 +186,25 @@ func TestHostname1(t *testing.T) {
 
 	if mrules[0].ID != "rule1" {
 		t.Error("Not the right rule")
+	}
+}
+
+func TestNameNot1(t *testing.T) {
+	rules := genrules()
+
+	p := Player{
+		ClientID: 0,
+		Name:     "jimbob",
+		IP:       "100.64.1.200",
+		//Hostname:    "vn56.ny.us.hostj.google.com",
+		UserinfoMap: map[string]string{
+			//"pw": "llbean",
+		},
+	}
+
+	cl := Client{}
+	match, mrules := cl.CheckRules(&p, rules)
+	if match {
+		t.Error("Shouldn't match:", mrules)
 	}
 }
