@@ -29,25 +29,6 @@ type ServerFormat struct {
 	Rules         []ClientRuleFormat `json:"Controls"`
 }
 
-// for bans, mutes, onjoin msgs
-type ClientRuleFormat struct {
-	ID           string   `json:"ID"`   // UUID
-	Type         string   `json:"Type"` // ["ban","mute","stifle","msg"]
-	Address      string   `json:"Address"`
-	Name         []string `json:"Name"`        // optional
-	Client       []string `json:"Client"`      // optional
-	Message      string   `json:"Message"`     // shown to user
-	UserInfoKey  []string `json:"UserInfoKey"` // optional
-	UserinfoVal  []string `json:"UserInfoVal"` // optional
-	Description  string   `json:"Description"`
-	Insensitive  bool     `json:"Insensitive"`  // case insensitive?
-	Exact        bool     `json:"Exact"`        // must match exactly, not just contains
-	Password     string   `json:"Password"`     // override userinfo password
-	StifleLength int      `json:"StifleLength"` // seconds
-	Created      int64    `json:"Created"`      // unix timestamp
-	Length       int64    `json:"Length"`       // seconds after created before expires
-}
-
 // Collections of clients
 type ServerGroupFormat struct {
 	Name    string   `json:"Name"`    // group name
@@ -87,28 +68,36 @@ func (cl *Client) ReadDiskFormat(name string) error {
 	cl.Name = sf.Name
 	cl.Verified = sf.Verified
 
-	controls := []ClientRule{}
+	acls := []ClientRule{}
 	for _, c := range sf.Rules {
-		control := ClientRule{}
-		control.Address = c.Address
-		_, control.Network, err = net.ParseCIDR(c.Address)
-		if err != nil {
-			log.Println(err)
+		acl := ClientRule{}
+		acl.Address = c.Address
+		for _, ip := range c.Address {
+			if !strings.Contains(ip, "/") { // no cidr notation, assuming /32
+				ip += "/32"
+			}
+			_, netbinary, err := net.ParseCIDR(ip)
+			if err != nil {
+				log.Println("invalid cidr network in rule", c.ID, ip)
+				continue
+			}
+			acl.Network = append(acl.Network, netbinary)
 		}
-		control.Client = c.Client
-		control.Created = c.Created
-		control.Description = c.Description
-		control.Length = c.Length
-		control.Message = c.Message
-		control.Name = c.Name
-		control.Password = c.Password
-		control.StifleLength = c.StifleLength
-		control.Type = c.Type
-		control.UserInfoKey = c.UserInfoKey
-		control.UserinfoVal = c.UserinfoVal
-		controls = append(controls, control)
+		acl.Hostname = c.Hostname
+		acl.Client = c.Client
+		acl.Created = c.Created
+		acl.Description = c.Description
+		acl.Length = c.Length
+		acl.Message = c.Message
+		acl.Name = c.Name
+		acl.Password = c.Password
+		acl.StifleLength = c.StifleLength
+		acl.Type = c.Type
+		acl.UserInfoKey = c.UserInfoKey
+		acl.UserinfoVal = c.UserinfoVal
+		acls = append(acls, acl)
 	}
-	cl.Rules = SortRules(controls)
+	cl.Rules = SortRules(acls)
 	return nil
 }
 

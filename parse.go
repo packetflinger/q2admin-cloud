@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"net"
 	"strconv"
 )
 
@@ -112,14 +113,18 @@ func ParsePrint(cl *Client) {
 	}
 }
 
-/**
- * A player connected to the a q2 server
- */
+// A player connected to the a q2 server.
 func ParseConnect(cl *Client) {
 	p := ParsePlayer(cl)
 
 	if p == nil {
 		return
+	}
+
+	// DNS PTR lookup, take the first one
+	ptr, _ := net.LookupAddr(p.IP)
+	if len(ptr) > 0 {
+		p.Hostname = ptr[0]
 	}
 
 	info := UserinfoMap(p.Userinfo)

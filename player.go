@@ -29,6 +29,7 @@ type Player struct {
 	InvitesAvailable int
 	IP               string
 	Port             int
+	Hostname         string
 	FOV              int
 	ConnectTime      int64
 	Rules            []ClientRule // rules that match this player

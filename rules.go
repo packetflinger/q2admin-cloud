@@ -5,9 +5,64 @@ import (
 	"log"
 	"net"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
+
+// An ACL
+//
+// Match on network or hostname
+// Then any additional criteria:
+// - name
+// - userinfo value
+// - etc
+//
+// Password field is checked against the "pw" userinfo variable.
+// If the password matches, then the rule is considered to be
+// not a match.
+type ClientRule struct {
+	ID           string       // uuid
+	Type         string       // ["ban","mute","stifle","msg"]
+	Address      []string     // ip/cidrs
+	Network      []*net.IPNet // byte version of address
+	Hostname     []string     // hostname
+	HostAddrNot  bool         // != instead of == for ip/host
+	Name         []string     // optional, names to match
+	NameNot      bool         // != instead of ==
+	Client       []string     // optional, probably remove later
+	UserInfoKey  []string     // optional
+	UserinfoVal  []string     // optional
+	UserInfoNot  []bool       // != instead of ==
+	Description  string       // internal only
+	Message      string       // message displayed to matched players
+	Password     string       // password to bypass this rule
+	StifleLength int          // secs
+	Created      int64        // unix timestamp
+	Length       int64        // secs after Created before expiring. 0 = perm
+}
+
+// Disk format for ACLs
+type ClientRuleFormat struct {
+	ID           string   `json:"ID"`           // UUID
+	Type         string   `json:"Type"`         // ["ban","mute","stifle","msg"]
+	Address      []string `json:"Address"`      // x.x.x.x/y
+	Hostname     []string `json:"Address"`      // dns name
+	HostAddrNot  bool     `json:"HostAddrNot`   // != instead of ==
+	Name         []string `json:"Name"`         // optional, player names
+	NameNot      bool     `json:"NameNot"`      // != instead of ==
+	Client       []string `json:"Client"`       // optional, player client versions
+	Message      string   `json:"Message"`      // shown to user
+	UserInfoKey  []string `json:"UserInfoKey"`  // optional
+	UserinfoVal  []string `json:"UserInfoVal"`  // optional
+	UserInfoNot  []bool   `json:"UserInfoNot"`  // !=
+	Description  string   `json:"Description"`  // internal only
+	Insensitive  bool     `json:"Insensitive"`  // case insensitive?
+	Password     string   `json:"Password"`     // override userinfo password
+	StifleLength int      `json:"StifleLength"` // seconds
+	Created      int64    `json:"Created"`      // unix timestamp
+	Length       int64    `json:"Length"`       // seconds after created before expires
+}
 
 // Check a client against the rules, returns whether there were
 // any matches and what specific rules matched, for processing
@@ -15,20 +70,42 @@ import (
 //
 // Called every time a player connects from ApplyRules() in ParseConnect()
 func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRule) {
+	srcmatch := false       // an IP or hostname matched the player
 	matched := false        // whether any rules in the set matched
-	rules := []ClientRule{} // which ones matche
+	rules := []ClientRule{} // which ones match
 	need := 0               // the criteria we need to be considered a match
 	have := 0               // how many criteria we have
 	now := time.Now().Unix()
 
 	for _, r := range ruleset {
-		// expired rule
+		srcmatch = false
+		// expired rule, ignore it
 		if r.Length > 0 && now-r.Created > r.Length {
 			continue
 		}
 
-		// Match IP address by bitwise ANDing
-		if r.Network.Contains(net.ParseIP(p.IP)) {
+		// check IPs first
+		for _, network := range r.Network {
+			if network.Contains(net.ParseIP(p.IP)) {
+				srcmatch = true
+				break
+			}
+		}
+
+		// next try hostnames, regex
+		for _, host := range r.Hostname {
+			hm, err := regexp.MatchString(host, p.Hostname)
+			if err != nil {
+				continue
+			}
+			if hm {
+				srcmatch = true
+				break
+			}
+		}
+
+		// An IP or hostname matched the player
+		if srcmatch {
 			// if user has the password, the rule will never match
 			if r.Password != "" && p.UserinfoMap["pw"] == r.Password {
 				continue
@@ -40,13 +117,18 @@ func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRul
 			if len(r.Name) > 0 {
 				need++
 				for _, name := range r.Name {
-					if r.Exact {
-						if p.Name == name {
+					// case insensitive
+					namematch, err := regexp.MatchString("(?i)"+name, p.Name)
+					if err != nil {
+						continue
+					}
+					if r.NameNot {
+						if !namematch {
 							matched = true
 							have++
 						}
 					} else {
-						if strings.Contains(name, p.Name) {
+						if namematch {
 							matched = true
 							have++
 						}
@@ -55,68 +137,34 @@ func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRul
 			}
 
 			// userinfo stuff, all have to match
+			uinot := false
 			if len(r.UserInfoKey) > 0 {
 				for i, k := range r.UserInfoKey {
 					need++
-					if r.Exact {
-						if p.UserinfoMap[k] == r.UserinfoVal[i] {
+					if len(r.UserInfoNot) >= i && len(r.UserInfoNot) != 0 {
+						uinot = r.UserInfoNot[i]
+					} else {
+						uinot = false
+					}
+					if uinot {
+						if p.UserinfoMap[k] != r.UserinfoVal[i] {
 							have++
 						}
 					} else {
-						if strings.Contains(p.UserinfoMap[k], r.UserinfoVal[i]) {
+						if p.UserinfoMap[k] == r.UserinfoVal[i] {
 							have++
 						}
 					}
 				}
 			}
 
-			// if the match is a ban, no point in processing the rest of the rules
-			/*
-				if have == need && r.Type == "ban" {
-					rules = append(rules, r)
-					return true, rules
-				}
-			*/
+			// fail fast for bans
+			if have == need && r.Type == "ban" {
+				rules = append(rules, r)
+				return true, rules
+			}
 
 			if have == need {
-				matched = true
-				rules = append(rules, r)
-			}
-		}
-
-		have = 0
-		need = 0
-	}
-
-	return matched, rules
-}
-
-// Check a client against the rules, returns whether there were
-// any matches and what specific rules matched, for processing.
-//
-// This one only checks if IP addresses match. Only called in unit tests
-func (cl *Client) CheckRulesSimple(p *Player, ruleset []ClientRule) (bool, []ClientRule) {
-	matched := false        // whether any rules in the set matched
-	rules := []ClientRule{} // which ones matches
-	need := 0               // the criteria we need to be considered a match
-	have := 0               // how many criteria we have
-	now := time.Now().Unix()
-
-	for _, r := range ruleset {
-		// expired rule
-		if r.Length > 0 && now-r.Created > r.Length {
-			continue
-		}
-
-		// Match the actual IP address
-		if r.Network.Contains(net.ParseIP(p.IP)) {
-			if p.UserinfoMap["pw"] == r.Password {
-				continue
-			}
-			need++
-			have++
-
-			if have >= need {
 				matched = true
 				rules = append(rules, r)
 			}
@@ -211,21 +259,32 @@ func (q2a *RemoteAdminServer) ReadGlobalRules() {
 		out := ClientRule{}
 		out.ID = r.ID
 		out.Address = r.Address
+		out.Hostname = r.Hostname
+		out.HostAddrNot = r.HostAddrNot
 		out.Client = r.Client
 		out.Created = r.Created
 		out.Description = r.Description
 		out.Length = r.Length
 		out.Message = r.Message
 		out.Name = r.Name
+		out.NameNot = r.NameNot
 		out.Password = r.Password
 		out.StifleLength = r.StifleLength
 		out.Type = r.Type
 		out.UserInfoKey = r.UserInfoKey
 		out.UserinfoVal = r.UserinfoVal
-		out.Exact = r.Exact
-		_, net, err := net.ParseCIDR(r.Address)
-		if err == nil {
-			out.Network = net
+		out.UserInfoNot = r.UserInfoNot
+
+		for _, ip := range r.Address {
+			if !strings.Contains(ip, "/") { // no cidr notation, assuming /32
+				ip += "/32"
+			}
+			_, netbinary, err := net.ParseCIDR(ip)
+			if err != nil {
+				log.Println("invalid cidr network in global rule", r.ID, ip)
+				continue
+			}
+			out.Network = append(out.Network, netbinary)
 		}
 		rules = append(rules, out)
 	}

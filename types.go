@@ -92,21 +92,3 @@ type WebSocketConnection struct {
 	Connected bool
 	Socket    *websocket.Conn
 }
-
-type ClientRule struct {
-	ID           string
-	Type         string // ["ban","mute","stifle","msg"]
-	Address      string
-	Network      *net.IPNet
-	Name         []string // optional
-	Client       []string // optional
-	UserInfoKey  []string // optional
-	UserinfoVal  []string // optional
-	Description  string
-	Message      string
-	Password     string
-	Exact        bool
-	StifleLength int   // secs
-	Created      int64 // unix timestamp
-	Length       int64 // secs after Created before expiring
-}
