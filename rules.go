@@ -47,8 +47,8 @@ type ClientRuleFormat struct {
 	ID           string   `json:"ID"`           // UUID
 	Type         string   `json:"Type"`         // ["ban","mute","stifle","msg"]
 	Address      []string `json:"Address"`      // x.x.x.x/y
-	Hostname     []string `json:"Address"`      // dns name
-	HostAddrNot  bool     `json:"HostAddrNot`   // != instead of ==
+	Hostname     []string `json:"Hostname"`     // dns name
+	HostAddrNot  bool     `json:"HostAddrNot"`  // != instead of ==
 	Name         []string `json:"Name"`         // optional, player names
 	NameNot      bool     `json:"NameNot"`      // != instead of ==
 	Client       []string `json:"Client"`       // optional, player client versions
