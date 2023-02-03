@@ -181,11 +181,13 @@ func RandomBytes(length int) []byte {
 	return b
 }
 
-/**
- * Change our AES key and IV. This should be called
- * periodically.
- */
-func RotateKeys(cl *Client) {
+// Change symmetric keys. Generate new key and iv and
+// immediately send them to the client. This jumps ahead
+// of the normal send buffer so that all messages from
+// this point on can be decrypted on the client.
+//
+// Called from Pong() every hour or so
+func (cl *Client) RotateKeys() {
 	if !cl.Encrypted {
 		return
 	}

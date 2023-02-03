@@ -75,9 +75,7 @@ func ParseFrag(cl *Client) {
 	}
 }
 
-/**
- * Received a ping from a client, send a pong to show we're alive
- */
+// Received a ping from a client, send a pong to show we're alive
 func Pong(cl *Client) {
 	if q2a.config.Debug > 1 {
 		log.Printf("[%s/PING]\n", cl.Name)
@@ -85,9 +83,9 @@ func Pong(cl *Client) {
 	cl.PingCount++
 	WriteByte(SCMDPong, &cl.MessageOut)
 
-	// close to once per hour
+	// once per hour-ish
 	if (cl.PingCount & 63) == 0 {
-		RotateKeys(cl)
+		cl.RotateKeys()
 	}
 }
 
