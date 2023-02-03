@@ -39,7 +39,7 @@ func (cl *Client) ParseMessage() {
 			ParseDisconnect(cl)
 
 		case CMDCommand:
-			ParseCommand(cl)
+			cl.ParseCommand()
 
 		case CMDFrag:
 			ParseFrag(cl)
@@ -213,7 +213,8 @@ func ParsePlayer(cl *Client) *Player {
 	return &newplayer
 }
 
-func ParseCommand(cl *Client) {
+// A command was issued from a player on a client
+func (cl *Client) ParseCommand() {
 	cmd := ReadByte(&cl.Message)
 	switch cmd {
 	case PCMDTeleport:
