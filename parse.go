@@ -27,7 +27,7 @@ func (cl *Client) ParseMessage() {
 			ParsePrint(cl)
 
 		case CMDMap:
-			ParseMap(cl)
+			cl.ParseMap()
 
 		case CMDPlayerList:
 			cl.ParsePlayerlist()
@@ -161,7 +161,7 @@ func ParseDisconnect(cl *Client) {
  * Server told us what map is currently running. Typically happens
  * when the map changes
  */
-func ParseMap(cl *Client) {
+func (cl *Client) ParseMap() {
 	mapname := ReadString(&cl.Message)
 	cl.CurrentMap = mapname
 	log.Printf("[%s/MAP] %s\n", cl.Name, cl.CurrentMap)
