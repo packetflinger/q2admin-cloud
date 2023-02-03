@@ -42,7 +42,7 @@ func (cl *Client) ParseMessage() {
 			cl.ParseCommand()
 
 		case CMDFrag:
-			ParseFrag(cl)
+			cl.ParseFrag()
 		}
 	}
 }
@@ -52,7 +52,7 @@ func (cl *Client) ParseMessage() {
  * Only two bytes are sent: the clientID of the victim,
  * and of the attacker
  */
-func ParseFrag(cl *Client) {
+func (cl *Client) ParseFrag() {
 	v := int(ReadByte(&cl.Message))
 	a := int(ReadByte(&cl.Message))
 
