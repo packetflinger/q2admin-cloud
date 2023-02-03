@@ -2,7 +2,9 @@
   {
    "ID": "7b933c68-8194-470a-a766-1c3e78823329",
    "Type": "ban",
-   "Address": "192.168.3.0/24",
+   "Address": [
+     "192.168.3.0/24"
+   ],
    "Name": [
     "Name1",
     "Name2"
@@ -22,7 +24,9 @@
   {
    "ID": "c416f4da-4904-41d7-aea8-e9129460b938",
    "Type": "mute",
-   "Address": "0.0.0.0/0",
+   "Address": [
+     "0.0.0.0/0"
+   ],
    "Name": [
     "Name3"
    ],
@@ -43,7 +47,9 @@
   {
    "ID": "fe88becc-ba92-471e-a113-44e6240e8234",
    "Type": "ban",
-   "Address": "0.0.0.0/0",
+   "Address": [
+     "0.0.0.0/0"
+   ],
    "Name": [
     "claire"
    ],
@@ -62,7 +68,9 @@
   {
    "ID": "dccfa2fe-b939-48a4-ae2f-02aa3765e232",
    "Type": "msg",
-   "Address": "10.2.2.0/24",
+   "Address": [
+     "10.2.2.0/24"
+   ],
    "Name": [],
    "Client": [],
    "Message": "Stop being such an asshole or you'll be muted. Only warning.",
