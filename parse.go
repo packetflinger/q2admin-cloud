@@ -30,7 +30,7 @@ func (cl *Client) ParseMessage() {
 			ParseMap(cl)
 
 		case CMDPlayerList:
-			ParsePlayerlist(cl)
+			cl.ParsePlayerlist()
 
 		case CMDConnect:
 			ParseConnect(cl)
@@ -171,7 +171,10 @@ func ParseObituary(text string) {
 	log.Printf("Obit: %s\n", text)
 }
 
-func ParsePlayerlist(cl *Client) {
+// Client sent a playerlist message.
+// 1 byte is quantity
+// then that number of players are sent
+func (cl *Client) ParsePlayerlist() {
 	count := ReadByte(&cl.Message)
 	log.Printf("[%s/PLAYERLIST] %d\n", cl.Name, count)
 	for i := 0; i < int(count); i++ {
