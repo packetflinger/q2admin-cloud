@@ -115,7 +115,7 @@ func ParsePrint(cl *Client) {
 
 // A player connected to the a q2 server.
 func ParseConnect(cl *Client) {
-	p := ParsePlayer(cl)
+	p := cl.ParsePlayer()
 
 	if p == nil {
 		return
@@ -177,11 +177,16 @@ func ParsePlayerlist(cl *Client) {
 	count := ReadByte(&cl.Message)
 	log.Printf("[%s/PLAYERLIST] %d\n", cl.Name, count)
 	for i := 0; i < int(count); i++ {
-		_ = ParsePlayer(cl)
+		_ = cl.ParsePlayer()
 	}
 }
 
-func ParsePlayer(cl *Client) *Player {
+// Parse a player message from a client and build a
+// player struct here
+//
+// Called any time a player msg is sent, usually on
+// join or new map
+func (cl *Client) ParsePlayer() *Player {
 	clientnum := ReadByte(&cl.Message)
 	userinfo := ReadString(&cl.Message)
 
