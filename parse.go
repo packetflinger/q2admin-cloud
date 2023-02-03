@@ -24,7 +24,7 @@ func (cl *Client) ParseMessage() {
 			cl.Pong()
 
 		case CMDPrint:
-			ParsePrint(cl)
+			cl.ParsePrint()
 
 		case CMDMap:
 			cl.ParseMap()
@@ -94,7 +94,7 @@ func (cl *Client) Pong() {
  * 1 byte: print level
  * string: the actual message
  */
-func ParsePrint(cl *Client) {
+func (cl *Client) ParsePrint() {
 	level := ReadByte(&cl.Message)
 	text := ReadString(&cl.Message)
 
