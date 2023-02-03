@@ -33,7 +33,7 @@ func (cl *Client) ParseMessage() {
 			cl.ParsePlayerlist()
 
 		case CMDConnect:
-			ParseConnect(cl)
+			cl.ParseConnect()
 
 		case CMDDisconnect:
 			cl.ParseDisconnect()
@@ -112,7 +112,7 @@ func ParsePrint(cl *Client) {
 }
 
 // A player connected to the a q2 server.
-func ParseConnect(cl *Client) {
+func (cl *Client) ParseConnect() {
 	p := cl.ParsePlayer()
 
 	if p == nil {
