@@ -21,7 +21,7 @@ func (cl *Client) ParseMessage() {
 
 		switch b := ReadByte(msg); b {
 		case CMDPing:
-			Pong(cl)
+			cl.Pong()
 
 		case CMDPrint:
 			ParsePrint(cl)
@@ -76,7 +76,7 @@ func ParseFrag(cl *Client) {
 }
 
 // Received a ping from a client, send a pong to show we're alive
-func Pong(cl *Client) {
+func (cl *Client) Pong() {
 	if q2a.config.Debug > 1 {
 		log.Printf("[%s/PING]\n", cl.Name)
 	}
