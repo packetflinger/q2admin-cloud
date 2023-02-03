@@ -68,8 +68,10 @@ func (cl *Client) FindPlayer(client int) *Player {
  *
  * To specify a player hash from your q2 config:
  * set phash "<hash here>" u
+ *
+ * Called from ParsePlayer()
  */
-func LoadPlayerHash(player *Player) {
+func (player *Player) LoadPlayerHash() {
 	var database_id int64
 
 	phash := player.UserinfoMap["phash"]

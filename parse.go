@@ -207,7 +207,7 @@ func (cl *Client) ParsePlayer() *Player {
 		ConnectTime: GetUnixTimestamp(),
 	}
 
-	LoadPlayerHash(&newplayer)
+	(&newplayer).LoadPlayerHash()
 
 	log.Printf("[%s/PLAYER] %d|%s|%s\n", cl.Name, clientnum, newplayer.Hash, userinfo)
 
