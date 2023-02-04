@@ -234,8 +234,8 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 		HeaderTitle: name,
 		SessionUser: user,
 		Client:      cl,
-		//NavHighlight.Servers: "active",
 	}
+	data.NavHighlight.Servers = "active"
 
 	tmpl, e := template.ParseFiles(
 		"website/templates/header-main.tmpl",
