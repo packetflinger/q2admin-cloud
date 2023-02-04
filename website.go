@@ -250,39 +250,8 @@ func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
 }
 
-//
-// Handle logins
-//
+// Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
-	// login form submitted, process the login
-	if r.Method == "POST" {
-		if err := r.ParseForm(); err != nil {
-			log.Println(err)
-		}
-
-		email := r.FormValue("email")
-		user, err := q2a.GetUserByEmail(email)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		// DO LATER
-		// actually check their auth
-		//
-
-		session := CreateSession()
-		user.Session = session
-
-		cookieexpire := time.Now().AddDate(0, 0, 2) // years, months, days
-		cookie := http.Cookie{Name: SessionName, Value: session.ID, Expires: cookieexpire}
-		http.SetCookie(w, &cookie)
-
-		http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
-		return
-	}
-
-	// ...or show the sign-in form
 	tmpl, e := template.ParseFiles("website/templates/sign-in.tmpl")
 	for i := range website.creds {
 		website.creds[i].URL = BuildAuthURL(website.creds[i], i)
