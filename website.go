@@ -47,6 +47,7 @@ type WebpageData struct {
 	SessionUser     *User
 	Gameservers     []*Client
 	GameserverCount int
+	Client          *Client
 	NavHighlight    struct {
 		Dashboard string
 		Servers   string
@@ -214,26 +215,41 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["ServerUUID"]
-	page := ServerPage{}
-	u, e := GetSessionUser(r)
-	if e != nil {
-		log.Println(e)
-		http.Redirect(w, r, "/signin", http.StatusFound) // 302
-		return
-	}
-	page.WebUser = u
-	MyServer, err := FindClient(uuid)
+	name := vars["ServerName"]
+	//page := ServerPage{}
+	user, err := GetSessionUser(r)
 	if err != nil {
-		log.Println(err)
+		RedirectToSignon(w, r)
 		return
 	}
-	page.MyServer = *MyServer
 
-	tmpl, e := template.ParseFiles("website-templates/dashboard-server-view.tmpl")
+	cl, err := FindClient(uuid)
+	if err != nil {
+		log.Println("invalid server id:", uuid)
+		return
+	}
+
+	data := WebpageData{
+		Title:       name + " management | Q2Admin CloudAdmin",
+		HeaderTitle: name,
+		SessionUser: user,
+		Client:      cl,
+		//NavHighlight.Servers: "active",
+	}
+
+	tmpl, e := template.ParseFiles(
+		"website/templates/header-main.tmpl",
+		"website/templates/server-view.tmpl",
+		"website/templates/footer.tmpl",
+	)
+
 	if e != nil {
 		log.Println(e)
 	} else {
-		tmpl.Execute(w, page)
+		err = tmpl.ExecuteTemplate(w, "server-view", data)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 

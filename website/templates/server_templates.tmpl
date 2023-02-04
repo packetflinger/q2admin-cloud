@@ -1,0 +1,13 @@
+{{define "server-list-item"}}
+  {{if .Connected}}
+                                            <tr class="clickable" style="cursor: pointer;" onclick="window.location='/my-servers/{{.UUID}}/{{.Name}}'">
+  {{else}}
+                                            <tr class="clickable table-warning" style="cursor: pointer;" onclick="window.location='/my-servers/{{.UUID}}/{{.Name}}'">
+  {{end}}
+                                                <td></td>
+                                                <td>{{.Name}}</td>
+                                                <td>{{.IPAddress}}:{{.Port}}</td>
+                                                <td>{{.CurrentMap}}</td>
+                                                <td>{{.PlayerCount}}</td>
+                                            </tr>
+{{end}}

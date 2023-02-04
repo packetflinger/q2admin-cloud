@@ -55,7 +55,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	routes.ServerAdd = "/add-server"
 	routes.ServerRemove = "/dashboard/rm/{id}"
 	routes.Servers = "/my-servers"
-	routes.ServerView = "/dashboard/sv/{ServerUUID}"
+	routes.ServerView = routes.Servers + "/{ServerUUID}/{ServerName}"
 	routes.Terms = "/terms-of-use"
 
 	r := mux.NewRouter()
