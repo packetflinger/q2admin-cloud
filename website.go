@@ -216,7 +216,6 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["ServerUUID"]
 	name := vars["ServerName"]
-	//page := ServerPage{}
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
