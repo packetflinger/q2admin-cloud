@@ -104,7 +104,7 @@ func (cl *Client) ParsePrint() {
 	switch level {
 	case PRINT_CHAT:
 		cl.SendToWebsiteFeed(stripped, FeedChat)
-		LogChat(cl, text)
+		cl.LogChat(stripped)
 		log.Printf("[%s/PRINT] (%d) %s\n", cl.Name, level, stripped)
 	case PRINT_MEDIUM:
 		ParseObituary(text)

@@ -12,3 +12,10 @@ CREATE TABLE IF NOT EXISTS "client_log" (
 	"event"	TEXT,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
+CREATE TABLE IF NOT EXISTS "chat" (
+	"id"	INTEGER,
+	"uuid"	TEXT,
+	"chat_time"	INTEGER,
+	"chat"	TEXT,
+	PRIMARY KEY("id" AUTOINCREMENT)
+);

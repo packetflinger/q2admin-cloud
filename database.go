@@ -55,15 +55,12 @@ func InsertPlayer(p *Player) int64 {
 	return id
 }
 
-/**
- * A player said something, record to use against them later
- */
-func LogChat(cl *Client, chat string) {
-	sql := "INSERT INTO chat (server, time, chat) VALUES (?,?,?)"
-	_, err := db.Exec(sql, cl.ID, GetUnixTimestamp(), chat)
+// A player said something, record to use against them later
+func (cl *Client) LogChat(chat string) {
+	s := "INSERT INTO chat (uuid, chat_time, chat) VALUES (?,?,?)"
+	_, err := db.Exec(s, cl.UUID, GetUnixTimestamp(), chat)
 	if err != nil {
 		log.Println(err)
-		return
 	}
 }
 
