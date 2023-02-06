@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -102,4 +103,44 @@ func RemoveServer(uuid string) bool {
 
 func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
+}
+
+// TimeAgo gives you a string of how long ago something was
+// based on a unix timestamp.
+// Examples:
+//   just now
+//   30s ago
+//   5m ago
+//   2h ago
+//   3d ago
+//   8w ago
+//   2mo ago
+//   3yr ago
+func TimeAgo(ts int64) string {
+	elapsed := GetUnixTimestamp() - ts
+	if elapsed < 0 {
+		return "soon"
+	}
+	if elapsed < 5 {
+		return "just now"
+	}
+	if elapsed < 60 {
+		return fmt.Sprintf("%ds ago", elapsed)
+	}
+	if elapsed < 3600 {
+		return fmt.Sprintf("%dm ago", elapsed/60)
+	}
+	if elapsed < 86400 {
+		return fmt.Sprintf("%dh ago", elapsed/3600)
+	}
+	if elapsed < 86400*7 {
+		return fmt.Sprintf("%dd ago", elapsed/86400)
+	}
+	if elapsed < 86400*30 {
+		return fmt.Sprintf("%dw ago", elapsed/(86400*7))
+	}
+	if elapsed < 86400*30*52 {
+		return fmt.Sprintf("%dy ago", elapsed/(86400*30))
+	}
+	return "forever ago"
 }
