@@ -309,6 +309,7 @@ func handleConnection(c net.Conn) {
 
 	if verified {
 		log.Printf("[%s] signature verified, server trusted\n", cl.Name)
+		cl.LogEvent("connected")
 	} else {
 		log.Printf("[%s] signature verifcation failed...", cl.Name)
 		c.Close()
@@ -349,11 +350,13 @@ func handleConnection(c net.Conn) {
 	cl.Connected = false
 	cl.Trusted = false
 	c.Close()
+	cl.LogEvent("disconnected")
 }
 
 // Gracefully shut everything down
 func Shutdown() {
 	log.Println("Shutting down...")
+	LogSystemEvent("shutdown")
 	db.Close() // not sure if this is necessary
 }
 
@@ -500,4 +503,6 @@ func initialize() {
 	for _, c := range q2a.clients {
 		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 	}
+
+	LogSystemEvent("startup")
 }

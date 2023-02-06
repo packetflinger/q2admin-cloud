@@ -1,7 +1,7 @@
 {
     "address": "0.0.0.0",
     "port": 9988,
-    "database": "server.sqlite",
+    "database": "q2a.db",
     "privatekey": "private.pem",
     "apiport": 8087,
     "debug": 0,

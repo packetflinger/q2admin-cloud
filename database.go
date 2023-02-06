@@ -8,6 +8,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// Open our sqlite database
 func DatabaseConnect() *sql.DB {
 	db, err := sql.Open("sqlite3", q2a.config.Database)
 	if err != nil {
@@ -87,5 +88,23 @@ func LogEventToDatabase(cid int, logtype int, logentry string) {
 	if err != nil {
 		log.Println(err)
 		return
+	}
+}
+
+// Insert client-specific event
+func (cl *Client) LogEvent(event string) {
+	s := "INSERT INTO client_log (uuid, log_time, log_entry) VALUES (?,?,?)"
+	_, err := db.Exec(s, cl.UUID, GetUnixTimestamp(), event)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// Insert an system event into the db
+func LogSystemEvent(event string) {
+	s := "INSERT INTO system_log (log_time, log_entry) VALUES (?,?)"
+	_, err := db.Exec(s, GetUnixTimestamp(), event)
+	if err != nil {
+		log.Println(err)
 	}
 }
