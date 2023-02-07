@@ -7,10 +7,8 @@ import (
 	"strings"
 )
 
-/**
- * Each player on a game server has one of these.
- * Each game server has a slice of all current players
- */
+// Each player on a game server has one of these.
+// Each game server has a slice of all current players
 type Player struct {
 	ClientID         int // ID on the gameserver (0-maxplayers)
 	Database_ID      int64
@@ -38,9 +36,7 @@ type Player struct {
 	StifleLength     int // seconds
 }
 
-/**
- * Get a pointer to a player based on a client number
- */
+// Get a pointer to a player based on a client number
 func (cl *Client) FindPlayer(client int) *Player {
 	if !cl.ValidPlayerID(client) {
 		return nil
@@ -55,23 +51,21 @@ func (cl *Client) FindPlayer(client int) *Player {
 	return nil
 }
 
-/**
- * A player hash is a way of uniquely identifiying a player.
- *
- * It's the first 16 characters of an MD5 hash of their
- * name + skin + fov + partial IP. The idea is to identify
- * players with the same name as different people, so someone can't
- * impersonate someone else and tank their stats.
- *
- * Players can specify a player hash in their Userinfo rather than
- * having one generated. This way they can use different names and
- * still have their stats follow them.
- *
- * To specify a player hash from your q2 config:
- * set phash "<hash here>" u
- *
- * Called from ParsePlayer()
- */
+// A player hash is a way of uniquely identifiying a player.
+//
+// It's the first 16 characters of an MD5 hash of their
+// name + skin + fov + partial IP. The idea is to identify
+// players with the same name as different people, so someone can't
+// impersonate someone else and tank their stats.
+//
+// Players can specify a player hash in their Userinfo rather than
+// having one generated. This way they can use different names and
+// still have their stats follow them.
+//
+// To specify a player hash from your q2 config:
+// set phash "<hash here>" u
+//
+// Called from ParsePlayer()
 func (player *Player) LoadPlayerHash() {
 	var database_id int64
 
@@ -104,17 +98,13 @@ func (player *Player) LoadPlayerHash() {
 	player.Database_ID = database_id
 }
 
-/**
- * Check if a client ID is valid for a particular server context,
- * does not care if a valid player structure is located there or not
- */
+// Check if a client ID is valid for a particular server context,
+// does not care if a valid player structure is located there or not
 func (cl *Client) ValidPlayerID(client int) bool {
 	return client >= 0 && client < len(cl.Players)
 }
 
-/**
- * Remove a player from the players slice (used when player quits)
- */
+// Remove a player from the players slice (used when player quits)
 func (cl *Client) RemovePlayer(client int) {
 	if cl.ValidPlayerID(client) {
 		cl.Players[client] = Player{}
@@ -122,18 +112,14 @@ func (cl *Client) RemovePlayer(client int) {
 	}
 }
 
-/**
- * Send a message to every player on the server
- */
+// Send a message to every player on the server
 func (cl *Client) SayEveryone(level int, text string) {
 	WriteByte(SCMDSayAll, &cl.MessageOut)
 	WriteByte(byte(level), &cl.MessageOut)
 	WriteString(text, &cl.MessageOut)
 }
 
-/**
- * Send a message to a particular player
- */
+// Send a message to a particular player
 func (cl *Client) SayPlayer(p *Player, level int, text string) {
 	WriteByte(SCMDSayClient, &cl.MessageOut)
 	WriteByte(byte(p.ClientID), &cl.MessageOut)
@@ -141,10 +127,8 @@ func (cl *Client) SayPlayer(p *Player, level int, text string) {
 	WriteString(text, &cl.MessageOut)
 }
 
-/**
- * Take a back-slash delimited string of userinfo and return
- * a key/value map
- */
+// Take a back-slash delimited string of userinfo and return
+// a key/value map
 func UserinfoMap(ui string) map[string]string {
 	info := make(map[string]string)
 	if ui == "" {
