@@ -83,6 +83,7 @@ type Config struct {
 	UsersFile       string `json:"usersfile"`  // web users
 	AccessFile      string `json:"accessfile"` // their permissions
 	OAuthFile       string `json:"oauthfile"`  // api credentials
+	MaintenanceTime int    `json:"mainttime"`  // seconds to sleep
 }
 
 //

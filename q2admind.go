@@ -387,6 +387,8 @@ func main() {
 		go RunHTTPServer()
 	}
 
+	go q2a.Maintenance()
+
 	for {
 		c, err := listener.Accept()
 		if err != nil {

@@ -10,5 +10,6 @@
     "clientdir": "client-configs",
     "usersfile": "users.json",
     "accessfile": "access.json",
-    "oauthfile": "oauthcreds.json"
+    "oauthfile": "oauthcreds.json",
+    "mainttime": 10
 }
