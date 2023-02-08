@@ -59,7 +59,7 @@ const (
 // obituary prints to figure out how the frag happend. The
 // output of this will be combined with the frag notification.
 //
-// Called from ParsePrint()
+// Called from ParseObituary()
 func (cl *Client) CalculateDeath(obit string) (*Death, error) {
 	death := &Death{}
 
