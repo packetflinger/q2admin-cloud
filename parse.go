@@ -107,7 +107,7 @@ func (cl *Client) ParsePrint() {
 		cl.LogChat(stripped)
 		log.Printf("[%s/PRINT] (%d) %s\n", cl.Name, level, stripped)
 	case PRINT_MEDIUM:
-		ParseObituary(text)
+		cl.ParseObituary(stripped)
 	}
 }
 
@@ -166,8 +166,22 @@ func (cl *Client) ParseMap() {
 	log.Printf("[%s/MAP] %s\n", cl.Name, cl.CurrentMap)
 }
 
-func ParseObituary(text string) {
-	log.Printf("Obit: %s\n", text)
+// An obit for every frag is sent from a client.
+//
+// Called from ParsePrint()
+func (cl *Client) ParseObituary(obit string) {
+	death, err := cl.CalculateDeath(obit)
+	if err != nil {
+		return
+	}
+	log.Printf(
+		"Obituary: %s[%d] -> %s[%d] (%d)\n",
+		death.Murderer.Name,
+		death.Murderer.ClientID,
+		death.Victim.Name,
+		death.Victim.ClientID,
+		death.Means,
+	)
 }
 
 // Client sent a playerlist message.
