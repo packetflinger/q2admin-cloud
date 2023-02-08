@@ -170,3 +170,17 @@ func (cl *Client) LogPlayer(pl *Player) {
 		log.Println(err)
 	}
 }
+
+// Find the first player using the provided name
+// on this particular client.
+//
+// Called from CalculateDeath()
+func (cl *Client) FindPlayerByName(name string) *Player {
+	for i, p := range cl.Players {
+		if p.Name == name {
+			return &cl.Players[i]
+		}
+	}
+
+	return nil
+}
