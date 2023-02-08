@@ -54,7 +54,6 @@ const (
 
 // figure out who killed who and how
 func (cl *Client) CalculateDeath(obit string) (*Death, error) {
-	//match := false
 	death := &Death{}
 
 	type ObitTest struct {
@@ -64,7 +63,6 @@ func (cl *Client) CalculateDeath(obit string) (*Death, error) {
 
 	// only has a victim
 	solo := []ObitTest{
-
 		{
 			matchstr: "(.+) suicides",
 			mod:      ModSuicide,
