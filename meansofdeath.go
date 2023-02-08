@@ -52,7 +52,14 @@ const (
 	ModFriendlyFire
 )
 
-// figure out who killed who and how
+// Figure out who killed who and how.
+//
+// Frags are send from clients via a more reliable method,
+// but it does not include the means. This will parse the
+// obituary prints to figure out how the frag happend. The
+// output of this will be combined with the frag notification.
+//
+// Called from ParsePrint()
 func (cl *Client) CalculateDeath(obit string) (*Death, error) {
 	death := &Death{}
 
