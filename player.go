@@ -42,10 +42,10 @@ func (cl *Client) FindPlayer(client int) *Player {
 		return nil
 	}
 
-	p := &cl.Players[client]
-
-	if p.ConnectTime > 0 {
-		return p
+	for i, p := range cl.Players {
+		if p.ClientID == client && p.ConnectTime > 0 {
+			return &cl.Players[i]
+		}
 	}
 
 	return nil
