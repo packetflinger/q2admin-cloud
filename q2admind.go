@@ -99,31 +99,6 @@ func clearmsg(msg *MessageBuffer) {
 	msg.length = 0
 }
 
-// Send all messages in the outgoing queue to the client (gameserver)
-func (cl *Client) SendMessages() {
-	if !cl.Connected {
-		return
-	}
-
-	// keys have been exchanged, encrypt the message
-	if cl.Trusted && cl.Encrypted {
-		cipher := SymmetricEncrypt(
-			cl.AESKey,
-			cl.AESIV,
-			cl.MessageOut.buffer[:cl.MessageOut.length])
-
-		clearmsg(&cl.MessageOut)
-		cl.MessageOut.buffer = cipher
-		cl.MessageOut.length = len(cipher)
-	}
-
-	// only send if there is something to send
-	if cl.MessageOut.length > 0 {
-		(*cl.Connection).Write(cl.MessageOut.buffer)
-		clearmsg(&cl.MessageOut)
-	}
-}
-
 // Dates are stored in the database as unix timestamps
 func GetUnixTimestamp() int64 {
 	return time.Now().Unix()
@@ -378,24 +353,6 @@ func main() {
 		}
 		go handleConnection(c)
 	}
-}
-
-// Read all client names from disk, load their diskformats
-// into memory. Add each to
-//
-// Called from initialize() at startup
-func (q2a *RemoteAdminServer) LoadClients() {
-	clientlist := q2a.config.ReadClientFile()
-	cls := []Client{}
-	for _, c := range clientlist {
-		cl := Client{}
-		err := cl.ReadDiskFormat(c)
-		if err != nil {
-			continue
-		}
-		cls = append(cls, cl)
-	}
-	q2a.clients = cls
 }
 
 // This is a renamed "init()" function. Having it named init

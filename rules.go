@@ -327,3 +327,27 @@ func SortRules(rules []ClientRule) []ClientRule {
 	newruleset = append(newruleset, msgs...)
 	return newruleset
 }
+
+// Transform a ClientRule into the format necessary
+// to write it to disk
+func (r ClientRule) ToDiskFormat() ClientRuleFormat {
+	return ClientRuleFormat{
+		ID:           r.ID,
+		Type:         r.Type,
+		Address:      r.Address,
+		Hostname:     r.Hostname,
+		HostAddrNot:  r.HostAddrNot,
+		Name:         r.Name,
+		NameNot:      r.NameNot,
+		Client:       r.Client,
+		UserInfoKey:  r.UserInfoKey,
+		UserinfoVal:  r.UserinfoVal,
+		UserInfoNot:  r.UserInfoNot,
+		Description:  r.Description,
+		Message:      r.Message,
+		Password:     r.Password,
+		StifleLength: r.StifleLength,
+		Created:      r.Created,
+		Length:       r.Length,
+	}
+}
