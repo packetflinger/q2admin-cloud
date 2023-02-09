@@ -47,11 +47,12 @@ func (cl *Client) ParseMessage() {
 	}
 }
 
-/**
- * A player was fragged.
- * Only two bytes are sent: the clientID of the victim,
- * and of the attacker
- */
+// A player was fragged.
+//
+// Only two bytes are sent: the clientID of the victim,
+// and of the attacker. The means of death are determined
+// by parsing the obituary print. For self and environmental
+// frags, the attacker and victim will be the same.
 func (cl *Client) ParseFrag() {
 	v := int(ReadByte(&cl.Message))
 	a := int(ReadByte(&cl.Message))
