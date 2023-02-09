@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rsa"
-	"net"
 
 	"github.com/gorilla/websocket"
 )
@@ -15,42 +14,6 @@ type MessageBuffer struct {
 	buffer []byte
 	index  int
 	length int // maybe not needed
-}
-
-//
-// This is a Quake 2 Gameserver, and also a client to us.
-//
-// This struct is partially populated by parsing disk a file
-// on disk on init and the rest is filled in when the game
-// server actually connects
-//
-type Client struct {
-	ID          int // this is the database index
-	UUID        string
-	Owner       string // email addr
-	Version     int    // what version are we running
-	Name        string
-	Description string // used in teleporting
-	IPAddress   string // used for teleporting
-	Port        int    // used for teleporting
-	Connected   bool   // is it currently connected to us?
-	Verified    bool
-	CurrentMap  string
-	Enabled     bool
-	Connection  *net.Conn
-	Players     []Player
-	PlayerCount int
-	MaxPlayers  int
-	Message     MessageBuffer  // incoming byte stream
-	MessageOut  MessageBuffer  // outgoing byte stream
-	Encrypted   bool           // are the messages AES encrypted?
-	Trusted     bool           // signature challenge verified
-	PublicKey   *rsa.PublicKey // supplied by owner via website
-	AESKey      []byte         // 16 (128bit)
-	AESIV       []byte         // 16 bytes (CBC)
-	Rules       []ClientRule   // bans, mutes, etc
-	PingCount   int
-	WebSockets  []*websocket.Conn
 }
 
 //

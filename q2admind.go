@@ -8,7 +8,6 @@ import (
 
 	"crypto/rsa"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -99,18 +98,6 @@ func clearmsg(msg *MessageBuffer) {
 	msg.buffer = nil
 	msg.index = 0
 	msg.length = 0
-}
-
-// Locate the struct of the server for a particular
-// ID, get a pointer to it
-func FindClient(lookup string) (*Client, error) {
-	for i, cl := range q2a.clients {
-		if cl.UUID == lookup {
-			return &q2a.clients[i], nil
-		}
-	}
-
-	return nil, errors.New("unknown server")
 }
 
 // Send all messages in the outgoing queue to the client (gameserver)
