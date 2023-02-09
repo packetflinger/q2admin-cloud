@@ -6,7 +6,10 @@ package main
 import (
 	"crypto/rsa"
 	"errors"
+	"log"
 	"net"
+	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -53,4 +56,33 @@ func FindClient(lookup string) (*Client, error) {
 	}
 
 	return nil, errors.New("unknown client")
+}
+
+// The file should be just a list of server names one per line
+// comments (// and #) and blank lines are allowed
+// indenting doesn't matter
+//
+// Called from initialize() at startup
+func (c Config) ReadClientFile() []string {
+	contents, err := os.ReadFile(c.ClientsFile)
+	if err != nil {
+		log.Println(err)
+		os.Exit(0)
+	}
+
+	srvs := []string{}
+	lines := strings.Split(string(contents), "\n")
+	for i := range lines {
+		trimmed := strings.Trim(lines[i], " \t")
+		// remove empty lines
+		if trimmed == "" {
+			continue
+		}
+		// remove comments
+		if trimmed[0] == '#' || trimmed[0:2] == "//" {
+			continue
+		}
+		srvs = append(srvs, trimmed)
+	}
+	return srvs
 }
