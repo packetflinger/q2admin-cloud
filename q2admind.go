@@ -141,11 +141,6 @@ func GetTimeFromTimestamp(ts int64) time.Time {
 	return time.Unix(ts, 0)
 }
 
-// Client number is between 0 and maxplayers
-func (cl *Client) ValidClientID(id int) bool {
-	return id >= 0 && id < cl.MaxPlayers
-}
-
 // Each server keeps track of the websocket for people "looking at it".
 // When they close the browser or logout, remove the pointer
 // to that socket
