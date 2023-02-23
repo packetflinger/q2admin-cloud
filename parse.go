@@ -112,7 +112,12 @@ func (cl *Client) ParsePrint() {
 	}
 }
 
-// A player connected to the a q2 server.
+// A player connected to the a q2 client.
+//
+// 1. look up their PTR record
+// 2. Parse their userinfo
+// 3. Log the connection
+// 4. Apply any rules that match them
 func (cl *Client) ParseConnect() {
 	p := cl.ParsePlayer()
 
@@ -126,9 +131,9 @@ func (cl *Client) ParseConnect() {
 		p.Hostname = ptr[0]
 	}
 
-	info := UserinfoMap(p.Userinfo)
+	info := p.UserinfoMap
 
-	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", cl.Name, p.ClientID, info["name"], info["ip"], p.Hash)
+	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", cl.Name, p.ClientID, info["name"], info["ip"], p.UserInfoHash)
 	log.Printf("%s\n", txt)
 
 	cl.LogPlayer(p)
@@ -214,19 +219,21 @@ func (cl *Client) ParsePlayer() *Player {
 	port, _ := strconv.Atoi(info["port"])
 	fov, _ := strconv.Atoi(info["fov"])
 	newplayer := Player{
-		ClientID:    int(clientnum),
-		Userinfo:    userinfo,
-		UserinfoMap: info,
-		Name:        info["name"],
-		IP:          info["ip"],
-		Port:        port,
-		FOV:         fov,
-		ConnectTime: GetUnixTimestamp(),
+		ClientID:     int(clientnum),
+		Userinfo:     userinfo,
+		UserInfoHash: MD5Hash(userinfo),
+		UserinfoMap:  info,
+		Name:         info["name"],
+		IP:           info["ip"],
+		Port:         port,
+		FOV:          fov,
+		ConnectTime:  GetUnixTimestamp(),
+		Cookie:       info["cookie"],
 	}
 
 	(&newplayer).LoadPlayerHash()
 
-	log.Printf("[%s/PLAYER] %d|%s|%s\n", cl.Name, clientnum, newplayer.Hash, userinfo)
+	log.Printf("[%s/PLAYER] %d|%s|%s\n", cl.Name, clientnum, newplayer.UserInfoHash, userinfo)
 
 	cl.Players[newplayer.ClientID] = newplayer
 	cl.PlayerCount++

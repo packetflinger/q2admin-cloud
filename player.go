@@ -16,7 +16,8 @@ type Player struct {
 	Version          string // q2 client flavor + version
 	Userinfo         string
 	UserinfoMap      map[string]string
-	Hash             string
+	UserInfoHash     string // md5 hash for checking if UI changed
+	Cookie           string // a unique value to identify players
 	Frags            int
 	Deaths           int
 	Suicides         int
@@ -71,7 +72,7 @@ func (player *Player) LoadPlayerHash() {
 
 	phash := player.UserinfoMap["phash"]
 	if phash != "" {
-		player.Hash = phash
+		player.UserInfoHash = phash
 	} else {
 		ipslice := strings.Split(player.IP, ".")
 		ip := fmt.Sprintf("%s.%s.%s", ipslice[0], ipslice[1], ipslice[2])
@@ -85,10 +86,10 @@ func (player *Player) LoadPlayerHash() {
 		))
 
 		hash := md5.Sum(pt)
-		player.Hash = fmt.Sprintf("%x", hash[:8])
+		player.UserInfoHash = fmt.Sprintf("%x", hash[:8])
 	}
 
-	database_id = int64(GetPlayerIdFromHash(player.Hash))
+	database_id = int64(GetPlayerIdFromHash(player.UserInfoHash))
 	if database_id > 0 {
 		player.Database_ID = database_id
 		return
@@ -106,9 +107,17 @@ func (cl *Client) ValidPlayerID(client int) bool {
 
 // Remove a player from the players slice (used when player quits)
 func (cl *Client) RemovePlayer(client int) {
-	if cl.ValidPlayerID(client) {
-		cl.Players[client] = Player{}
-		cl.PlayerCount--
+	if !cl.ValidPlayerID(client) {
+		log.Printf("invalid client number (%d) when removing player\n", client)
+		return
+	}
+
+	for i := range cl.Players {
+		if cl.Players[i].ClientID == client {
+			cl.Players[i] = Player{}
+			cl.PlayerCount--
+			return
+		}
 	}
 }
 
@@ -162,7 +171,7 @@ func (cl *Client) LogPlayer(pl *Player) {
 		cl.UUID,
 		pl.Name,
 		pl.IP,
-		pl.Hash,
+		pl.UserInfoHash,
 		pl.Userinfo,
 		GetUnixTimestamp(),
 	)

@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -22,6 +24,13 @@ func DigestSHA256(input []byte) []byte {
 	_, _ = hash.Write(input)
 	checksum := hash.Sum(nil)
 	return checksum
+}
+
+// Get an MD5 hash of an input string. Just used for
+// change comparisons.
+func MD5Hash(input string) string {
+	hash := md5.Sum([]byte(input))
+	return hex.EncodeToString(hash[:])
 }
 
 /**
