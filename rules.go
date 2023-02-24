@@ -70,111 +70,108 @@ type ClientRuleFormat struct {
 //
 // Called every time a player connects from ApplyRules() in ParseConnect()
 func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRule) {
-	srcmatch := false       // an IP or hostname matched the player
-	matched := false        // whether any rules in the set matched
 	rules := []ClientRule{} // which ones match
-	need := 0               // the criteria we need to be considered a match
-	have := 0               // how many criteria we have
-	now := time.Now().Unix()
-
 	for _, r := range ruleset {
-		srcmatch = false
-		// expired rule, ignore it
-		if r.Length > 0 && now-r.Created > r.Length {
-			continue
+		if cl.CheckRule(p, r) {
+			rules = append(rules, r)
 		}
+	}
 
-		// check IPs first
+	return len(rules) > 0, rules
+}
+
+// Check of a player matches a particular rule
+func (cl *Client) CheckRule(p *Player, r ClientRule) bool {
+	match := false
+	now := time.Now().Unix()
+	need := 0
+	have := 0
+
+	// expired rule, ignore it
+	if r.Length > 0 && now-r.Created > r.Length {
+		return false
+	}
+
+	// if user has the password, the rule will never match
+	if r.Password != "" && p.UserinfoMap["pw"] == r.Password {
+		return false
+	}
+
+	// any IPs
+	if len(r.Network) > 0 {
+		need++
 		for _, network := range r.Network {
 			if network.Contains(net.ParseIP(p.IP)) {
-				srcmatch = true
+				have++
+				match = true
 				break
 			}
 		}
+	}
 
-		// next try hostnames, regex
+	// any hostnames (regex)
+	if len(r.Hostname) > 0 {
+		need++
 		for _, host := range r.Hostname {
 			hm, err := regexp.MatchString(host, p.Hostname)
 			if err != nil {
 				continue
 			}
 			if hm {
-				srcmatch = true
+				have++
+				match = true
 				break
 			}
 		}
-
-		// An IP or hostname matched the player
-		if srcmatch {
-			// if user has the password, the rule will never match
-			if r.Password != "" && p.UserinfoMap["pw"] == r.Password {
-				continue
-			}
-			need++
-			have++
-
-			// any one name has to match
-			if len(r.Name) > 0 {
-				need++
-				for _, name := range r.Name {
-					// case insensitive
-					namematch, err := regexp.MatchString("(?i)"+name, p.Name)
-					if err != nil {
-						continue
-					}
-					if r.NameNot {
-						if !namematch {
-							matched = true
-							have++
-						}
-					} else {
-						if namematch {
-							matched = true
-							have++
-						}
-					}
-				}
-			}
-
-			// userinfo stuff, all have to match
-			uinot := false
-			if len(r.UserInfoKey) > 0 {
-				for i, k := range r.UserInfoKey {
-					need++
-					if len(r.UserInfoNot) >= i && len(r.UserInfoNot) != 0 {
-						uinot = r.UserInfoNot[i]
-					} else {
-						uinot = false
-					}
-					if uinot {
-						if p.UserinfoMap[k] != r.UserinfoVal[i] {
-							have++
-						}
-					} else {
-						if p.UserinfoMap[k] == r.UserinfoVal[i] {
-							have++
-						}
-					}
-				}
-			}
-
-			// fail fast for bans
-			if have == need && r.Type == "ban" {
-				rules = append(rules, r)
-				return true, rules
-			}
-
-			if have == need {
-				matched = true
-				rules = append(rules, r)
-			}
-		}
-
-		have = 0
-		need = 0
 	}
 
-	return matched, rules
+	if len(r.Name) > 0 {
+		need++
+		for _, name := range r.Name {
+			// case insensitive
+			namematch, err := regexp.MatchString("(?i)"+name, p.Name)
+			if err != nil {
+				continue
+			}
+			if r.NameNot {
+				if !namematch {
+					match = true
+					have++
+				}
+			} else {
+				if namematch {
+					match = true
+					have++
+				}
+			}
+		}
+	}
+
+	// userinfo stuff, all have to match
+	uinot := false
+	if len(r.UserInfoKey) > 0 {
+		for i, k := range r.UserInfoKey {
+			need++
+			if len(r.UserInfoNot) >= i && len(r.UserInfoNot) != 0 {
+				uinot = r.UserInfoNot[i]
+			} else {
+				uinot = false
+			}
+			if uinot {
+				if p.UserinfoMap[k] != r.UserinfoVal[i] {
+					match = true
+					have++
+				}
+			} else {
+				if p.UserinfoMap[k] == r.UserinfoVal[i] {
+					match = true
+					have++
+				}
+			}
+		}
+	}
+
+	return match && (need <= have)
 }
 
 // Player should already match each rule, just apply the action.
