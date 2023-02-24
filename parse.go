@@ -32,6 +32,9 @@ func (cl *Client) ParseMessage() {
 		case CMDPlayerList:
 			cl.ParsePlayerlist()
 
+		case CMDPlayerUpdate:
+			cl.ParsePlayerUpdate()
+
 		case CMDConnect:
 			cl.ParseConnect()
 
@@ -228,7 +231,8 @@ func (cl *Client) ParsePlayer() *Player {
 		Port:         port,
 		FOV:          fov,
 		ConnectTime:  GetUnixTimestamp(),
-		Cookie:       info["cookie"],
+		Cookie:       info["cl_cookie"],
+		Client:       cl,
 	}
 
 	(&newplayer).LoadPlayerHash()
@@ -249,5 +253,32 @@ func (cl *Client) ParseCommand() {
 
 	case PCMDInvite:
 		cl.Invite()
+	}
+}
+
+// A player changed their userinfo, reparse it and re-apply rules
+func (cl *Client) ParsePlayerUpdate() {
+	clientnum := ReadByte(&cl.Message)
+	userinfo := ReadString(&cl.Message)
+	hash := MD5Hash(userinfo)
+
+	player := cl.FindPlayer(int(clientnum))
+
+	// nothing we care about changed
+	if hash == player.UserInfoHash {
+		return
+	}
+
+	info := UserinfoMap(userinfo)
+	player.UserinfoMap = info
+	player.Name = info["name"]
+	player.FOV, _ = strconv.Atoi(info["fov"])
+	player.Cookie = info["cl_cookie"]
+	player.UserInfoHash = hash
+
+	cl.ApplyRules(player)
+
+	if player.Cookie == "" {
+		player.SetupCookie()
 	}
 }
