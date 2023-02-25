@@ -235,8 +235,6 @@ func (cl *Client) ParsePlayer() *Player {
 		Client:       cl,
 	}
 
-	(&newplayer).LoadPlayerHash()
-
 	log.Printf("[%s/PLAYER] %d|%s|%s\n", cl.Name, clientnum, newplayer.UserInfoHash, userinfo)
 
 	cl.Players[newplayer.ClientID] = newplayer
