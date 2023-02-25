@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"time"
 )
 
@@ -14,7 +13,6 @@ import (
 func (q2a *RemoteAdminServer) Maintenance() {
 	for {
 		time.Sleep(time.Duration(q2a.config.MaintenanceTime) * time.Second)
-		log.Println("running maintenance")
 
 		// each client gets attention
 		//for _, cl := range q2a.clients {
