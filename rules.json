@@ -1,24 +1,21 @@
 [
   {
    "ID": "7b933c68-8194-470a-a766-1c3e78823329",
-   "Type": "ban",
+   "Type": "mute",
    "Address": [
-     "192.168.3.0/24"
+     "0.0.0.0/0"
    ],
-   "Name": [
-    "Name1",
-    "Name2"
-   ],
+   "Name": [],
    "Client": [],
-   "Message": "",
+   "Message": "Everyone is muted for the time being",
    "UserInfoKey": [],
    "UserInfoVal": [],
-   "Description": "Ban players using Name1 and Name2 from IP subnet for a month",
+   "Description": "Mute everyone",
    "Insensitive": false,
    "Exact": false,
    "Password": "",
    "StifleLength": 0,
-   "Created": 1257894000,
+   "Created": 0,
    "Length": 0
   },
   {
@@ -30,9 +27,7 @@
    "Name": [
     "Name3"
    ],
-   "Client": [
-    "q2pro r1504~924ff39 Dec  3 2014 Win32 x86"
-   ],
+   "Client": [],
    "Message": "",
    "UserInfoKey": [],
    "UserInfoVal": [],
@@ -41,14 +36,14 @@
    "Exact": false,
    "Password": "",
    "StifleLength": 0,
-   "Created": 1257894000,
+   "Created": 0,
    "Length": 0
   },
   {
    "ID": "fe88becc-ba92-471e-a113-44e6240e8234",
    "Type": "ban",
    "Address": [
-     "0.0.0.0/0"
+     "100.0.0.0/31"
    ],
    "Name": [
     "claire"
@@ -62,26 +57,26 @@
    "Exact": false,
    "Password": "armpitfarts",
    "StifleLength": 0,
-   "Created": 1257894000,
+   "Created": 0,
    "Length": 0
   },
   {
    "ID": "dccfa2fe-b939-48a4-ae2f-02aa3765e232",
    "Type": "msg",
    "Address": [
-     "10.2.2.0/24"
+     "0.0.0.0/0"
    ],
    "Name": [],
    "Client": [],
-   "Message": "Stop being such an asshole or you'll be muted. Only warning.",
+   "Message": "\n\nTesting on-join message\n\n",
    "UserInfoKey": [],
    "UserInfoVal": [],
-   "Description": "Print msg to client at 10.2.2.2 on connect for a week",
+   "Description": "",
    "Insensitive": false,
    "Exact": false,
    "Password": "",
    "StifleLength": 0,
-   "Created": 1257894000,
-   "Length": 604800
+   "Created": 0,
+   "Length": 0
   }
  ]
