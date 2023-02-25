@@ -1,4 +1,3 @@
-CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE IF NOT EXISTS "system_log" (
 	"id"	INTEGER,
 	"log_time"	INTEGER,
@@ -17,5 +16,15 @@ CREATE TABLE IF NOT EXISTS "chat" (
 	"uuid"	TEXT,
 	"chat_time"	INTEGER,
 	"chat"	TEXT,
+	PRIMARY KEY("id" AUTOINCREMENT)
+);
+CREATE TABLE IF NOT EXISTS "player" (
+	"id"	INTEGER,
+	"server"	TEXT,
+	"name"	TEXT,
+	"ip"	TEXT,
+	"hash"	TEXT,
+	"userinfo"	TEXT,
+	"connect_time"	INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
