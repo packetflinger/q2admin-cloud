@@ -184,6 +184,7 @@ func (cl *Client) ApplyRules(p *Player) {
 
 	if matched1 {
 		for _, r := range rules1 {
+			log.Printf("%s [%d|%s] matched global rule %s\n", p.Name, p.ClientID, p.IP, r.ID)
 			switch r.Type {
 			case "msg":
 				log.Printf("[%s/MSG/%s] %s\n", cl.Name, p.Name, r.Message)
@@ -209,6 +210,7 @@ func (cl *Client) ApplyRules(p *Player) {
 
 	if matched2 {
 		for _, r := range rules2 {
+			log.Printf("%s [%d|%s] matched global rule %s\n", p.Name, p.ClientID, p.IP, r.ID)
 			switch r.Type {
 			case "msg":
 				log.Printf("[%s/MSG/%s] %s\n", cl.Name, p.Name, r.Message)

@@ -113,6 +113,8 @@ func (cl *Client) SendMessages() {
 		return
 	}
 
+	//fmt.Printf("%s", hex.Dump(cl.MessageOut.buffer[:cl.MessageOut.length]))
+
 	// keys have been exchanged, encrypt the message
 	if cl.Trusted && cl.Encrypted {
 		cipher := SymmetricEncrypt(
