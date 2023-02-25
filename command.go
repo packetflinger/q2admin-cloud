@@ -194,7 +194,7 @@ func (cl *Client) MutePlayer(p *Player, seconds int) {
  *
  */
 func (cl *Client) KickPlayer(p *Player, msg string) {
-	cmd := fmt.Sprintf("kick %d", p.ClientID)
+	cmd := fmt.Sprintf("kick %d\n", p.ClientID)
 	WriteByte(SCMDCommand, &cl.MessageOut)
 	WriteString(cmd, &cl.MessageOut)
 
