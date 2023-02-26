@@ -11,12 +11,19 @@ import (
 //
 // Called from Main() in a goroutine
 func (q2a *RemoteAdminServer) Maintenance() {
+	//s := os.PathSeparator
 	for {
 		time.Sleep(time.Duration(q2a.config.MaintenanceTime) * time.Second)
 
-		// each client gets attention
-		//for _, cl := range q2a.clients {
-		// log # of players at this time
-		//}
+		// every so often write all the client states to disk
+		/*
+			if q2a.maintcount&63 == 0 {
+				for _, cl := range q2a.clients {
+					filename := fmt.Sprintf("client-configs%c%s.json.tests", s, cl.Name)
+					cl.WriteToDisk(filename)
+				}
+			}
+		*/
+		q2a.maintcount++
 	}
 }
