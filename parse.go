@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"time"
 )
 
 /**
@@ -144,7 +145,11 @@ func (cl *Client) ParseConnect() {
 	wstxt := fmt.Sprintf("[CONNECT] %s [%s]", info["name"], info["ip"])
 	cl.SendToWebsiteFeed(wstxt, FeedJoinPart)
 
-	cl.ApplyRules(p)
+	// add a slight delay when processing rules
+	go func() {
+		time.Sleep(2 * time.Second)
+		cl.ApplyRules(p)
+	}()
 }
 
 // A player disconnected from a q2 server
