@@ -27,6 +27,7 @@ type RemoteAdminServer struct {
 	rules      []ClientRule    // bans/mutes/etc
 	privatekey *rsa.PrivateKey // private to us
 	publickey  *rsa.PublicKey  // known to clients
+	maintcount int             // total maintenance runs
 }
 
 //
