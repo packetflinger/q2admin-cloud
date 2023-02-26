@@ -9,10 +9,8 @@ import (
 	"time"
 )
 
-/**
- * Loop through all the data from the client
- * and act accordingly
- */
+// Loop through all the data from the client
+// and act accordingly
 func (cl *Client) ParseMessage() {
 	msg := &cl.Message
 	for {
@@ -94,11 +92,10 @@ func (cl *Client) Pong() {
 	}
 }
 
-/**
- * A print was sent by the server.
- * 1 byte: print level
- * string: the actual message
- */
+// A print was sent by the server.
+//
+// 1 byte: print level
+// string: the actual message
 func (cl *Client) ParsePrint() {
 	level := ReadByte(&cl.Message)
 	text := ReadString(&cl.Message)
@@ -170,10 +167,8 @@ func (cl *Client) ParseDisconnect() {
 	cl.RemovePlayer(clientnum)
 }
 
-/**
- * Server told us what map is currently running. Typically happens
- * when the map changes
- */
+// Client told us what map is currently running. Typically happens
+// when the map changes
 func (cl *Client) ParseMap() {
 	mapname := ReadString(&cl.Message)
 	cl.CurrentMap = mapname
