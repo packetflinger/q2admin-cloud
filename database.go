@@ -90,7 +90,7 @@ func LogEventToDatabase(cid int, logtype int, logentry string) {
 
 // Insert client-specific event
 func (cl *Client) LogEvent(event string) {
-	s := "INSERT INTO client_log (uuid, log_time, log_entry) VALUES (?,?,?)"
+	s := "INSERT INTO client_log (uuid, event_time, event) VALUES (?,?,?)"
 	_, err := db.Exec(s, cl.UUID, GetUnixTimestamp(), event)
 	if err != nil {
 		log.Println(err)
