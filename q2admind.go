@@ -6,7 +6,6 @@ import (
 	"os/signal"
 
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -15,10 +14,11 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"google.golang.org/protobuf/encoding/prototext"
 )
 
 var (
-	Configfile = flag.String("c", "q2a.json", "The main config file")
+	Configfile = flag.String("config", "config.q2a", "The main config file")
 	q2a        RemoteAdminServer // this server
 	db         *sql.DB
 )
@@ -138,9 +138,7 @@ func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
 	cl.WebSockets = tempws
 }
 
-//
 // Send the txt string to all the websockets listening
-//
 func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
 	now := GetTimeNow()
 
@@ -339,7 +337,7 @@ func main() {
 
 	log.Printf("Listening for gameservers on %s\n", port)
 
-	if q2a.config.APIEnabled > 0 {
+	if q2a.config.GetApiEnabled() {
 		go RunHTTPServer()
 	}
 
@@ -363,20 +361,21 @@ func initialize() {
 	flag.Parse()
 
 	log.Println("Loading config:", *Configfile)
-	confjson, err := os.ReadFile(*Configfile)
+	textpb, err := os.ReadFile(*Configfile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = json.Unmarshal(confjson, &q2a.config)
+	//err = json.Unmarshal(confjson, &q2a.config)
+	err = prototext.Unmarshal(textpb, &q2a.config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	rand.Seed(time.Now().Unix())
 
-	log.Println("Loading private key:", q2a.config.PrivateKey)
-	privkey, err := LoadPrivateKey(q2a.config.PrivateKey)
+	log.Println("Loading private key:", q2a.config.GetPrivateKey())
+	privkey, err := LoadPrivateKey(q2a.config.GetPrivateKey())
 	if err != nil {
 		log.Fatalf("Problems loading private key: %s\n", err.Error())
 	}
@@ -390,12 +389,12 @@ func initialize() {
 	log.Println("Loading global rules...")
 	q2a.ReadGlobalRules()
 
-	log.Println("Loading clients from:", q2a.config.ClientsFile)
+	log.Println("Loading clients from:", q2a.config.GetClientFile())
 	q2a.LoadClients()
 
 	// Read users
-	log.Println("Loading users from:", q2a.config.UsersFile)
-	users, err := ReadUsersFromDisk(q2a.config.UsersFile)
+	log.Println("Loading users from:", q2a.config.GetUserFile())
+	users, err := ReadUsersFromDisk(q2a.config.GetUserFile())
 	if err != nil {
 		log.Println(err)
 	} else {
@@ -403,8 +402,8 @@ func initialize() {
 	}
 
 	// Read permissions
-	log.Println("Loading user access from:", q2a.config.AccessFile)
-	useraccess, err := ReadAccessFromDisk(q2a.config.AccessFile)
+	log.Println("Loading user access from:", q2a.config.GetAccessFile())
+	useraccess, err := ReadAccessFromDisk(q2a.config.GetAccessFile())
 	if err != nil {
 		log.Println(err)
 	} else {

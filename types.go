@@ -4,24 +4,22 @@ import (
 	"crypto/rsa"
 
 	"github.com/gorilla/websocket"
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
-//
 // Use a custom buffer struct to keep track of where
 // we are in the stream of bytes internally
-//
 type MessageBuffer struct {
 	buffer []byte
 	index  int
 	length int // maybe not needed
 }
 
-//
 // "This" admin server
-//
 type RemoteAdminServer struct {
-	Users      []User          // website users
-	config     Config          // global config
+	Users []User // website users
+	//config     Config          // global config
+	config     pb.Config
 	clients    []Client        // managed quake 2 servers
 	access     []UserAccess    // permissions
 	rules      []ClientRule    // bans/mutes/etc
@@ -30,6 +28,7 @@ type RemoteAdminServer struct {
 	maintcount int             // total maintenance runs
 }
 
+/*
 //
 // The config file once parsed
 //
@@ -49,10 +48,9 @@ type Config struct {
 	OAuthFile       string `json:"oauthfile"`  // api credentials
 	MaintenanceTime int    `json:"mainttime"`  // seconds to sleep
 }
+*/
 
-//
 // Websocket
-//
 type WebSocketConnection struct {
 	Connected bool
 	Socket    *websocket.Conn

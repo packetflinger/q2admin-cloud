@@ -162,14 +162,14 @@ func ValidateSession(sess string) (*User, error) {
 // Load everything needed to start the web interface
 func RunHTTPServer() {
 	// load our OAuth2 stuff
-	cr, err := ReadOAuthCredsFromDisk(q2a.config.OAuthFile)
+	cr, err := ReadOAuthCredsFromDisk(q2a.config.GetAuthFile())
 	if err != nil {
 		log.Println(err)
 		os.Exit(0)
 	}
 	website.creds = cr
 
-	port := fmt.Sprintf("0.0.0.0:%d", q2a.config.APIPort)
+	port := fmt.Sprintf("0.0.0.0:%d", q2a.config.GetApiPort())
 	r := LoadWebsiteRoutes()
 
 	httpsrv := &http.Server{
@@ -252,9 +252,7 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//
 // the "index" handler
-//
 func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 	_, e := GetSessionUser(r)
 	if e != nil {
@@ -325,9 +323,7 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 	*/
 }
 
-//
 // Handler to delete a user's server
-//
 func WebDelServer(w http.ResponseWriter, r *http.Request) {
 	//user := GetSessionUser(r)
 	vars := mux.Vars(r)
@@ -350,17 +346,13 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, routes.Dashboard, http.StatusFound)
 }
 
-//
 // Log a user out
-//
 func WebSignout(w http.ResponseWriter, r *http.Request) {
 	AuthLogout(w, r)
 	http.Redirect(w, r, routes.Index, http.StatusFound)
 }
 
-//
 // Websocket handler for sending chat message to web clients
-//
 func WebFeed(w http.ResponseWriter, r *http.Request) {
 	/*
 		vars := mux.Vars(r)
@@ -390,9 +382,6 @@ func WebFeed(w http.ResponseWriter, r *http.Request) {
 	*/
 }
 
-//
-//
-//
 func WebFeedInput(w http.ResponseWriter, r *http.Request) {
 	/*
 		vars := mux.Vars(r)

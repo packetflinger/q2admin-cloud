@@ -1,0 +1,24 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative *.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+message Config {
+    string address = 1;         // ip addr
+    uint32 port = 2;
+    string database = 3;        // sqlite file
+    string private_key = 4;     // path
+    bool api_enabled = 5;
+    string api_address = 6;     // ip addr
+    uint32 api_port = 7;
+    string client_file = 8;
+    string client_directory = 9;
+    string user_file = 10;
+    string access_file = 11;
+    string auth_file = 12;
+    uint32 maintenance_time = 13; // seconds
+    bool debug_mode = 14;
+}

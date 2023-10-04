@@ -83,8 +83,8 @@ func FindClient(lookup string) (*Client, error) {
 // indenting doesn't matter
 //
 // Called from initialize() at startup
-func (c Config) ReadClientFile() []string {
-	contents, err := os.ReadFile(c.ClientsFile)
+func (s RemoteAdminServer) ReadClientFile() []string {
+	contents, err := os.ReadFile(s.config.GetClientFile())
 	if err != nil {
 		log.Println(err)
 		os.Exit(0)
@@ -139,7 +139,7 @@ func (cl *Client) SendMessages() {
 //
 // Called from initialize() at startup
 func (q2a *RemoteAdminServer) LoadClients() {
-	clientlist := q2a.config.ReadClientFile()
+	clientlist := q2a.ReadClientFile()
 	cls := []Client{}
 	for _, c := range clientlist {
 		cl := Client{}
