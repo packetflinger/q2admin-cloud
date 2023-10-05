@@ -366,7 +366,6 @@ func initialize() {
 		log.Fatal(err)
 	}
 
-	//err = json.Unmarshal(confjson, &q2a.config)
 	err = prototext.Unmarshal(textpb, &q2a.config)
 	if err != nil {
 		log.Fatal(err)
