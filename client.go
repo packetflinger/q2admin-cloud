@@ -12,10 +12,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 
 	"github.com/gorilla/websocket"
+	"google.golang.org/protobuf/encoding/prototext"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 // This struct is partially populated by parsing disk a file
@@ -78,33 +82,24 @@ func FindClient(lookup string) (*Client, error) {
 	return nil, errors.New("unknown client")
 }
 
-// The file should be just a list of server names one per line
-// comments (// and #) and blank lines are allowed
-// indenting doesn't matter
+// Reads the client textproto file. This file contains
+// every client we expect to interacat with.
 //
 // Called from initialize() at startup
-func (s RemoteAdminServer) ReadClientFile() []string {
+func (s *RemoteAdminServer) ReadClientFile() ([]string, error) {
+	clients := []string{}
+	clientspb := pb.ClientList{}
 	contents, err := os.ReadFile(s.config.GetClientFile())
 	if err != nil {
-		log.Println(err)
-		os.Exit(0)
+		return clients, err
+	}
+	err = prototext.Unmarshal(contents, &clientspb)
+	if err != nil {
+		return clients, err
 	}
 
-	srvs := []string{}
-	lines := strings.Split(string(contents), "\n")
-	for i := range lines {
-		trimmed := strings.Trim(lines[i], " \t")
-		// remove empty lines
-		if trimmed == "" {
-			continue
-		}
-		// remove comments
-		if trimmed[0] == '#' || trimmed[0:2] == "//" {
-			continue
-		}
-		srvs = append(srvs, trimmed)
-	}
-	return srvs
+	clients = clientspb.GetClient()
+	return clients, nil
 }
 
 // Send all messages in the outgoing queue to the client (gameserver)
@@ -134,86 +129,156 @@ func (cl *Client) SendMessages() {
 	}
 }
 
-// Read all client names from disk, load their diskformats
-// into memory. Add each to
+// Read all client names from disk, load their data
+// into memory. Add each to the client list.
 //
 // Called from initialize() at startup
-func (q2a *RemoteAdminServer) LoadClients() {
-	clientlist := q2a.ReadClientFile()
+func (q2a *RemoteAdminServer) LoadClients() error {
 	cls := []Client{}
-	for _, c := range clientlist {
-		cl := Client{}
-		err := cl.ReadFromDisk(c)
+	clientNames, err := q2a.ReadClientFile()
+	if err != nil {
+		return err
+	}
+	fmt.Println(clientNames)
+	for _, c := range clientNames {
+		client, err := (&Client{}).LoadSettings(q2a.config.GetClientDirectory(), c)
 		if err != nil {
 			continue
 		}
-		cls = append(cls, cl)
+		// don't actually attach the rules yet
+		_, err = client.FetchRules(q2a.config.GetClientDirectory())
+		if err != nil {
+			log.Println(err)
+		}
+		cls = append(cls, client)
 	}
 	q2a.clients = cls
+	return nil
+}
+
+// Read settings file for client from disk and make a *Client struct
+// from them.
+func (cl *Client) LoadSettings(dir, name string) (Client, error) {
+	var client Client
+	filename := path.Join(q2a.config.GetClientDirectory(), name, "settings")
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		return client, err
+	}
+	cls := pb.Clients{}
+	err = prototext.Unmarshal(contents, &cls)
+	if err != nil {
+		return client, err
+	}
+
+	for _, c := range cls.GetClient() {
+		if c.GetName() != name {
+			continue
+		}
+		client.Name = c.GetName()
+		client.Owner = c.GetOwner()
+		client.Description = c.GetDescription()
+		client.UUID = c.GetUuid()
+
+		tokens := strings.Split(c.GetAddress(), ":")
+		if len(tokens) == 2 {
+			client.Port, err = strconv.Atoi(tokens[1])
+			if err != nil {
+				client.Port = 27910
+			}
+		} else {
+			client.Port = 27910
+		}
+		client.IPAddress = tokens[0]
+	}
+	return client, nil
+}
+
+// Read rules from disk and return a slice of them
+func (cl *Client) FetchRules(dir string) ([]*pb.Rule, error) {
+	var rules []*pb.Rule
+	filename := path.Join(dir, cl.Name, "rules")
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		return rules, err
+	}
+	rl := pb.Rules{}
+	err = prototext.Unmarshal(contents, &rl)
+	if err != nil {
+		return rules, err
+	}
+	rules = rl.GetRule()
+	return rules, nil
 }
 
 // Read a client "object" from disk and into memory.
 //
 // Called at startup for each client
-func (cl *Client) ReadFromDisk(name string) error {
-	sep := os.PathSeparator
-	filename := fmt.Sprintf("%s%c%s.json", q2a.config.ClientDirectory, sep, name)
+func (cl *Client) LoadFromDisk(name string) error {
+	filename := path.Join(q2a.config.ClientDirectory, name)
 	filedata, err := os.ReadFile(filename)
 	if err != nil {
-		//log.Println("Problems with", name, "skipping")
-		return errors.New("unable to read file")
+		return err
 	}
-	sf := ClientDiskFormat{}
-	err = json.Unmarshal([]byte(filedata), &sf)
+	sf := pb.Clients{}
+	err = prototext.Unmarshal(filedata, &sf)
 	if err != nil {
-		log.Println(err)
-		return errors.New("unable to parse data")
+		return err
 	}
 
-	addr := strings.Split(sf.Address, ":")
-	if len(addr) == 2 {
-		cl.Port, _ = strconv.Atoi(addr[1])
-	} else {
-		cl.Port = 27910
-	}
-	cl.IPAddress = addr[0]
-	cl.Enabled = sf.Enabled
-	cl.Owner = sf.Owner
-	cl.Description = sf.Description
-	cl.UUID = sf.UUID
-	cl.Name = sf.Name
-	cl.Verified = sf.Verified
-
-	acls := []ClientRule{}
-	for _, c := range sf.Rules {
-		acl := ClientRule{}
-		acl.Address = c.Address
-		for _, ip := range c.Address {
-			if !strings.Contains(ip, "/") { // no cidr notation, assuming /32
-				ip += "/32"
-			}
-			_, netbinary, err := net.ParseCIDR(ip)
+	// in case more than 1 client is specified in this file
+	for _, c := range sf.GetClient() {
+		tokens := strings.Split(c.GetAddress(), ":")
+		if len(tokens) == 2 {
+			cl.Port, err = strconv.Atoi(tokens[1])
 			if err != nil {
-				log.Println("invalid cidr network in rule", c.ID, ip)
-				continue
+				cl.Port = 27910
 			}
-			acl.Network = append(acl.Network, netbinary)
+		} else {
+			cl.Port = 27910
 		}
-		acl.Hostname = c.Hostname
-		acl.Client = c.Client
-		acl.Created = c.Created
-		acl.Description = c.Description
-		acl.Length = c.Length
-		acl.Message = c.Message
-		acl.Name = c.Name
-		acl.Password = c.Password
-		acl.StifleLength = c.StifleLength
-		acl.Type = c.Type
-		acl.UserInfoKey = c.UserInfoKey
-		acl.UserinfoVal = c.UserinfoVal
-		acls = append(acls, acl)
+		cl.IPAddress = tokens[0]
+		//cl.Enabled = sf.
+		cl.Owner = c.GetOwner()
+		cl.Description = c.GetDescription()
+		cl.UUID = c.GetUuid()
+		cl.Name = c.GetName()
+		cl.Verified = c.GetVerified()
+
+		fmt.Println("reading", cl.Name)
 	}
-	cl.Rules = SortRules(acls)
+	/*
+		acls := []ClientRule{}
+		for _, c := range sf.Rules {
+			acl := ClientRule{}
+			acl.Address = c.Address
+			for _, ip := range c.Address {
+				if !strings.Contains(ip, "/") { // no cidr notation, assuming /32
+					ip += "/32"
+				}
+				_, netbinary, err := net.ParseCIDR(ip)
+				if err != nil {
+					log.Println("invalid cidr network in rule", c.ID, ip)
+					continue
+				}
+				acl.Network = append(acl.Network, netbinary)
+			}
+			acl.Hostname = c.Hostname
+			acl.Client = c.Client
+			acl.Created = c.Created
+			acl.Description = c.Description
+			acl.Length = c.Length
+			acl.Message = c.Message
+			acl.Name = c.Name
+			acl.Password = c.Password
+			acl.StifleLength = c.StifleLength
+			acl.Type = c.Type
+			acl.UserInfoKey = c.UserInfoKey
+			acl.UserinfoVal = c.UserinfoVal
+			acls = append(acls, acl)
+		}
+		cl.Rules = SortRules(acls)
+	*/
 	return nil
 }
 

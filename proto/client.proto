@@ -1,0 +1,26 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative *.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+message Clients {
+    message Client {
+        string uuid = 1;
+        string name = 2;
+        string owner = 3;
+        string description = 4;
+        string address = 5;
+        string public_key = 6;
+        bool verified = 7;
+        bool allow_teleport = 8;
+        bool allow_invite = 9;
+    }
+    repeated Client client = 1;
+}
+
+message ClientList {
+    repeated string client = 1;
+}
