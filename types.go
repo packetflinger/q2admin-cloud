@@ -20,7 +20,6 @@ type RemoteAdminServer struct {
 	Users      []*pb.User      // website users
 	config     pb.Config       // global config
 	clients    []Client        // managed quake 2 servers
-	access     []UserAccess    // permissions
 	rules      []*pb.Rule      // bans/mutes/etc
 	privatekey *rsa.PrivateKey // private to us
 	publickey  *rsa.PublicKey  // known to clients

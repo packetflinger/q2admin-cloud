@@ -13,13 +13,12 @@ import (
 // A user is someone who admins clients via the website.
 // This is the in-memory format
 type User struct {
-	ID          string       // a UUID, immutable
-	Email       string       // can change
-	Name        string       // main q2 alias, can change
-	Description string       // ?
-	Avatar      string       // from auth provider
-	Disabled    bool         // user globally cut off
-	Permissions []UserAccess // client access
+	ID          string // a UUID, immutable
+	Email       string // can change
+	Name        string // main q2 alias, can change
+	Description string // ?
+	Avatar      string // from auth provider
+	Disabled    bool   // user globally cut off
 	Session     UserSession
 }
 
@@ -30,15 +29,6 @@ type UserDiskFormat struct {
 	Name        string `json:"Name"`
 	Description string `json:"Description"`
 	Disabled    bool   `json:"Disabled"`
-}
-
-// A permission structure mapping users to their quake 2 servers.
-// Granting another user admin access to a client they're
-// not the owner of can be accomplished using these.
-type UserAccess struct {
-	User       string `json:"User"`       // uuid
-	Client     string `json:"Client"`     // uuid
-	Permission int    `json:"Permission"` // bitmask
 }
 
 // A website session
@@ -119,37 +109,4 @@ func ReadUsersFromDisk(filename string) ([]*pb.User, error) {
 		return users, err
 	}
 	return df.GetUser(), nil
-}
-
-// Write permissions to disk
-func WriteAccessToDisk(access []UserAccess, filename string) error {
-	filecontents, err := json.MarshalIndent(access, "", "  ")
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = os.WriteFile(filename, filecontents, 0644)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	return nil
-}
-
-// Parse json on disk into a structure
-func ReadAccessFromDisk(filename string) ([]UserAccess, error) {
-	filedata, err := os.ReadFile(filename)
-	if err != nil {
-		return []UserAccess{}, errors.New("unable to read file")
-	}
-
-	ua := []UserAccess{}
-	err = json.Unmarshal([]byte(filedata), &ua)
-	if err != nil {
-		return []UserAccess{}, errors.New("unable to parse data")
-	}
-
-	return ua, nil
 }

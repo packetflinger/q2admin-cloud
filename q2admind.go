@@ -409,17 +409,6 @@ func initialize() {
 		q2a.Users = users
 	}
 
-	// Read permissions
-	/*
-		log.Println("Loading user access from:", q2a.config.GetAccessFile())
-		useraccess, err := ReadAccessFromDisk(q2a.config.GetAccessFile())
-		if err != nil {
-			log.Println(err)
-		} else {
-			q2a.access = useraccess
-		}
-	*/
-
 	for _, c := range q2a.clients {
 		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 	}

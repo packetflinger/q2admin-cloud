@@ -67,34 +67,3 @@ func TestUserGet(t *testing.T) {
 		t.Error("Name doesn't match")
 	}
 }
-
-func TestWriteUserAccess(t *testing.T) {
-	ua := []UserAccess{
-		{
-			User:       "lkjasfasfd",
-			Client:     "ijeifjef",
-			Permission: 3453,
-		},
-		{
-			User:       "9jruijfgrf",
-			Client:     "ijeifjef",
-			Permission: 3666,
-		},
-	}
-
-	e := WriteAccessToDisk(ua, "access-test.json")
-	if e != nil {
-		t.Error(e)
-	}
-}
-
-func TestUserAccessRead(t *testing.T) {
-	access, err := ReadAccessFromDisk("access-test.json")
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(access) == 0 {
-		t.Error("No access entries found")
-	}
-}
