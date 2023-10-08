@@ -385,29 +385,37 @@ func initialize() {
 
 	db = DatabaseConnect()
 
-	log.Println("Loading global rules...")
-	q2a.ReadGlobalRules()
+	rules, err := FetchRules("rules.q2a")
+	if err != nil {
+		log.Println(err)
+	} else {
+		q2a.rules = rules
+	}
 
 	log.Println("Loading clients from:", q2a.config.GetClientFile())
 	q2a.LoadClients()
 
 	// Read users
-	log.Println("Loading users from:", q2a.config.GetUserFile())
-	users, err := ReadUsersFromDisk(q2a.config.GetUserFile())
-	if err != nil {
-		log.Println(err)
-	} else {
-		q2a.Users = users
-	}
+	/*
+		log.Println("Loading users from:", q2a.config.GetUserFile())
+		users, err := ReadUsersFromDisk(q2a.config.GetUserFile())
+		if err != nil {
+			log.Println(err)
+		} else {
+			q2a.Users = users
+		}
+	*/
 
 	// Read permissions
-	log.Println("Loading user access from:", q2a.config.GetAccessFile())
-	useraccess, err := ReadAccessFromDisk(q2a.config.GetAccessFile())
-	if err != nil {
-		log.Println(err)
-	} else {
-		q2a.access = useraccess
-	}
+	/*
+		log.Println("Loading user access from:", q2a.config.GetAccessFile())
+		useraccess, err := ReadAccessFromDisk(q2a.config.GetAccessFile())
+		if err != nil {
+			log.Println(err)
+		} else {
+			q2a.access = useraccess
+		}
+	*/
 
 	for _, c := range q2a.clients {
 		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)

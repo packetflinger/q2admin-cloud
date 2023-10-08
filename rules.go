@@ -250,6 +250,21 @@ func (q2a *RemoteAdminServer) ReadGlobalRules() {
 	q2a.rules = SortRules(rules.GetRule())
 }
 
+// Read rules from disk
+func FetchRules(filename string) ([]*pb.Rule, error) {
+	r := []*pb.Rule{}
+	filedata, err := os.ReadFile(filename)
+	if err != nil {
+		return r, err
+	}
+	rules := &pb.Rules{}
+	err = prototext.Unmarshal(filedata, rules)
+	if err != nil {
+		return r, err
+	}
+	return rules.GetRule(), nil
+}
+
 // Put ban rules first for fast failing.
 // Order:
 // 1. Bans
