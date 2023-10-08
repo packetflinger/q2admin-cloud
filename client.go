@@ -6,7 +6,6 @@ package main
 import (
 	"crypto/rsa"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -84,6 +83,7 @@ func FindClient(lookup string) (*Client, error) {
 // every client we expect to interacat with.
 //
 // Called from initialize() at startup
+/*
 func (s *RemoteAdminServer) ReadClientFile() ([]string, error) {
 	clients := []string{}
 	clientspb := pb.ClientList{}
@@ -99,6 +99,7 @@ func (s *RemoteAdminServer) ReadClientFile() ([]string, error) {
 	clients = clientspb.GetClient()
 	return clients, nil
 }
+*/
 
 // Send all messages in the outgoing queue to the client (gameserver)
 func (cl *Client) SendMessages() {
@@ -131,27 +132,32 @@ func (cl *Client) SendMessages() {
 // into memory. Add each to the client list.
 //
 // Called from initialize() at startup
-func (q2a *RemoteAdminServer) LoadClients() error {
-	cls := []Client{}
-	clientNames, err := q2a.ReadClientFile()
+func LoadClients(filename string) ([]Client, error) {
+	clients := []Client{}
+	clientspb := pb.ClientList{}
+
+	contents, err := os.ReadFile(filename)
 	if err != nil {
-		return err
+		return clients, err
+	}
+	err = prototext.Unmarshal(contents, &clientspb)
+	if err != nil {
+		return clients, err
 	}
 
+	clientNames := clientspb.GetClient()
 	for _, c := range clientNames {
 		client, err := (&Client{}).LoadSettings(q2a.config.GetClientDirectory(), c)
 		if err != nil {
 			continue
 		}
-		// don't actually attach the rules yet
 		client.Rules, err = client.FetchRules(q2a.config.GetClientDirectory())
 		if err != nil {
 			log.Println(err)
 		}
-		cls = append(cls, client)
+		clients = append(clients, client)
 	}
-	q2a.clients = cls
-	return nil
+	return clients, nil
 }
 
 // Read settings file for client from disk and make a *Client struct
@@ -209,6 +215,7 @@ func (cl *Client) FetchRules(dir string) ([]*pb.Rule, error) {
 	return rules, nil
 }
 
+/*
 // Read a client "object" from disk and into memory.
 //
 // Called at startup for each client
@@ -245,7 +252,7 @@ func (cl *Client) LoadFromDisk(name string) error {
 
 		fmt.Println("reading", cl.Name)
 	}
-	/*
+
 		acls := []ClientRule{}
 		for _, c := range sf.Rules {
 			acl := ClientRule{}
@@ -276,9 +283,10 @@ func (cl *Client) LoadFromDisk(name string) error {
 			acls = append(acls, acl)
 		}
 		cl.Rules = SortRules(acls)
-	*/
+
 	return nil
 }
+*/
 
 /*
 // Write key portions of the Client struct

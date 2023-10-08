@@ -393,7 +393,12 @@ func initialize() {
 	}
 
 	log.Println("Loading clients from:", q2a.config.GetClientFile())
-	q2a.LoadClients()
+	clients, err := LoadClients(q2a.config.GetClientFile())
+	if err != nil {
+		log.Println(err)
+	} else {
+		q2a.clients = clients
+	}
 
 	// Read users
 	/*
