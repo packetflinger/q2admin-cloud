@@ -5,8 +5,6 @@ package main
 
 import (
 	"crypto/rsa"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -49,7 +47,7 @@ type Client struct {
 	PublicKey   *rsa.PublicKey    // supplied by owner via website
 	AESKey      []byte            // 16 (128bit)
 	AESIV       []byte            // 16 bytes (CBC)
-	Rules       []ClientRule      // bans, mutes, etc
+	Rules       []*pb.Rule        // bans, mutes, etc
 	PingCount   int               // how many pings client has seen
 	WebSockets  []*websocket.Conn // slice of web clients
 }
@@ -139,14 +137,14 @@ func (q2a *RemoteAdminServer) LoadClients() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(clientNames)
+
 	for _, c := range clientNames {
 		client, err := (&Client{}).LoadSettings(q2a.config.GetClientDirectory(), c)
 		if err != nil {
 			continue
 		}
 		// don't actually attach the rules yet
-		_, err = client.FetchRules(q2a.config.GetClientDirectory())
+		client.Rules, err = client.FetchRules(q2a.config.GetClientDirectory())
 		if err != nil {
 			log.Println(err)
 		}
@@ -282,6 +280,7 @@ func (cl *Client) LoadFromDisk(name string) error {
 	return nil
 }
 
+/*
 // Write key portions of the Client struct
 // to disk as JSON.
 func (cl *Client) WriteToDisk(filename string) bool {
@@ -319,3 +318,4 @@ func (cl *Client) WriteToDisk(filename string) bool {
 	}
 	return true
 }
+*/
