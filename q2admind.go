@@ -412,6 +412,4 @@ func initialize() {
 	for _, c := range q2a.clients {
 		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 	}
-
-	LogSystemEvent("startup")
 }
