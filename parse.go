@@ -145,7 +145,6 @@ func (cl *Client) ParseConnect() {
 	// add a slight delay when processing rules
 	go func() {
 		time.Sleep(2 * time.Second)
-		cl.ApplyRules(p)
 	}()
 }
 
@@ -273,8 +272,6 @@ func (cl *Client) ParsePlayerUpdate() {
 	player.FOV, _ = strconv.Atoi(info["fov"])
 	player.Cookie = info["cl_cookie"]
 	player.UserInfoHash = hash
-
-	cl.ApplyRules(player)
 
 	if player.Cookie == "" {
 		player.SetupCookie()
