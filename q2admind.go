@@ -401,15 +401,13 @@ func initialize() {
 	}
 
 	// Read users
-	/*
-		log.Println("Loading users from:", q2a.config.GetUserFile())
-		users, err := ReadUsersFromDisk(q2a.config.GetUserFile())
-		if err != nil {
-			log.Println(err)
-		} else {
-			q2a.Users = users
-		}
-	*/
+	log.Println("Loading users from:", q2a.config.GetUserFile())
+	users, err := ReadUsersFromDisk(q2a.config.GetUserFile())
+	if err != nil {
+		log.Println(err)
+	} else {
+		q2a.Users = users
+	}
 
 	// Read permissions
 	/*

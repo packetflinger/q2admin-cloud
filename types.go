@@ -17,9 +17,8 @@ type MessageBuffer struct {
 
 // "This" admin server
 type RemoteAdminServer struct {
-	Users []User // website users
-	//config     Config          // global config
-	config     pb.Config
+	Users      []*pb.User      // website users
+	config     pb.Config       // global config
 	clients    []Client        // managed quake 2 servers
 	access     []UserAccess    // permissions
 	rules      []*pb.Rule      // bans/mutes/etc

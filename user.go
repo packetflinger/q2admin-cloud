@@ -5,6 +5,9 @@ import (
 	"errors"
 	"log"
 	"os"
+
+	pb "github.com/packetflinger/q2admind/proto"
+	"google.golang.org/protobuf/encoding/prototext"
 )
 
 // A user is someone who admins clients via the website.
@@ -46,35 +49,35 @@ type UserSession struct {
 }
 
 // Get a pointer to a user based on their ID
-func (q2a RemoteAdminServer) GetUser(id string) (*User, error) {
+func (q2a *RemoteAdminServer) GetUser(id string) (*pb.User, error) {
 	log.Println(q2a.Users)
 	for _, u := range q2a.Users {
 		//log.Println(u.ID)
-		if u.ID == id {
-			return &u, nil
+		if u.GetUuid() == id {
+			return u, nil
 		}
 	}
-	return &User{}, errors.New("user not found")
+	return &pb.User{}, errors.New("user not found")
 }
 
 // Get a pointer to a user based on their email
-func (q2a RemoteAdminServer) GetUserByEmail(email string) (*User, error) {
-	for i := range q2a.Users {
-		if q2a.Users[i].Email == email {
-			return &q2a.Users[i], nil
+func (q2a *RemoteAdminServer) GetUserByEmail(email string) (*pb.User, error) {
+	for _, u := range q2a.Users {
+		if u.GetEmail() == email {
+			return u, nil
 		}
 	}
-	return &User{}, errors.New("user not found")
+	return &pb.User{}, errors.New("user not found")
 }
 
 // Get a pointer to a user based on their name
-func (q2a RemoteAdminServer) GetUserByName(n string) (*User, error) {
-	for i := range q2a.Users {
-		if q2a.Users[i].Name == n {
-			return &q2a.Users[i], nil
+func (q2a *RemoteAdminServer) GetUserByName(n string) (*pb.User, error) {
+	for _, u := range q2a.Users {
+		if u.GetName() == n {
+			return u, nil
 		}
 	}
-	return &User{}, errors.New("user not found")
+	return &pb.User{}, errors.New("user not found")
 }
 
 // write all User objects to json format on disk
@@ -103,33 +106,19 @@ func WriteUsersToDisk(users []User, filename string) {
 
 // Read a json file containing users and parse into a struct.
 // Called at startup
-func ReadUsersFromDisk(filename string) ([]User, error) {
+func ReadUsersFromDisk(filename string) ([]*pb.User, error) {
+	users := []*pb.User{}
 	filedata, err := os.ReadFile(filename)
 	if err != nil {
-		//log.Println("Problems with", name, "skipping")
-		return []User{}, errors.New("unable to read file")
+		return users, err
 	}
 
-	df := []UserDiskFormat{}
-	err = json.Unmarshal([]byte(filedata), &df)
+	df := &pb.Users{}
+	err = prototext.Unmarshal(filedata, df)
 	if err != nil {
-		log.Println(err)
-		return []User{}, errors.New("unable to parse data")
+		return users, err
 	}
-
-	users := []User{}
-	for _, u := range df {
-		newuser := User{
-			ID:          u.ID,
-			Email:       u.Email,
-			Name:        u.Name,
-			Description: u.Description,
-			Disabled:    u.Disabled,
-		}
-		users = append(users, newuser)
-	}
-
-	return users, nil
+	return df.GetUser(), nil
 }
 
 // Write permissions to disk

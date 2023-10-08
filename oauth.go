@@ -224,17 +224,19 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := q2a.GetUserByEmail(profres.Email)
+	//user, err := q2a.GetUserByEmail(profres.Email)
 	if err != nil {
 		log.Println(err)
 	} else {
-		user.Session = UserSession{
-			ID:      token.AccessToken,
-			Expires: token.Expiry.Unix(),
-		}
-		user.Avatar = fmt.Sprintf(
-			"https://cdn.discordapp.com/avatars/%s/%s.png", profres.ID, profres.Avatar,
-		)
+		/*
+			user.Session = UserSession{
+				ID:      token.AccessToken,
+				Expires: token.Expiry.Unix(),
+			}
+			user.Avatar = fmt.Sprintf(
+				"https://cdn.discordapp.com/avatars/%s/%s.png", profres.ID, profres.Avatar,
+			)
+		*/
 		cookie := http.Cookie{
 			Name:     SessionName,
 			Value:    token.AccessToken,

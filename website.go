@@ -147,15 +147,17 @@ func CreateSession() UserSession {
 // 1. Current date is after the session creation date
 // 2. Current date is before the session expiration
 func ValidateSession(sess string) (*User, error) {
-	for i := range q2a.Users {
-		u := q2a.Users[i]
-		if u.Session.ID == sess {
-			now := GetUnixTimestamp()
-			if now > u.Session.Created && now < u.Session.Expires {
-				return &u, nil
+	/*
+		for i := range q2a.Users {
+			u := q2a.Users[i]
+			if u.Session.ID == sess {
+				now := GetUnixTimestamp()
+				if now > u.Session.Created && now < u.Session.Expires {
+					return &u, nil
+				}
 			}
 		}
-	}
+	*/
 	return &User{}, errors.New("invalid session")
 }
 
