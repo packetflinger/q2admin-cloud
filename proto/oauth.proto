@@ -1,0 +1,27 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative *.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+message Credentials {
+    enum Type {
+        GOOGLE = 0;
+        DISCORD = 1;
+    }
+    message OAuth {
+        Type type = 1;
+        string auth_url = 2;
+        string token_url = 3;
+        string client_id = 4;
+        string secret = 5;
+        repeated string scope = 6;
+        string image_path = 7;
+        string alternate_text = 8;
+        string callback_url = 9;
+        bool disabled = 10;
+    }
+    repeated OAuth oauth = 1;
+}
