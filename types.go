@@ -22,7 +22,7 @@ type RemoteAdminServer struct {
 	config     pb.Config
 	clients    []Client        // managed quake 2 servers
 	access     []UserAccess    // permissions
-	rules      []ClientRule    // bans/mutes/etc
+	rules      []*pb.Rule      // bans/mutes/etc
 	privatekey *rsa.PrivateKey // private to us
 	publickey  *rsa.PublicKey  // known to clients
 	maintcount int             // total maintenance runs
