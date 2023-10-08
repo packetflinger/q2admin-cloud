@@ -1,0 +1,44 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative *.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+enum RuleType {
+    MUTE = 0;     // can't talk
+    BAN = 1;      // can't connect
+    MESSAGE = 2;  // triggered message to user
+    STIFLE = 3;   // they can talk, but only once per amount of time
+}
+message UserInfo {
+    string property = 1;
+    string value = 2;
+}
+message Exception {
+    repeated string address = 1;
+    repeated string name = 2;
+    repeated string client = 3;
+    repeated UserInfo user_info = 4;
+}
+message Rule {
+    string uuid = 1;
+    RuleType type = 2;
+    repeated string address = 3;
+    repeated string name = 4;
+    repeated string client = 5;
+    repeated UserInfo user_info = 6;
+    repeated string message = 7;
+    int64 creation_time = 8;
+    int64 expiration_time = 9;
+    uint32 delay = 11; // ms
+    bool case_sensitive = 12;
+    bool exact_match = 13;
+    repeated string description = 14;
+    repeated Exception exception = 17;
+}
+
+message Rules {
+    repeated Rule rule = 1;
+}

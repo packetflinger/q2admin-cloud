@@ -1,140 +1,100 @@
 package main
 
 import (
-	"fmt"
-	"net"
 	"testing"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
-func genrules() []ClientRule {
-	rules := []ClientRule{
+func TestUserinfoMatches(t *testing.T) {
+	tests := []struct {
+		desc   string
+		ui     *pb.UserInfo
+		player Player
+		want   bool
+	}{
 		{
-			ID: "rule1",
-			Address: []string{
-				"10.1.1.0/25",
-				"10.2.3.5/32",
-				"10.4.0.0/16",
+			desc: "test1",
+			ui: &pb.UserInfo{
+				Property: "pw",
+				Value:    "dingle[bB]err.+",
 			},
-			Hostname: []string{
-				"host1.example.com",
-				"host2.example.net",
-				"host[a-z]\\.google.com",
+			player: Player{
+				UserinfoMap: map[string]string{
+					"pw":   "dingleberry",
+					"skin": "female/jezebel",
+					"hand": "1",
+				},
 			},
-			Length: 0,
-			Type:   "mute",
+			want: true,
 		},
 		{
-			ID: "rule2",
-			Address: []string{
-				"100.1.2.0/22",
+			desc: "test2",
+			ui: &pb.UserInfo{
+				Property: "skin",
+				Value:    "cyborg/ps[0-9]+",
 			},
-			Length: 0,
-			Type:   "ban",
-		},
-		{
-			ID: "rule3",
-			Address: []string{
-				"24.6.0.0/16",
+			player: Player{
+				UserinfoMap: map[string]string{
+					"pw":   "blah",
+					"skin": "female/jezebel",
+					"hand": "1",
+				},
 			},
-			Length: 0,
-			Type:   "mute",
-		},
-		{
-			ID: "expiredrule1",
-			Address: []string{
-				"10.1.0.0/16",
-			},
-			Created: 666,
-			Length:  1,
-			Type:    "ban",
-		},
-		{
-			ID: "NotName1",
-			Address: []string{
-				"100.64.1.200/32",
-			},
-			Name: []string{
-				"jimbob",
-			},
-			NameNot: true,
-			Length:  0,
-			Type:    "mute",
+			want: false,
 		},
 	}
 
-	for i := range rules {
-		for _, ip := range rules[i].Address {
-			_, netbin, _ := net.ParseCIDR(ip)
-			rules[i].Network = append(rules[i].Network, netbin)
-		}
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			got := UserinfoMatches(tc.ui, &tc.player)
+			if got != tc.want {
+				t.Error("UserinfoMatches() =", got, ", want", tc.want)
+			}
+		})
 	}
-
-	return rules
 }
 
-func genrules2() []ClientRule {
-	rules := []ClientRule{
+func TestSortRules(t *testing.T) {
+	tests := []struct {
+		desc  string
+		rules []*pb.Rule
+		want  []*pb.Rule
+	}{
 		{
-			ID: "rule1",
-			Hostname: []string{
-				"host1.example.com",
-				"host2.example.net",
-				"dhcp[0-9]+\\.cpe\\.isp\\.com",
+			desc: "test1",
+			rules: []*pb.Rule{
+				{Type: pb.RuleType_MESSAGE},
+				{Type: pb.RuleType_MESSAGE},
+				{Type: pb.RuleType_BAN},
+				{Type: pb.RuleType_MUTE},
+				{Type: pb.RuleType_BAN},
+				{Type: pb.RuleType_STIFLE},
 			},
-			Length: 0,
-			Type:   "mute",
-		},
-		{
-			ID: "rule2",
-			Address: []string{
-				"100.1.2.0/22",
+			want: []*pb.Rule{
+				{Type: pb.RuleType_BAN},
+				{Type: pb.RuleType_BAN},
+				{Type: pb.RuleType_MUTE},
+				{Type: pb.RuleType_STIFLE},
+				{Type: pb.RuleType_MESSAGE},
+				{Type: pb.RuleType_MESSAGE},
 			},
-			Length: 0,
-			Type:   "ban",
-		},
-		{
-			ID:     "rule3",
-			Length: 0,
-			Name: []string{
-				".*toejam$",
-				"ingrown",
-			},
-			Password: "xyz123",
-			Type:     "mute",
-		},
-		{
-			ID: "expiredrule1",
-			Address: []string{
-				"10.1.0.0/16",
-			},
-			Created: 666,
-			Length:  1,
-			Type:    "ban",
-		},
-		{
-			ID: "NotName1",
-			Address: []string{
-				"100.64.1.200/32",
-			},
-			Name: []string{
-				"jimbob",
-			},
-			NameNot: true,
-			Length:  0,
-			Type:    "mute",
 		},
 	}
 
-	for i := range rules {
-		for _, ip := range rules[i].Address {
-			_, netbin, _ := net.ParseCIDR(ip)
-			rules[i].Network = append(rules[i].Network, netbin)
-		}
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			got := SortRules(tc.rules)
+			for i := range got {
+				if got[i].GetType() != tc.want[i].GetType() {
+					t.Error("got", got, ", want", tc.want)
+				}
+			}
+		})
 	}
-
-	return rules
 }
 
+/*
 func TestRuleSort1(t *testing.T) {
 	rules := genrules()
 
@@ -289,13 +249,6 @@ func TestSingleRule(t *testing.T) {
 	}
 	cl := Client{}
 
-	/*
-		match := cl.CheckRule(&p, rules[0])
-		if match {
-			t.Error("Rule1 matched but should not have")
-		}
-	*/
-
 	match := cl.CheckRule(&p, rules[2])
 	fmt.Print(match)
 	if !match {
@@ -303,3 +256,4 @@ func TestSingleRule(t *testing.T) {
 		fmt.Println(rules[2])
 	}
 }
+*/

@@ -1,13 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net"
 	"os"
 	"regexp"
-	"strings"
 	"time"
+
+	pb "github.com/packetflinger/q2admind/proto"
+	"google.golang.org/protobuf/encoding/prototext"
 )
 
 // An ACL
@@ -69,8 +70,8 @@ type ClientRuleFormat struct {
 // later
 //
 // Called every time a player connects from ApplyRules() in ParseConnect()
-func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRule) {
-	rules := []ClientRule{} // which ones match
+func (cl *Client) CheckRules(p *Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
+	rules := []*pb.Rule{} // which ones match
 	for _, r := range ruleset {
 		if cl.CheckRule(p, r) {
 			rules = append(rules, r)
@@ -81,26 +82,30 @@ func (cl *Client) CheckRules(p *Player, ruleset []ClientRule) (bool, []ClientRul
 }
 
 // Check of a player matches a particular rule
-func (cl *Client) CheckRule(p *Player, r ClientRule) bool {
+func (cl *Client) CheckRule(p *Player, r *pb.Rule) bool {
 	match := false
 	now := time.Now().Unix()
 	need := 0
 	have := 0
 
 	// expired rule, ignore it
-	if r.Length > 0 && now-r.Created > r.Length {
+	if r.GetExpirationTime() > 0 && now > r.GetExpirationTime() {
 		return false
 	}
 
 	// if user has the password, the rule will never match
-	if r.Password != "" && p.UserinfoMap["pw"] == r.Password {
-		return false
-	}
+	//if r.Password != "" && p.UserinfoMap["pw"] == r.Password {
+	//	return false
+	//}
 
 	// any IPs
-	if len(r.Network) > 0 {
+	if len(r.GetAddress()) > 0 {
 		need++
-		for _, network := range r.Network {
+		for _, address := range r.GetAddress() {
+			_, network, err := net.ParseCIDR(address)
+			if err != nil {
+				continue
+			}
 			if network.Contains(net.ParseIP(p.IP)) {
 				have++
 				match = true
@@ -109,21 +114,23 @@ func (cl *Client) CheckRule(p *Player, r ClientRule) bool {
 		}
 	}
 
-	// any hostnames (regex)
-	if len(r.Hostname) > 0 {
-		need++
-		for _, host := range r.Hostname {
-			hm, err := regexp.MatchString(host, p.Hostname)
-			if err != nil {
-				continue
-			}
-			if hm {
-				have++
-				match = true
-				break
+	/*
+		// any hostnames (regex)
+		if len(r.Hostname) > 0 {
+			need++
+			for _, host := range r.Hostname {
+				hm, err := regexp.MatchString(host, p.Hostname)
+				if err != nil {
+					continue
+				}
+				if hm {
+					have++
+					match = true
+					break
+				}
 			}
 		}
-	}
+	*/
 
 	if len(r.Name) > 0 {
 		need++
@@ -133,12 +140,13 @@ func (cl *Client) CheckRule(p *Player, r ClientRule) bool {
 			if err != nil {
 				continue
 			}
-			if r.NameNot {
-				if !namematch {
-					match = true
-					have++
-				}
-			} else {
+			/*
+				if r.NameNot {
+					if !namematch {
+						match = true
+						have++
+					}
+				} else*/{
 				if namematch {
 					match = true
 					have++
@@ -148,25 +156,12 @@ func (cl *Client) CheckRule(p *Player, r ClientRule) bool {
 	}
 
 	// userinfo stuff, all have to match
-	uinot := false
-	if len(r.UserInfoKey) > 0 {
-		for i, k := range r.UserInfoKey {
+	//uinot := false
+	if len(r.GetUserInfo()) > 0 {
+		for _, ui := range r.GetUserInfo() {
 			need++
-			if len(r.UserInfoNot) >= i && len(r.UserInfoNot) != 0 {
-				uinot = r.UserInfoNot[i]
-			} else {
-				uinot = false
-			}
-			if uinot {
-				if p.UserinfoMap[k] != r.UserinfoVal[i] {
-					match = true
-					have++
-				}
-			} else {
-				if p.UserinfoMap[k] == r.UserinfoVal[i] {
-					match = true
-					have++
-				}
+			if UserinfoMatches(ui, p) {
+				have++
 			}
 		}
 	}
@@ -174,6 +169,7 @@ func (cl *Client) CheckRule(p *Player, r ClientRule) bool {
 	return match && (need <= have)
 }
 
+/*
 // Player should already match each rule, just apply the action.
 //
 // Called immediately after CheckRules() on ParseConnect() twice,
@@ -234,61 +230,24 @@ func (cl *Client) ApplyRules(p *Player) {
 		}
 	}
 }
+*/
 
 // Reads and parses the global rules from disk into memory.
 //
 // Called once at startup
 func (q2a *RemoteAdminServer) ReadGlobalRules() {
-	filedata, err := os.ReadFile("rules.json")
+	filedata, err := os.ReadFile("rules.q2a")
 	if err != nil {
-		log.Println("problems parsing rules.json")
+		log.Println("problems parsing rules.")
 		return
 	}
 
-	in := []ClientRuleFormat{}
-	rules := []ClientRule{}
-
-	err = json.Unmarshal([]byte(filedata), &in)
+	rules := &pb.Rules{}
+	err = prototext.Unmarshal(filedata, rules)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Println()
 	}
-
-	for _, r := range in {
-		out := ClientRule{}
-		out.ID = r.ID
-		out.Address = r.Address
-		out.Hostname = r.Hostname
-		out.HostAddrNot = r.HostAddrNot
-		out.Client = r.Client
-		out.Created = r.Created
-		out.Description = r.Description
-		out.Length = r.Length
-		out.Message = r.Message
-		out.Name = r.Name
-		out.NameNot = r.NameNot
-		out.Password = r.Password
-		out.StifleLength = r.StifleLength
-		out.Type = r.Type
-		out.UserInfoKey = r.UserInfoKey
-		out.UserinfoVal = r.UserinfoVal
-		out.UserInfoNot = r.UserInfoNot
-
-		for _, ip := range r.Address {
-			if !strings.Contains(ip, "/") { // no cidr notation, assuming /32
-				ip += "/32"
-			}
-			_, netbinary, err := net.ParseCIDR(ip)
-			if err != nil {
-				log.Println("invalid cidr network in global rule", r.ID, ip)
-				continue
-			}
-			out.Network = append(out.Network, netbinary)
-		}
-		rules = append(rules, out)
-	}
-
-	q2a.rules = SortRules(rules)
+	q2a.rules = SortRules(rules.GetRule())
 }
 
 // Put ban rules first for fast failing.
@@ -300,22 +259,22 @@ func (q2a *RemoteAdminServer) ReadGlobalRules() {
 //
 // Called from ReadGlobalRules() and LoadClients() on startup.
 // Also called as new rules are added while running
-func SortRules(rules []ClientRule) []ClientRule {
-	newruleset := []ClientRule{}
-	bans := []ClientRule{}
-	mutes := []ClientRule{}
-	stifles := []ClientRule{}
-	msgs := []ClientRule{}
+func SortRules(rules []*pb.Rule) []*pb.Rule {
+	newruleset := []*pb.Rule{}
+	bans := []*pb.Rule{}
+	mutes := []*pb.Rule{}
+	stifles := []*pb.Rule{}
+	msgs := []*pb.Rule{}
 
 	for _, r := range rules {
-		switch r.Type {
-		case "ban":
+		switch r.GetType() {
+		case pb.RuleType_BAN:
 			bans = append(bans, r)
-		case "mute":
+		case pb.RuleType_MUTE:
 			mutes = append(mutes, r)
-		case "stifle":
+		case pb.RuleType_STIFLE:
 			stifles = append(stifles, r)
-		case "msg":
+		case pb.RuleType_MESSAGE:
 			msgs = append(msgs, r)
 		}
 	}
@@ -349,4 +308,19 @@ func (r ClientRule) ToDiskFormat() ClientRuleFormat {
 		Created:      r.Created,
 		Length:       r.Length,
 	}
+}
+
+func UserinfoMatches(ui *pb.UserInfo, p *Player) bool {
+	for k, v := range p.UserinfoMap {
+		if k == ui.GetProperty() {
+			re, err := regexp.Compile(ui.GetValue())
+			if err != nil {
+				return false
+			}
+			if re.MatchString(v) {
+				return true
+			}
+		}
+	}
+	return false
 }
