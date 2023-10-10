@@ -10,10 +10,10 @@ import (
 // up.
 //
 // Called from Main() in a goroutine
-func (q2a *RemoteAdminServer) Maintenance() {
+func startMaintenance() {
 	//s := os.PathSeparator
 	for {
-		time.Sleep(time.Duration(q2a.Config.MaintenanceTime) * time.Second)
+		time.Sleep(time.Duration(Q2A.Config.MaintenanceTime) * time.Second)
 
 		// every so often write all the client states to disk
 		/*
@@ -24,6 +24,6 @@ func (q2a *RemoteAdminServer) Maintenance() {
 				}
 			}
 		*/
-		q2a.MaintCount++
+		Q2A.MaintCount++
 	}
 }

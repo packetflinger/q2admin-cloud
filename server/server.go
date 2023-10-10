@@ -365,7 +365,7 @@ func Startup() {
 		//go api.RunHTTPServer()
 	}
 
-	//go server.Q2A.Maintenance()
+	go startMaintenance()
 
 	for {
 		c, err := listener.Accept()
