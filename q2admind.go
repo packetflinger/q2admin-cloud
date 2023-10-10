@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	Configfile = flag.String("config", "config.q2a", "The main config file")
+	Configfile = flag.String("config", "config/config", "The main config file")
 	q2a        RemoteAdminServer // this server
 	db         *sql.DB
 )
