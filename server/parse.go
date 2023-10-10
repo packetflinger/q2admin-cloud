@@ -39,7 +39,7 @@ func ParseMessage(cl *client.Client) {
 			ParsePlayerUpdate(cl)
 
 		case CMDConnect:
-			cl.ParseConnect()
+			ParseConnect(cl)
 
 		case CMDDisconnect:
 			cl.ParseDisconnect()
@@ -125,8 +125,8 @@ func ParsePrint(cl *client.Client) {
 // 2. Parse their userinfo
 // 3. Log the connection
 // 4. Apply any rules that match them
-func (cl *Client) ParseConnect() {
-	p := cl.ParsePlayer()
+func ParseConnect(cl *client.Client) {
+	p := ParsePlayer(cl)
 
 	if p == nil {
 		return
