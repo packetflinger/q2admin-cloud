@@ -7,18 +7,20 @@ import (
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/packetflinger/q2admind/client"
 )
 
 // Loop through all the data from the client
 // and act accordingly
-func (cl *Client) ParseMessage() {
+func ParseMessage(cl *client.Client) {
 	msg := &cl.Message
 	for {
-		if msg.index >= len(msg.buffer) {
+		if msg.Index >= len(msg.Buffer) {
 			break
 		}
 
-		switch b := ReadByte(msg); b {
+		switch b := msg.ReadByte(); b {
 		case CMDPing:
 			cl.Pong()
 

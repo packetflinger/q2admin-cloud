@@ -234,7 +234,7 @@ func HandleConnection(c net.Conn) {
 	cl.SendMessages()
 	cl.Trusted = true
 
-	cl.Players = make([]Player, cl.MaxPlayers)
+	cl.Players = make([]client.Player, cl.MaxPlayers)
 
 	// main connection loop
 	for {
@@ -258,7 +258,7 @@ func HandleConnection(c net.Conn) {
 		//cl.Message.length = size
 		cl.Message = message.NewMessageBuffer(input)
 
-		cl.ParseMessage()
+		ParseMessage(cl)
 		cl.SendMessages()
 	}
 
