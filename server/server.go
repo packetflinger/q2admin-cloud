@@ -387,7 +387,12 @@ func Startup() {
 	log.Printf("Listening for gameservers on %s\n", port)
 
 	if Q2A.Config.GetApiEnabled() {
-		//go api.RunHTTPServer()
+		creds, err := api.ReadOAuthCredsFromDisk(Q2A.Config.GetAuthFile())
+		if err != nil {
+			log.Println(err)
+		}
+
+		go api.RunHTTPServer(Q2A.Config.GetApiAddress(), int(Q2A.Config.GetApiPort()), creds)
 	}
 
 	go startMaintenance()

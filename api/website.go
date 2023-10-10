@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -170,21 +169,15 @@ func ValidateSession(sess string) (*User, error) {
 }
 
 // Load everything needed to start the web interface
-func RunHTTPServer() {
-	// load our OAuth2 stuff
-	cr, err := ReadOAuthCredsFromDisk(q2a.config.GetAuthFile())
-	if err != nil {
-		log.Println(err)
-		os.Exit(0)
-	}
-	Website.Creds = cr
+func RunHTTPServer(ip string, port int, creds []Credentials) {
+	Website.Creds = creds
 
-	port := fmt.Sprintf("0.0.0.0:%d", q2a.config.GetApiPort())
+	listen := fmt.Sprintf("%s:%d", ip, port)
 	r := LoadWebsiteRoutes()
 
 	httpsrv := &http.Server{
 		Handler:      r,
-		Addr:         port,
+		Addr:         listen,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
