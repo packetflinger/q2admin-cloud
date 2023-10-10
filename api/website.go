@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/util"
 )
 
 const (
@@ -118,6 +119,7 @@ func GetSessionUser(r *http.Request) (*User, error) {
 	return user, nil
 }
 
+/*
 func GetUser(id int) WebUser {
 	niluser := &WebUser{}
 	sql := "SELECT id, uuid, email, server_count, admin FROM user WHERE id = ? LIMIT 1"
@@ -136,13 +138,14 @@ func GetUser(id int) WebUser {
 
 	return *niluser
 }
+*/
 
 // Make a new session for a user
 func CreateSession() UserSession {
 	sess := UserSession{
-		ID:      GenerateUUID(),
-		Created: GetUnixTimestamp(),
-		Expires: GetUnixTimestamp() + (86400 * 2), // 2 days from now
+		ID:      util.GenerateUUID(),
+		Created: util.GetUnixTimestamp(),
+		Expires: util.GetUnixTimestamp() + (86400 * 2), // 2 days from now
 	}
 
 	return sess
