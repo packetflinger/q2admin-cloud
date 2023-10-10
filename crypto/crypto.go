@@ -1,3 +1,10 @@
+// The crypto package holds almost all code needed for any
+// cryptographic function we require.
+// These include:
+//   - key generation
+//   - asymmetric (en|de)crypt
+//   - symmetric (en|de)crypt
+//   - signing/verifying
 package crypto
 
 import (
@@ -16,9 +23,7 @@ import (
 	"os"
 )
 
-/**
- * Get a SHA256 hash of an input byte slice
- */
+// Get a SHA256 hash of an input byte slice
 func DigestSHA256(input []byte) []byte {
 	hash := sha256.New()
 	_, _ = hash.Write(input)
@@ -33,9 +38,7 @@ func MD5Hash(input string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-/**
- * Generate a private/public key pair of a certain bit length
- */
+// Generate a private/public key pair of a certain bit length
 func GenerateKeys(bitlength int) bool {
 	// make the actual keys
 	privatekey, err := rsa.GenerateKey(rand.Reader, bitlength)
@@ -86,9 +89,7 @@ func GenerateKeys(bitlength int) bool {
 	return true
 }
 
-/**
- * Read an RSA private key into memory from the filesystem
- */
+// Read an RSA private key into memory from the filesystem
 func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
 	priv, err := os.ReadFile(keyfile)
 	if err != nil {
@@ -118,10 +119,8 @@ func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
 	return nil, errors.New("something went wrong")
 }
 
-/**
- * Read an RSA public key from the filesystem and get
- * it ready to use
- */
+// Read an RSA public key from the filesystem and get
+// it ready to use
 func LoadPublicKey(keyfile string) (*rsa.PublicKey, error) {
 	pub, err := os.ReadFile(keyfile)
 	if err != nil {
@@ -143,11 +142,9 @@ func LoadPublicKey(keyfile string) (*rsa.PublicKey, error) {
 	return nil, errors.New("not a public key file")
 }
 
-/**
- * Manually add padding to a slice to get it to a specific
- * block size. The number of bytes required is the byte used
- * for the actual padding
- */
+// Manually add padding to a slice to get it to a specific
+// block size. The number of bytes required is the byte used
+// for the actual padding
 func PKCS5Padding(input []byte, blockSize int) []byte {
 	padding := (blockSize - len(input)%blockSize)
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
@@ -177,9 +174,7 @@ func PublicEncrypt(key *rsa.PublicKey, plaintext []byte) []byte {
 	return encryptedBytes
 }
 
-/**
- * Get a byte slice of random data (for generating keys)
- */
+// Get a byte slice of random data (for generating keys)
 func RandomBytes(length int) []byte {
 	b := make([]byte, length)
 	_, err := rand.Read(b)
@@ -214,10 +209,8 @@ func (cl *Client) RotateKeys() {
 	cl.AESIV = iv
 }
 
-/**
- * Hash the plaintext, encrypt the resulting digest with our private key.
- * Only our public key can decrypt, proving it's really us
- */
+// Hash the plaintext, encrypt the resulting digest with our private key.
+// Only our public key can decrypt, proving it's really us
 func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
 	hash := sha256.New()
 	_, _ = hash.Write(plaintext)
@@ -232,9 +225,7 @@ func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
 	return signature
 }
 
-/**
- * decrypt incoming messages using AES
- */
+// Decrypt incoming messages using AES
 func SymmetricDecrypt(key []byte, nonce []byte, ciphertext []byte) ([]byte, int) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -251,9 +242,7 @@ func SymmetricDecrypt(key []byte, nonce []byte, ciphertext []byte) ([]byte, int)
 	return unpadded, len(unpadded)
 }
 
-/**
- * Encrypt outgoing messages using AES
- */
+// Encrypt outgoing messages using AES
 func SymmetricEncrypt(key []byte, nonce []byte, plaintext []byte) []byte {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -268,9 +257,7 @@ func SymmetricEncrypt(key []byte, nonce []byte, plaintext []byte) []byte {
 	return ciphertext
 }
 
-/**
- * Use a public key to decrypt a signature and compare it to hash of the content
- */
+// Use a public key to decrypt a signature and compare it to hash of the content
 func VerifySignature(key *rsa.PublicKey, plaintext []byte, sig []byte) bool {
 	hash := sha256.New()
 	temp := plaintext
