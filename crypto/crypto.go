@@ -23,6 +23,11 @@ import (
 	"os"
 )
 
+const (
+	AESBlockLength = 16 // 128 bit
+	AESIVLength    = 16 // 128 bit
+)
+
 // Get a SHA256 hash of an input byte slice
 func DigestSHA256(input []byte) []byte {
 	hash := sha256.New()

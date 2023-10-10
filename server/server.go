@@ -37,8 +37,6 @@ const (
 	ProtocolMagic   = 1128346193 // "Q2AC"
 	versionRequired = 342        // git revision number
 	challengeLength = 16         // bytes
-	AESBlockLength  = 16         // 128 bit
-	AESIVLength     = 16         // 128 bit
 	SessionName     = "q2asess"  // website cookie name
 	TeleportWidth   = 80         // max chars per line for teleport replies
 )
@@ -134,8 +132,8 @@ func RotateKeys(cl *client.Client) {
 		return
 	}
 
-	key := crypto.RandomBytes(AESBlockLength)
-	iv := crypto.RandomBytes(AESIVLength)
+	key := crypto.RandomBytes(crypto.AESBlockLength)
+	iv := crypto.RandomBytes(crypto.AESIVLength)
 	blob := append(key, iv...)
 
 	// Send immediately so old keys used for this message
@@ -219,8 +217,8 @@ func HandleConnection(c net.Conn) {
 	// If client requests encrypted transit, encrypt the session key/iv
 	// with the client's public key to keep it confidential
 	if cl.Encrypted {
-		cl.AESKey = crypto.RandomBytes(AESBlockLength)
-		cl.AESIV = crypto.RandomBytes(AESIVLength)
+		cl.AESKey = crypto.RandomBytes(crypto.AESBlockLength)
+		cl.AESIV = crypto.RandomBytes(crypto.AESIVLength)
 		blob := append(cl.AESKey, cl.AESIV...)
 		aescipher := crypto.PublicEncrypt(cl.PublicKey, blob)
 		out.WriteData(aescipher)
