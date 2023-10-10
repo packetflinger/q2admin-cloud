@@ -76,13 +76,11 @@ func Teleport(cl *client.Client) {
 	//LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
-/**
- * Resolve a teleport name to an ip:port
- */
-func FindTeleportDestination(dest string) (*Client, error) {
-	for i, c := range Q2A.clients {
+// Resolve a teleport name to an ip:port
+func FindTeleportDestination(dest string) (*client.Client, error) {
+	for i, c := range Q2A.Clients {
 		if c.Name == dest {
-			return &Q2A.clients[i], nil
+			return &Q2A.Clients[i], nil
 		}
 	}
 
