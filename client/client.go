@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/encoding/prototext"
 
+	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/api"
 	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
@@ -24,32 +25,32 @@ import (
 // on disk on init and the rest is filled in when the game
 // server actually connects
 type Client struct {
-	ID          int                // this is the database index, remove later
-	UUID        string             // random identifier
-	Owner       string             // email addr
-	Version     int                // what version are we running
-	Name        string             // the teleport name
-	Description string             // used in teleporting
-	IPAddress   string             // used for teleporting
-	Port        int                // used for teleporting
-	Connected   bool               // is it currently connected to us?
-	Verified    bool               // client owner proved they're the owner
-	CurrentMap  string             // what map is currently running
-	Enabled     bool               // actually use it
-	Connection  *net.Conn          // the tcp connection
-	Players     []Player           // all the connected players
-	PlayerCount int                // len(Players)
-	MaxPlayers  int                // total number
-	Message     util.MessageBuffer // incoming byte stream
-	MessageOut  util.MessageBuffer // outgoing byte stream
-	Encrypted   bool               // are the messages AES encrypted?
-	Trusted     bool               // signature challenge verified
-	PublicKey   *rsa.PublicKey     // supplied by owner via website
-	AESKey      []byte             // 16 (128bit)
-	AESIV       []byte             // 16 bytes (CBC)
-	Rules       []*pb.Rule         // bans, mutes, etc
-	PingCount   int                // how many pings client has seen
-	WebSockets  []*websocket.Conn  // slice of web clients
+	ID          int                   // this is the database index, remove later
+	UUID        string                // random identifier
+	Owner       string                // email addr
+	Version     int                   // what version are we running
+	Name        string                // the teleport name
+	Description string                // used in teleporting
+	IPAddress   string                // used for teleporting
+	Port        int                   // used for teleporting
+	Connected   bool                  // is it currently connected to us?
+	Verified    bool                  // client owner proved they're the owner
+	CurrentMap  string                // what map is currently running
+	Enabled     bool                  // actually use it
+	Connection  *net.Conn             // the tcp connection
+	Players     []Player              // all the connected players
+	PlayerCount int                   // len(Players)
+	MaxPlayers  int                   // total number
+	Message     message.MessageBuffer // incoming byte stream
+	MessageOut  message.MessageBuffer // outgoing byte stream
+	Encrypted   bool                  // are the messages AES encrypted?
+	Trusted     bool                  // signature challenge verified
+	PublicKey   *rsa.PublicKey        // supplied by owner via website
+	AESKey      []byte                // 16 (128bit)
+	AESIV       []byte                // 16 bytes (CBC)
+	Rules       []*pb.Rule            // bans, mutes, etc
+	PingCount   int                   // how many pings client has seen
+	WebSockets  []*websocket.Conn     // slice of web clients
 }
 
 // JSON structure for persistent storage

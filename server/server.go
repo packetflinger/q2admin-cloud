@@ -185,9 +185,12 @@ func HandleConnection(c net.Conn) {
 	cl.PublicKey = pubkey
 
 	challengeCipher := crypto.Sign(Q2A.Privatekey, clNonce)
-	WriteByte(SCMDHelloAck, &cl.MessageOut)
-	WriteShort(len(challengeCipher), &cl.MessageOut)
-	WriteData(challengeCipher, &cl.MessageOut)
+
+	//msg := message.NewMessageBuffer(&cl.MessageOut)
+	out := &cl.MessageOut
+	out.WriteByte(SCMDHelloAck)
+	out.WriteShort(uint16(len(challengeCipher)))
+	out.WriteData(challengeCipher)
 
 	// If client requests encrypted transit, encrypt the session key/iv
 	// with the client's public key to keep it confidential
@@ -196,11 +199,11 @@ func HandleConnection(c net.Conn) {
 		cl.AESIV = crypto.RandomBytes(AESIVLength)
 		blob := append(cl.AESKey, cl.AESIV...)
 		aescipher := crypto.PublicEncrypt(cl.PublicKey, blob)
-		WriteData(aescipher, &cl.MessageOut)
+		out.WriteData(aescipher)
 	}
 
 	svchallenge := crypto.RandomBytes(challengeLength)
-	WriteData(svchallenge, &cl.MessageOut)
+	out.WriteData(svchallenge)
 
 	cl.SendMessages()
 
@@ -220,14 +223,14 @@ func HandleConnection(c net.Conn) {
 
 	if verified {
 		log.Printf("[%s] signature verified, server trusted\n", cl.Name)
-		cl.LogEvent("connected")
+		//cl.LogEvent("connected")
 	} else {
 		log.Printf("[%s] signature verifcation failed...", cl.Name)
 		c.Close()
 		return
 	}
 
-	WriteByte(SCMDTrusted, &cl.MessageOut)
+	out.WriteByte(SCMDTrusted)
 	cl.SendMessages()
 	cl.Trusted = true
 
@@ -250,9 +253,10 @@ func HandleConnection(c net.Conn) {
 			input, size = crypto.SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
 		}
 
-		cl.Message.buffer = input
-		cl.Message.index = 0
-		cl.Message.length = size
+		//cl.Message.buffer = input
+		//cl.Message.index = 0
+		//cl.Message.length = size
+		cl.Message = message.NewMessageBuffer(input)
 
 		cl.ParseMessage()
 		cl.SendMessages()
@@ -261,7 +265,7 @@ func HandleConnection(c net.Conn) {
 	cl.Connected = false
 	cl.Trusted = false
 	c.Close()
-	cl.LogEvent("disconnected")
+	//cl.LogEvent("disconnected")
 }
 
 // Gracefully shut everything down
