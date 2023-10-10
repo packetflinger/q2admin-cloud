@@ -25,7 +25,7 @@ func ParseMessage(cl *client.Client) {
 			Pong(cl)
 
 		case CMDPrint:
-			cl.ParsePrint()
+			ParsePrint(cl)
 
 		case CMDMap:
 			cl.ParseMap()
