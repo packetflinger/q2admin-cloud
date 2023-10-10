@@ -188,16 +188,14 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 	//LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
-/**
- *
- */
-func (cl *Client) KickPlayer(p *Player, msg string) {
+// Tell the client to disconnect a specific player
+func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 	cmd := fmt.Sprintf("kick %d\n", p.ClientID)
-	WriteByte(SCMDCommand, &cl.MessageOut)
-	WriteString(cmd, &cl.MessageOut)
+	(&cl.MessageOut).WriteByte(SCMDCommand)
+	(&cl.MessageOut).WriteString(cmd)
 
-	txt := fmt.Sprintf("KICK [%d] was kicked", p.ClientID)
-	LogEventToDatabase(cl.ID, LogTypeCommand, txt)
+	//txt := fmt.Sprintf("KICK [%d] was kicked", p.ClientID)
+	//LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
 // Issue a command as if you were typing it into the console.
