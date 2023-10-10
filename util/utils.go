@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -48,36 +47,6 @@ func AuthLogout(w http.ResponseWriter, r *http.Request) {
 		cookie := http.Cookie{Name: SessionName, Value: "", Expires: expire}
 		http.SetCookie(w, &cookie)
 	*/
-}
-
-// Resync servers struct with database
-// Should get called when servers are added/removed
-// via the web interface
-func RehashServers() []Client {
-	sql := "SELECT id, uuid, owner, name, ip, port, disabled FROM server"
-	r, err := DB.Query(sql)
-	if err != nil {
-		log.Println(err)
-		return Q2A.clients // db error, return current struct
-	}
-
-	var cls []Client
-	var cl Client
-	var disabled int
-	for r.Next() {
-		r.Scan(&cl.ID, &cl.UUID, &cl.Owner, &cl.Name, &cl.IPAddress, &cl.Port, &disabled)
-		cl.Enabled = disabled == 0
-
-		current, err := FindClient(cl.UUID)
-		if err != nil { // server in db, but not memory
-			cls = append(cls, cl)
-		} else {
-			cls = append(cls, *current)
-		}
-	}
-	r.Close()
-
-	return cls
 }
 
 func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
