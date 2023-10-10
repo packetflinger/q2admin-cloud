@@ -37,19 +37,3 @@ func GetPlayerIdFromHash(hash string) int {
 
 	return id
 }
-
-func InsertPlayer(p *Player) int64 {
-	sql := "INSERT INTO player (hash) VALUES (?)"
-	r, err := DB.Exec(sql, p.UserInfoHash)
-	if err != nil {
-		log.Println(err)
-	}
-
-	id, err := r.LastInsertId()
-	if err != nil {
-		log.Println(err)
-		return 0
-	}
-
-	return id
-}
