@@ -42,7 +42,7 @@ func ParseMessage(cl *client.Client) {
 			ParseConnect(cl)
 
 		case CMDDisconnect:
-			cl.ParseDisconnect()
+			ParseDisconnect(cl)
 
 		case CMDCommand:
 			cl.ParseCommand()
@@ -155,11 +155,11 @@ func ParseConnect(cl *client.Client) {
 }
 
 // A player disconnected from a q2 server
-func (cl *Client) ParseDisconnect() {
-	clientnum := int(ReadByte(&cl.Message))
+func ParseDisconnect(cl *client.Client) {
+	clientnum := int((&cl.Message).ReadByte())
 
 	if clientnum < 0 || clientnum > cl.MaxPlayers {
-		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(cl.Message.buffer))
+		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(cl.Message.Buffer))
 		return
 	}
 
