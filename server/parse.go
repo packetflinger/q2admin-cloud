@@ -143,7 +143,7 @@ func ParseConnect(cl *client.Client) {
 	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", cl.Name, p.ClientID, info["name"], info["ip"], p.UserInfoHash)
 	log.Printf("%s\n", txt)
 
-	cl.LogPlayer(p)
+	//LogPlayer(cl, p, )
 
 	//wstxt := fmt.Sprintf("[CONNECT] %s [%s]", info["name"], info["ip"])
 	//cl.SendToWebsiteFeed(wstxt, api.FeedJoinPart)

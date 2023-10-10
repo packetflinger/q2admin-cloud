@@ -150,25 +150,6 @@ func UserinfoMap(ui string) map[string]string {
 	return info
 }
 
-// A player connected, save them in the database
-//
-// Called from ParseConnect()
-func (cl *Client) LogPlayer(pl *Player) {
-	s := "INSERT INTO player (server, name, ip, hash, userinfo, connect_time) VALUES (?,?,?,?,?,?)"
-	_, err := DB.Exec(
-		s,
-		cl.UUID,
-		pl.Name,
-		pl.IP,
-		pl.UserInfoHash,
-		pl.Userinfo,
-		GetUnixTimestamp(),
-	)
-	if err != nil {
-		log.Println(err)
-	}
-}
-
 // Find the first player using the provided name
 // on this particular client.
 //

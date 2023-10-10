@@ -6,6 +6,8 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/util"
 )
 
 // Open our sqlite database
@@ -101,6 +103,25 @@ func (cl *Client) LogEvent(event string) {
 func LogSystemEvent(event string) {
 	s := "INSERT INTO system_log (log_time, log_entry) VALUES (?,?)"
 	_, err := DB.Exec(s, GetUnixTimestamp(), event)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// A player connected, save them in the database
+//
+// Called from ParseConnect()
+func LogPlayer(cl *client.Client, pl *client.Player, db *sql.DB) {
+	s := "INSERT INTO player (server, name, ip, hash, userinfo, connect_time) VALUES (?,?,?,?,?,?)"
+	_, err := db.Exec(
+		s,
+		cl.UUID,
+		pl.Name,
+		pl.IP,
+		pl.UserInfoHash,
+		pl.Userinfo,
+		util.GetUnixTimestamp(),
+	)
 	if err != nil {
 		log.Println(err)
 	}
