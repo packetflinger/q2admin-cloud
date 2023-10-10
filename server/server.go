@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/crypto"
 	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
 )
@@ -210,7 +211,7 @@ func HandleConnection(c net.Conn) {
 	keyname := fmt.Sprintf("keys/%s.pem", uuid)
 
 	log.Printf("[%s] Loading public key: %s\n", cl.Name, keyname)
-	pubkey, err := LoadPublicKey(keyname)
+	pubkey, err := crypto.LoadPublicKey(keyname)
 	if err != nil {
 		log.Printf("Public key error: %s\n", err.Error())
 		c.Close()
@@ -218,7 +219,7 @@ func HandleConnection(c net.Conn) {
 	}
 	cl.PublicKey = pubkey
 
-	challengeCipher := Sign(Q2A.privatekey, clNonce)
+	challengeCipher := crypto.Sign(Q2A.privatekey, clNonce)
 	WriteByte(SCMDHelloAck, &cl.MessageOut)
 	WriteShort(len(challengeCipher), &cl.MessageOut)
 	WriteData(challengeCipher, &cl.MessageOut)
@@ -226,14 +227,14 @@ func HandleConnection(c net.Conn) {
 	// If client requests encrypted transit, encrypt the session key/iv
 	// with the client's public key to keep it confidential
 	if cl.Encrypted {
-		cl.AESKey = RandomBytes(AESBlockLength)
-		cl.AESIV = RandomBytes(AESIVLength)
+		cl.AESKey = crypto.RandomBytes(AESBlockLength)
+		cl.AESIV = crypto.RandomBytes(AESIVLength)
 		blob := append(cl.AESKey, cl.AESIV...)
-		aescipher := PublicEncrypt(cl.PublicKey, blob)
+		aescipher := crypto.PublicEncrypt(cl.PublicKey, blob)
 		WriteData(aescipher, &cl.MessageOut)
 	}
 
-	svchallenge := RandomBytes(challengeLength)
+	svchallenge := crypto.RandomBytes(challengeLength)
 	WriteData(svchallenge, &cl.MessageOut)
 
 	cl.SendMessages()
@@ -252,7 +253,7 @@ func HandleConnection(c net.Conn) {
 
 	sigsize := ReadShort(&msg)
 	clientSignature := ReadData(&msg, int(sigsize))
-	verified := VerifySignature(cl.PublicKey, svchallenge, clientSignature)
+	verified := crypto.VerifySignature(cl.PublicKey, svchallenge, clientSignature)
 
 	if verified {
 		log.Printf("[%s] signature verified, server trusted\n", cl.Name)
@@ -283,7 +284,7 @@ func HandleConnection(c net.Conn) {
 
 		// decrypt if necessary
 		if cl.Encrypted && cl.Trusted {
-			input, size = SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
+			input, size = crypto.SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
 		}
 
 		cl.Message.buffer = input
@@ -310,7 +311,7 @@ func Shutdown() {
 // Start the cloud admin server
 func Startup() {
 	log.Println("Loading private key:", Q2A.Config.GetPrivateKey())
-	privkey, err := LoadPrivateKey(Q2A.Config.GetPrivateKey())
+	privkey, err := crypto.LoadPrivateKey(Q2A.Config.GetPrivateKey())
 	if err != nil {
 		log.Fatalf("Problems loading private key: %s\n", err.Error())
 	}
