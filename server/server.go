@@ -121,6 +121,43 @@ func FindClient(lookup string) (*client.Client, error) {
 	return nil, errors.New("unknown client")
 }
 
+// Someone deleted a managed server via the web interface.
+// This should mean:
+// - remove from database, including foreign key constraints
+// - close any open connections to this server
+// - remove from active server slice in memory
+//
+// TODO: make this better
+func RemoveClient(uuid string) bool {
+	cl, err := FindClient(uuid)
+	if err != nil {
+		return false
+	}
+
+	// mark in-ram server object as disabled to prevent reconnects
+	cl.Enabled = false
+
+	tr, err := DB.Begin()
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	sql := "DELETE FROM server WHERE id = ?"
+	_, err = tr.Exec(sql, cl.ID)
+	if err != nil {
+		log.Println(err)
+		tr.Rollback()
+		return false
+	}
+
+	// log data?
+	// chat data?
+
+	tr.Commit()
+	return true
+}
+
 // Change symmetric keys. Generate new key and iv and
 // immediately send them to the client. This jumps ahead
 // of the normal send buffer so that all messages from
