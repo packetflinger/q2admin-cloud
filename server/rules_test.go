@@ -3,6 +3,7 @@ package server
 import (
 	"testing"
 
+	"github.com/packetflinger/q2admind/client"
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
@@ -10,7 +11,7 @@ func TestUserinfoMatches(t *testing.T) {
 	tests := []struct {
 		desc   string
 		ui     *pb.UserInfo
-		player Player
+		player client.Player
 		want   bool
 	}{
 		{
@@ -19,7 +20,7 @@ func TestUserinfoMatches(t *testing.T) {
 				Property: "pw",
 				Value:    "dingle[bB]err.+",
 			},
-			player: Player{
+			player: client.Player{
 				UserinfoMap: map[string]string{
 					"pw":   "dingleberry",
 					"skin": "female/jezebel",
@@ -34,7 +35,7 @@ func TestUserinfoMatches(t *testing.T) {
 				Property: "skin",
 				Value:    "cyborg/ps[0-9]+",
 			},
-			player: Player{
+			player: client.Player{
 				UserinfoMap: map[string]string{
 					"pw":   "blah",
 					"skin": "female/jezebel",
