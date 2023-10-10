@@ -37,3 +37,22 @@ func LogEvent(cl *client.Client, event string) {
 		log.Println(err)
 	}
 }
+
+// A player connected, save them in the database
+//
+// Called from ParseConnect()
+func LogPlayer(cl *client.Client, pl *client.Player) {
+	s := "INSERT INTO player (server, name, ip, hash, userinfo, connect_time) VALUES (?,?,?,?,?,?)"
+	_, err := DB.Exec(
+		s,
+		cl.UUID,
+		pl.Name,
+		pl.IP,
+		pl.UserInfoHash,
+		pl.Userinfo,
+		util.GetUnixTimestamp(),
+	)
+	if err != nil {
+		log.Println(err)
+	}
+}
