@@ -9,18 +9,20 @@ import (
 	"net"
 
 	"github.com/gorilla/websocket"
+	"github.com/packetflinger/q2admind/client"
 	pb "github.com/packetflinger/q2admind/proto"
+	"github.com/packetflinger/q2admind/util"
 )
 
 // "This" admin server
 type RemoteAdminServer struct {
 	Users      []*pb.User      // website users
-	config     pb.Config       // global config
-	clients    []Client        // managed quake 2 servers
-	rules      []*pb.Rule      // bans/mutes/etc
-	privatekey *rsa.PrivateKey // private to us
-	publickey  *rsa.PublicKey  // known to clients
-	maintcount int             // total maintenance runs
+	Config     pb.Config       // global config
+	Clients    []client.Client // managed quake 2 servers
+	Rules      []*pb.Rule      // bans/mutes/etc
+	Privatekey *rsa.PrivateKey // private to us
+	Publickey  *rsa.PublicKey  // known to clients
+	MaintCount int             // total maintenance runs
 }
 
 var (
@@ -98,7 +100,7 @@ const (
 )
 
 // Initialize a message buffer
-func clearmsg(msg *MessageBuffer) {
+func clearmsg(msg *util.MessageBuffer) {
 	msg.buffer = nil
 	msg.index = 0
 	msg.length = 0
@@ -107,7 +109,7 @@ func clearmsg(msg *MessageBuffer) {
 // Each server keeps track of the websocket for people "looking at it".
 // When they close the browser or logout, remove the pointer
 // to that socket
-func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
+func (cl *client.Client) DeleteWebSocket(sock *websocket.Conn) {
 	location := -1
 	// find it's index first
 	for i := range cl.WebSockets {
@@ -128,7 +130,7 @@ func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
 }
 
 // Send the txt string to all the websockets listening
-func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
+func (cl *client.Client) SendToWebsiteFeed(txt string, decoration int) {
 	/*
 		now := GetTimeNow()
 
@@ -163,7 +165,7 @@ func HandleConnection(c net.Conn) {
 	log.Printf("Serving %s\n", c.RemoteAddr().String())
 
 	input := make([]byte, 5000)
-	var msg MessageBuffer
+	var msg util.MessageBuffer
 
 	_, _ = c.Read(input)
 	msg.buffer = input
@@ -303,4 +305,73 @@ func Shutdown() {
 	log.Println("Shutting down...")
 	//LogSystemEvent("shutdown")
 	DB.Close() // not sure if this is necessary
+}
+
+// Start the cloud admin server
+func Startup() {
+	log.Println("Loading private key:", Q2A.Config.GetPrivateKey())
+	privkey, err := LoadPrivateKey(Q2A.Config.GetPrivateKey())
+	if err != nil {
+		log.Fatalf("Problems loading private key: %s\n", err.Error())
+	}
+
+	pubkey := privkey.Public().(*rsa.PublicKey)
+	Q2A.Privatekey = privkey
+	Q2A.Publickey = pubkey
+
+	DB = DatabaseConnect()
+
+	rules, err := FetchRules("rules.q2a")
+	if err != nil {
+		log.Println(err)
+	} else {
+		Q2A.Rules = rules
+	}
+
+	log.Println("Loading clients from:", Q2A.Config.GetClientFile())
+	clients, err := client.LoadClients(Q2A.Config.GetClientFile())
+	if err != nil {
+		log.Println(err)
+	} else {
+		Q2A.Clients = clients
+	}
+
+	// Read users
+	log.Println("Loading users from:", Q2A.Config.GetUserFile())
+	users, err := ReadUsersFromDisk(Q2A.Config.GetUserFile())
+	if err != nil {
+		log.Println(err)
+	} else {
+		Q2A.Users = users
+	}
+
+	for _, c := range Q2A.Clients {
+		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
+	}
+
+	port := fmt.Sprintf("%s:%d", Q2A.Config.Address, Q2A.Config.Port)
+	listener, err := net.Listen("tcp", port) // v4 + v6
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	defer listener.Close()
+
+	log.Printf("Listening for gameservers on %s\n", port)
+
+	if Q2A.Config.GetApiEnabled() {
+		//go api.RunHTTPServer()
+	}
+
+	//go server.Q2A.Maintenance()
+
+	for {
+		c, err := listener.Accept()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		go HandleConnection(c)
+	}
 }
