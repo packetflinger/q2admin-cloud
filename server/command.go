@@ -67,7 +67,7 @@ func Teleport(cl *client.Client) {
 		cl.SayPlayer(p, PRINT_HIGH, "Unknown destination\n")
 	} else {
 		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, s.Name, s.IPAddress, s.Port)
-		cl.SayEveryone(PRINT_HIGH, txt)
+		SayEveryone(cl, PRINT_HIGH, txt)
 		st := fmt.Sprintf("connect %s:%d\n", s.IPAddress, s.Port)
 		StuffPlayer(cl, *p, st)
 	}
@@ -143,7 +143,7 @@ func Invite(cl *client.Client) {
 	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, cl.Name, cl.IPAddress, cl.Port)
 	for _, s := range Q2A.Clients {
 		if s.Enabled && s.Connected {
-			s.SayEveryone(PRINT_CHAT, inv)
+			SayEveryone(&s, PRINT_CHAT, inv)
 		}
 	}
 
