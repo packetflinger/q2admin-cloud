@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"time"
@@ -13,7 +13,7 @@ import (
 func (q2a *RemoteAdminServer) Maintenance() {
 	//s := os.PathSeparator
 	for {
-		time.Sleep(time.Duration(q2a.config.MaintenanceTime) * time.Second)
+		time.Sleep(time.Duration(q2a.Config.MaintenanceTime) * time.Second)
 
 		// every so often write all the client states to disk
 		/*
@@ -24,6 +24,6 @@ func (q2a *RemoteAdminServer) Maintenance() {
 				}
 			}
 		*/
-		q2a.maintcount++
+		q2a.MaintCount++
 	}
 }
