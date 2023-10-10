@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"log"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -19,21 +18,4 @@ func DatabaseConnect() *sql.DB {
 	}
 
 	return db
-}
-
-func GetPlayerIdFromHash(hash string) int {
-	sql := "SELECT id FROM player WHERE hash = ? LIMIT 1"
-	r, err := DB.Query(sql, hash)
-	if err != nil {
-		log.Println(err)
-		return 0
-	}
-	defer r.Close()
-
-	id := 0
-	for r.Next() {
-		r.Scan(&id)
-	}
-
-	return id
 }
