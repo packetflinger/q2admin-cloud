@@ -8,6 +8,8 @@ import (
 
 	//"strings"
 	"time"
+
+	"github.com/packetflinger/q2admind/client"
 )
 
 /**
@@ -16,9 +18,10 @@ import (
  * If a destination is supplied, just send the player there,
  * else send a list of possibilities
  */
-func (cl *Client) Teleport() {
-	pl := ReadByte(&cl.Message)
-	dest := ReadString(&cl.Message)
+func Teleport(cl *client.Client) {
+	msg := &cl.Message
+	pl := msg.ReadByte()
+	dest := msg.ReadString()
 	p := cl.FindPlayer(int(pl))
 
 	now := time.Now().Unix()
@@ -39,7 +42,7 @@ func (cl *Client) Teleport() {
 		cl.SayPlayer(p, PRINT_CHAT, "Active Servers\n")
 		line := ""
 
-		for _, c := range Q2A.clients {
+		for _, c := range Q2A.Clients {
 			if len(c.Players) == 0 {
 				continue
 			}
@@ -66,11 +69,11 @@ func (cl *Client) Teleport() {
 		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, s.Name, s.IPAddress, s.Port)
 		cl.SayEveryone(PRINT_HIGH, txt)
 		st := fmt.Sprintf("connect %s:%d\n", s.IPAddress, s.Port)
-		cl.StuffPlayer(*p, st)
+		StuffPlayer(cl, *p, st)
 	}
 
-	txt := fmt.Sprintf("TELEPORT [%d] %s", pl, p.Name)
-	LogEventToDatabase(cl.ID, LogTypeCommand, txt)
+	//txt := fmt.Sprintf("TELEPORT [%d] %s", pl, p.Name)
+	//LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
 /**
@@ -114,9 +117,9 @@ func TeleportAvailableReply() string {
  *
  * Broadcast the invite to all connected servers
  */
-func (cl *Client) Invite() {
-	client := ReadByte(&cl.Message)
-	text := ReadString(&cl.Message)
+func Invite(cl *client.Client) {
+	client := (&cl.Message).ReadByte()
+	text := (&cl.Message).ReadString()
 	p := cl.FindPlayer(int(client))
 	log.Printf("[%s/INVITE/%s] %s\n", cl.Name, p.Name, text)
 
@@ -140,7 +143,7 @@ func (cl *Client) Invite() {
 	}
 
 	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, cl.Name, cl.IPAddress, cl.Port)
-	for _, s := range Q2A.clients {
+	for _, s := range Q2A.Clients {
 		if s.Enabled && s.Connected {
 			s.SayEveryone(PRINT_CHAT, inv)
 		}
@@ -164,10 +167,10 @@ func (cl *Client) ConsoleSay(print string) {
 /**
  * Force a player to do a command
  */
-func (cl *Client) StuffPlayer(p Player, cmd string) {
+func StuffPlayer(cl *client.Client, p client.Player, cmd string) {
 	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.ClientID, cmd)
-	WriteByte(SCMDCommand, &cl.MessageOut)
-	WriteString(stuffcmd, &cl.MessageOut)
+	(&cl.MessageOut).WriteByte(SCMDCommand)
+	(&cl.MessageOut).WriteString(stuffcmd)
 }
 
 /**
