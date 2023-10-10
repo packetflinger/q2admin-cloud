@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/encoding/prototext"
 
+	"github.com/packetflinger/q2admind/api"
 	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
 )
@@ -337,4 +338,28 @@ func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
 	tempws := cl.WebSockets[0:location]
 	tempws = append(tempws, cl.WebSockets[location+1:]...)
 	cl.WebSockets = tempws
+}
+
+// Send the txt string to all the websockets listening
+func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
+	now := util.GetTimeNow()
+
+	colored := ""
+	switch decoration {
+	case api.FeedChat:
+		colored = now + " \\\\e[32m" + txt + "\\\\e[0m"
+	case api.FeedJoinPart:
+		colored = now + " \\\\e[33m\\\\e[42m" + txt + "\\\\e[0m"
+	default:
+		colored = now + " " + txt
+	}
+
+	sockets := cl.WebSockets
+	for i := range sockets {
+		err := sockets[i].WriteMessage(1, []byte(colored))
+		if err != nil {
+			log.Println(err)
+			cl.DeleteWebSocket(cl.WebSockets[i])
+		}
+	}
 }

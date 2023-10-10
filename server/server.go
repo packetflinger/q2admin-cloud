@@ -123,32 +123,6 @@ func FindClient(lookup string) (*client.Client, error) {
 	return nil, errors.New("unknown client")
 }
 
-// Send the txt string to all the websockets listening
-func (cl *client.Client) SendToWebsiteFeed(txt string, decoration int) {
-	/*
-		now := GetTimeNow()
-
-		colored := ""
-		switch decoration {
-		case FeedChat:
-			colored = now + " \\\\e[32m" + txt + "\\\\e[0m"
-		case FeedJoinPart:
-			colored = now + " \\\\e[33m\\\\e[42m" + txt + "\\\\e[0m"
-		default:
-			colored = now + " " + txt
-		}
-
-		sockets := cl.WebSockets
-		for i := range sockets {
-			err := sockets[i].WriteMessage(1, []byte(colored))
-			if err != nil {
-				log.Println(err)
-				cl.DeleteWebSocket(cl.WebSockets[i])
-			}
-		}
-	*/
-}
-
 // Setup the connection
 // The first message sent should identify the game server
 // and trigger the authentication process. Connection
