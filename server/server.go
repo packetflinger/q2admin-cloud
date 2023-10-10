@@ -9,8 +9,10 @@ import (
 	"net"
 
 	"github.com/gorilla/websocket"
+	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
+	"github.com/packetflinger/q2admind/database"
 	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
 )
@@ -219,7 +221,7 @@ func HandleConnection(c net.Conn) {
 	}
 	cl.PublicKey = pubkey
 
-	challengeCipher := crypto.Sign(Q2A.privatekey, clNonce)
+	challengeCipher := crypto.Sign(Q2A.Privatekey, clNonce)
 	WriteByte(SCMDHelloAck, &cl.MessageOut)
 	WriteShort(len(challengeCipher), &cl.MessageOut)
 	WriteData(challengeCipher, &cl.MessageOut)
@@ -320,7 +322,7 @@ func Startup() {
 	Q2A.Privatekey = privkey
 	Q2A.Publickey = pubkey
 
-	DB = DatabaseConnect()
+	DB = database.DatabaseConnect()
 
 	rules, err := FetchRules("rules.q2a")
 	if err != nil {
@@ -339,7 +341,7 @@ func Startup() {
 
 	// Read users
 	log.Println("Loading users from:", Q2A.Config.GetUserFile())
-	users, err := ReadUsersFromDisk(Q2A.Config.GetUserFile())
+	users, err := api.ReadUsersFromDisk(Q2A.Config.GetUserFile())
 	if err != nil {
 		log.Println(err)
 	} else {
