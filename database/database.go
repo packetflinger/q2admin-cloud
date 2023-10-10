@@ -57,29 +57,6 @@ func InsertPlayer(p *Player) int64 {
 	return id
 }
 
-// A player said something, record to use against them later
-func (cl *Client) LogChat(chat string) {
-	s := "INSERT INTO chat (uuid, chat_time, chat) VALUES (?,?,?)"
-	_, err := DB.Exec(s, cl.UUID, GetUnixTimestamp(), chat)
-	if err != nil {
-		log.Println(err)
-	}
-}
-
-/**
- * Save frags for stats
- */
-func LogFrag(cl *Client, victim int, attacker int) {
-	/*
-		sql := "INSERT INTO frag (victim,attacker,server,fragdate) VALUES (?,?,?,?)"
-		_, err := db.Exec(sql, server, logtype, logentry, now)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	*/
-}
-
 func LogEventToDatabase(cid int, logtype int, logentry string) {
 	now := time.Now().Unix()
 	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,?)"
@@ -87,15 +64,6 @@ func LogEventToDatabase(cid int, logtype int, logentry string) {
 	if err != nil {
 		log.Println(err)
 		return
-	}
-}
-
-// Insert client-specific event
-func (cl *Client) LogEvent(event string) {
-	s := "INSERT INTO client_log (uuid, event_time, event) VALUES (?,?,?)"
-	_, err := DB.Exec(s, cl.UUID, GetUnixTimestamp(), event)
-	if err != nil {
-		log.Println(err)
 	}
 }
 
