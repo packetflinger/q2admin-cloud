@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/packetflinger/q2admind/api"
 	"github.com/ravener/discord-oauth2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
