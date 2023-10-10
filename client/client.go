@@ -5,7 +5,6 @@ package client
 
 import (
 	"crypto/rsa"
-	"errors"
 	"log"
 	"net"
 	"os"
@@ -17,7 +16,6 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
-	"github.com/packetflinger/q2admind/server"
 	"github.com/packetflinger/q2admind/util"
 )
 
@@ -67,18 +65,6 @@ type ClientDiskFormat struct {
 	Contacts      string `json:"Contacts"`    // for getting ahold of operator
 	/*PublicKey     string             `json:"PublicKey"`   // relative path to file */
 	//Rules []ClientRuleFormat `json:"Controls"`
-}
-
-// Locate the struct of the server for a particular
-// ID, get a pointer to it
-func FindClient(lookup string) (*Client, error) {
-	for i, cl := range server.Q2A.Clients {
-		if cl.UUID == lookup {
-			return &server.Q2A.Clients[i], nil
-		}
-	}
-
-	return nil, errors.New("unknown client")
 }
 
 // Reads the client textproto file. This file contains
@@ -149,11 +135,11 @@ func LoadClients(filename string) ([]Client, error) {
 
 	clientNames := clientspb.GetClient()
 	for _, c := range clientNames {
-		client, err := (&Client{}).LoadSettings(Q2A.config.GetClientDirectory(), c)
+		client, err := (&Client{}).LoadSettings(c)
 		if err != nil {
 			continue
 		}
-		client.Rules, err = client.FetchRules(Q2A.config.GetClientDirectory())
+		client.Rules, err = client.FetchRules()
 		if err != nil {
 			log.Println(err)
 		}
@@ -164,9 +150,9 @@ func LoadClients(filename string) ([]Client, error) {
 
 // Read settings file for client from disk and make a *Client struct
 // from them.
-func (cl *Client) LoadSettings(dir, name string) (Client, error) {
+func (cl *Client) LoadSettings(name string) (Client, error) {
 	var client Client
-	filename := path.Join(Q2A.config.GetClientDirectory(), name, "settings")
+	filename := path.Join("clients", name, "settings")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return client, err
@@ -201,9 +187,9 @@ func (cl *Client) LoadSettings(dir, name string) (Client, error) {
 }
 
 // Read rules from disk and return a slice of them
-func (cl *Client) FetchRules(dir string) ([]*pb.Rule, error) {
+func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	var rules []*pb.Rule
-	filename := path.Join(dir, cl.Name, "rules")
+	filename := path.Join("clients", cl.Name, "rules")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return rules, err

@@ -3,18 +3,19 @@ package server
 import (
 	"crypto/rsa"
 	"database/sql"
+	"errors"
 
 	"fmt"
 	"log"
 	"net"
 
 	"github.com/gorilla/websocket"
+	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/database"
 	pb "github.com/packetflinger/q2admind/proto"
-	"github.com/packetflinger/q2admind/util"
 )
 
 // "This" admin server
@@ -102,11 +103,25 @@ const (
 	LogTypeCommand
 )
 
+/*
 // Initialize a message buffer
 func clearmsg(msg *util.MessageBuffer) {
 	msg.buffer = nil
 	msg.index = 0
 	msg.length = 0
+}
+*/
+
+// Locate the struct of the server for a particular
+// ID, get a pointer to it
+func FindClient(lookup string) (*client.Client, error) {
+	for i, cl := range Q2A.Clients {
+		if cl.UUID == lookup {
+			return &Q2A.Clients[i], nil
+		}
+	}
+
+	return nil, errors.New("unknown client")
 }
 
 // Each server keeps track of the websocket for people "looking at it".
@@ -168,12 +183,10 @@ func HandleConnection(c net.Conn) {
 	log.Printf("Serving %s\n", c.RemoteAddr().String())
 
 	input := make([]byte, 5000)
-	var msg util.MessageBuffer
-
 	_, _ = c.Read(input)
-	msg.buffer = input
+	msg := message.NewMessageBuffer(input)
 
-	magic := ReadLong(&msg)
+	magic := msg.ReadLong()
 	if magic != ProtocolMagic {
 		// not a valid client, just close connection
 		log.Println("Bad magic value in new connection, not a valid client")
@@ -181,13 +194,13 @@ func HandleConnection(c net.Conn) {
 		return
 	}
 
-	_ = ReadByte(&msg) // should be CMDHello
-	uuid := ReadString(&msg)
-	ver := ReadLong(&msg)
-	port := ReadShort(&msg)
-	maxplayers := ReadByte(&msg)
-	enc := ReadByte(&msg)
-	clNonce := ReadData(&msg, challengeLength)
+	_ = msg.ReadByte() // should be CMDHello
+	uuid := msg.ReadString()
+	ver := msg.ReadLong()
+	port := msg.ReadShort()
+	maxplayers := msg.ReadByte()
+	enc := msg.ReadByte()
+	clNonce := msg.ReadData(challengeLength)
 
 	if ver < versionRequired {
 		log.Println("Version too old")
@@ -242,19 +255,17 @@ func HandleConnection(c net.Conn) {
 	cl.SendMessages()
 
 	// read the client signature
-	size, _ := c.Read(input)
-	msg.buffer = input
-	msg.index = 0
-	msg.length = size
+	_, _ = c.Read(input)
+	msg = message.NewMessageBuffer(input)
 
-	op := ReadByte(&msg) // should be CMDAuth (0x0d)
+	op := msg.ReadByte() // should be CMDAuth (0x0d)
 	if op != CMDAuth {
 		c.Close()
 		return
 	}
 
-	sigsize := ReadShort(&msg)
-	clientSignature := ReadData(&msg, int(sigsize))
+	sigsize := msg.ReadShort()
+	clientSignature := msg.ReadData(int(sigsize))
 	verified := crypto.VerifySignature(cl.PublicKey, svchallenge, clientSignature)
 
 	if verified {
@@ -324,7 +335,7 @@ func Startup() {
 
 	DB = database.DatabaseConnect()
 
-	rules, err := FetchRules("rules.q2a")
+	rules, err := FetchRules("config/rules")
 	if err != nil {
 		log.Println(err)
 	} else {
