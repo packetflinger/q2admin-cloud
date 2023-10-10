@@ -22,7 +22,7 @@ func ParseMessage(cl *client.Client) {
 
 		switch b := msg.ReadByte(); b {
 		case CMDPing:
-			cl.Pong()
+			Pong(cl)
 
 		case CMDPrint:
 			cl.ParsePrint()
@@ -82,16 +82,16 @@ func ParseFrag(cl *client.Client) {
 }
 
 // Received a ping from a client, send a pong to show we're alive
-func (cl *Client) Pong() {
-	if Q2A.config.GetDebugMode() {
+func Pong(cl *client.Client) {
+	if Q2A.Config.GetDebugMode() {
 		log.Printf("[%s/PING]\n", cl.Name)
 	}
 	cl.PingCount++
-	WriteByte(SCMDPong, &cl.MessageOut)
+	(&cl.MessageOut).WriteByte(SCMDPong)
 
 	// once per hour-ish
 	if (cl.PingCount & 63) == 0 {
-		cl.RotateKeys()
+		RotateKeys(cl)
 	}
 }
 

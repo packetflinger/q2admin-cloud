@@ -123,6 +123,30 @@ func FindClient(lookup string) (*client.Client, error) {
 	return nil, errors.New("unknown client")
 }
 
+// Change symmetric keys. Generate new key and iv and
+// immediately send them to the client. This jumps ahead
+// of the normal send buffer so that all messages from
+// this point on can be decrypted on the client.
+//
+// Called from Pong() every hour or so
+func RotateKeys(cl *client.Client) {
+	if !cl.Encrypted {
+		return
+	}
+
+	key := crypto.RandomBytes(AESBlockLength)
+	iv := crypto.RandomBytes(AESIVLength)
+	blob := append(key, iv...)
+
+	// Send immediately so old keys used for this message
+	(&cl.MessageOut).WriteByte(SCMDKey)
+	(&cl.MessageOut).WriteData(blob)
+	cl.SendMessages()
+
+	cl.AESKey = key
+	cl.AESIV = iv
+}
+
 // Setup the connection
 // The first message sent should identify the game server
 // and trigger the authentication process. Connection

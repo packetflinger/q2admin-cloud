@@ -185,30 +185,6 @@ func RandomBytes(length int) []byte {
 	return b
 }
 
-// Change symmetric keys. Generate new key and iv and
-// immediately send them to the client. This jumps ahead
-// of the normal send buffer so that all messages from
-// this point on can be decrypted on the client.
-//
-// Called from Pong() every hour or so
-func (cl *Client) RotateKeys() {
-	if !cl.Encrypted {
-		return
-	}
-
-	key := RandomBytes(AESBlockLength)
-	iv := RandomBytes(AESIVLength)
-	blob := append(key, iv...)
-
-	// Send immediately so old keys used for this message
-	WriteByte(SCMDKey, &cl.MessageOut)
-	WriteData(blob, &cl.MessageOut)
-	cl.SendMessages()
-
-	cl.AESKey = key
-	cl.AESIV = iv
-}
-
 // Hash the plaintext, encrypt the resulting digest with our private key.
 // Only our public key can decrypt, proving it's really us
 func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
