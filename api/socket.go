@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"github.com/gorilla/websocket"
@@ -9,3 +9,4 @@ type WebSocketConnection struct {
 	Connected bool
 	Socket    *websocket.Conn
 }
+
