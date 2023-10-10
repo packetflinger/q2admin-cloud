@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/packetflinger/q2admind/util"
 	"github.com/ravener/discord-oauth2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -84,7 +85,7 @@ func WriteOAuthCredsToDisk(creds []Credentials, filename string) error {
 //
 // Called from WebsiteHandlerSignin() for each provider
 func BuildAuthURL(c Credentials, index int) string {
-	state := fmt.Sprintf("%s|%d|%s", c.Type, index, GenerateUUID())
+	state := fmt.Sprintf("%s|%d|%s", c.Type, index, util.GenerateUUID())
 	url := fmt.Sprintf(
 		"%s?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s",
 		c.AuthURL,
@@ -115,7 +116,7 @@ func ProcessOAuthReplyOld(w http.ResponseWriter, r *http.Request) {
 		log.Println("auth fail: converting credential index from string to int")
 		return
 	}
-	cred := api.Website.Creds[index]
+	cred := Website.Creds[index]
 
 	data := url.Values{
 		"grant_type":    {"authorization_code"},

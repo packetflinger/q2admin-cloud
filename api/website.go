@@ -12,6 +12,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/packetflinger/q2admind/client"
+)
+
+const (
+	SessionName = "q2asess" // website cookie name
 )
 
 var (
@@ -45,9 +50,9 @@ type WebpageData struct {
 	Notification    []WebpageNotification
 	Message         []WebpageMessage
 	SessionUser     *User
-	Gameservers     []*Client
+	Gameservers     []*client.Client
 	GameserverCount int
-	Client          *Client
+	Client          *client.Client
 	NavHighlight    struct {
 		Dashboard string
 		Servers   string
@@ -71,13 +76,13 @@ type WebUser struct {
 
 type DashboardPage struct {
 	WebUser      *User
-	MyServers    []Client
-	OtherServers []Client
+	MyServers    []client.Client
+	OtherServers []client.Client
 }
 
 type ServerPage struct {
 	WebUser  *User
-	MyServer Client
+	MyServer client.Client
 }
 
 // Represents the website
@@ -541,4 +546,8 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 		}
 	}
+}
+
+func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
 }

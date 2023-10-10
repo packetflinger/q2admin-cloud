@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/packetflinger/q2admind/api"
-
 	uuid "github.com/google/uuid"
 )
 
@@ -47,10 +45,6 @@ func AuthLogout(w http.ResponseWriter, r *http.Request) {
 		cookie := http.Cookie{Name: SessionName, Value: "", Expires: expire}
 		http.SetCookie(w, &cookie)
 	*/
-}
-
-func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, api.Routes.AuthLogin, http.StatusFound) // 302
 }
 
 // TimeAgo gives you a string of how long ago something was

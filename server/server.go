@@ -37,7 +37,6 @@ const (
 	ProtocolMagic   = 1128346193 // "Q2AC"
 	versionRequired = 342        // git revision number
 	challengeLength = 16         // bytes
-	SessionName     = "q2asess"  // website cookie name
 	TeleportWidth   = 80         // max chars per line for teleport replies
 )
 
