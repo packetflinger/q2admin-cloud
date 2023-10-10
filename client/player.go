@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 // Each player on a game server has one of these.
@@ -33,7 +35,7 @@ type Player struct {
 	Hostname         string
 	FOV              int
 	ConnectTime      int64
-	Rules            []ClientRule // rules that match this player
+	Rules            []*pb.Rule // rules that match this player
 	Stifled          bool
 	StifleLength     int     // seconds
 	Client           *Client // circular ref
