@@ -90,7 +90,7 @@ func FindTeleportDestination(dest string) (*client.Client, error) {
 func TeleportAvailableReply() string {
 	var allservers []string
 
-	for _, c := range Q2A.clients {
+	for _, c := range Q2A.Clients {
 		if !c.Connected {
 			continue
 		}
