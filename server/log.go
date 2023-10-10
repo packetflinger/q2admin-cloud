@@ -56,3 +56,12 @@ func LogPlayer(cl *client.Client, pl *client.Player) {
 		log.Println(err)
 	}
 }
+
+// Insert an system event into the db
+func LogSystemEvent(event string) {
+	s := "INSERT INTO system_log (log_time, log_entry) VALUES (?,?)"
+	_, err := DB.Exec(s, util.GetUnixTimestamp(), event)
+	if err != nil {
+		log.Println(err)
+	}
+}

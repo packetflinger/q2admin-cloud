@@ -64,12 +64,3 @@ func LogEventToDatabase(cid int, logtype int, logentry string) {
 		return
 	}
 }
-
-// Insert an system event into the db
-func LogSystemEvent(event string) {
-	s := "INSERT INTO system_log (log_time, log_entry) VALUES (?,?)"
-	_, err := DB.Exec(s, GetUnixTimestamp(), event)
-	if err != nil {
-		log.Println(err)
-	}
-}
