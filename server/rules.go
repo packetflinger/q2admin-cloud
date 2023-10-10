@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/packetflinger/q2admind/client"
 	pb "github.com/packetflinger/q2admind/proto"
 	"google.golang.org/protobuf/encoding/prototext"
 )
@@ -70,10 +71,10 @@ type ClientRuleFormat struct {
 // later
 //
 // Called every time a player connects from ApplyRules() in ParseConnect()
-func (cl *Client) CheckRules(p *Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
+func CheckRules(cl *client.Client, p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 	rules := []*pb.Rule{} // which ones match
 	for _, r := range ruleset {
-		if cl.CheckRule(p, r) {
+		if CheckRule(cl, p, r) {
 			rules = append(rules, r)
 		}
 	}
@@ -82,7 +83,7 @@ func (cl *Client) CheckRules(p *Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 }
 
 // Check of a player matches a particular rule
-func (cl *Client) CheckRule(p *Player, r *pb.Rule) bool {
+func CheckRule(cl *client.Client, p *client.Player, r *pb.Rule) bool {
 	match := false
 	now := time.Now().Unix()
 	need := 0
@@ -247,7 +248,7 @@ func (q2a *RemoteAdminServer) ReadGlobalRules() {
 	if err != nil {
 		log.Println()
 	}
-	q2a.rules = SortRules(rules.GetRule())
+	q2a.Rules = SortRules(rules.GetRule())
 }
 
 // Read rules from disk
@@ -325,7 +326,10 @@ func (r ClientRule) ToDiskFormat() ClientRuleFormat {
 	}
 }
 
-func UserinfoMatches(ui *pb.UserInfo, p *Player) bool {
+// Does a player's userinfo match the rules?
+//
+// Called from CheckRule()
+func UserinfoMatches(ui *pb.UserInfo, p *client.Player) bool {
 	for k, v := range p.UserinfoMap {
 		if k == ui.GetProperty() {
 			re, err := regexp.Compile(ui.GetValue())
