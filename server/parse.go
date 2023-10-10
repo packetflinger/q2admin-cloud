@@ -36,7 +36,7 @@ func ParseMessage(cl *client.Client) {
 			ParsePlayerlist(cl)
 
 		case CMDPlayerUpdate:
-			cl.ParsePlayerUpdate()
+			ParsePlayerUpdate(cl)
 
 		case CMDConnect:
 			cl.ParseConnect()
@@ -261,10 +261,11 @@ func (cl *Client) ParseCommand() {
 }
 
 // A player changed their userinfo, reparse it and re-apply rules
-func (cl *Client) ParsePlayerUpdate() {
-	clientnum := ReadByte(&cl.Message)
-	userinfo := ReadString(&cl.Message)
-	hash := MD5Hash(userinfo)
+func ParsePlayerUpdate(cl *client.Client) {
+	msg := &cl.Message
+	clientnum := msg.ReadByte()
+	userinfo := msg.ReadString()
+	hash := crypto.MD5Hash(userinfo)
 
 	player := cl.FindPlayer(int(clientnum))
 
@@ -273,7 +274,7 @@ func (cl *Client) ParsePlayerUpdate() {
 		return
 	}
 
-	info := UserinfoMap(userinfo)
+	info := client.UserinfoMap(userinfo)
 	player.UserinfoMap = info
 	player.Name = info["name"]
 	player.FOV, _ = strconv.Atoi(info["fov"])
