@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/gorilla/websocket"
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/client"
@@ -122,29 +121,6 @@ func FindClient(lookup string) (*client.Client, error) {
 	}
 
 	return nil, errors.New("unknown client")
-}
-
-// Each server keeps track of the websocket for people "looking at it".
-// When they close the browser or logout, remove the pointer
-// to that socket
-func (cl *client.Client) DeleteWebSocket(sock *websocket.Conn) {
-	location := -1
-	// find it's index first
-	for i := range cl.WebSockets {
-		if cl.WebSockets[i] == sock {
-			location = i
-			break
-		}
-	}
-
-	// wasn't found, forget it
-	if location == -1 {
-		return
-	}
-
-	tempws := cl.WebSockets[0:location]
-	tempws = append(tempws, cl.WebSockets[location+1:]...)
-	cl.WebSockets = tempws
 }
 
 // Send the txt string to all the websockets listening
