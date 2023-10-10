@@ -152,14 +152,15 @@ func Invite(cl *client.Client) {
 	p.InvitesAvailable--
 }
 
-func (cl *Client) ConsoleSay(print string) {
+// Have client broadcast print from "console"
+func ConsoleSay(cl *client.Client, print string) {
 	if print == "" {
 		return
 	}
 
 	txt := fmt.Sprintf("say %s\n", print)
-	WriteByte(SCMDCommand, &cl.MessageOut)
-	WriteString(txt, &cl.MessageOut)
+	(&cl.MessageOut).WriteByte(SCMDCommand)
+	(&cl.MessageOut).WriteString(txt)
 }
 
 /**
