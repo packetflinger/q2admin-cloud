@@ -70,8 +70,10 @@ func (cl *Client) FindPlayer(client int) *Player {
 // set phash "<hash here>" u
 //
 // Called from ParsePlayer()
+//
+// TODO: figure out the database-ness
 func (player *Player) LoadPlayerHash() {
-	var database_id int64
+	//var database_id int64
 
 	phash := player.UserinfoMap["phash"]
 	if phash != "" {
@@ -92,14 +94,16 @@ func (player *Player) LoadPlayerHash() {
 		player.UserInfoHash = fmt.Sprintf("%x", hash[:8])
 	}
 
-	database_id = int64(GetPlayerIdFromHash(player.UserInfoHash))
-	if database_id > 0 {
-		player.Database_ID = database_id
-		return
-	}
+	/*
+		database_id = int64(GetPlayerIdFromHash(player.UserInfoHash))
+		if database_id > 0 {
+			player.Database_ID = database_id
+			return
+		}
 
-	database_id = InsertPlayer(player)
-	player.Database_ID = database_id
+		database_id = InsertPlayer(player)
+		player.Database_ID = database_id
+	*/
 }
 
 // Check if a client ID is valid for a particular server context,
