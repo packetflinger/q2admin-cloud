@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"log"
-	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -53,14 +52,4 @@ func InsertPlayer(p *Player) int64 {
 	}
 
 	return id
-}
-
-func LogEventToDatabase(cid int, logtype int, logentry string) {
-	now := time.Now().Unix()
-	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,?)"
-	_, err := DB.Exec(sql, cid, logtype, logentry, now)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 }
