@@ -1,10 +1,7 @@
 package main
 
 import (
-	"crypto/rsa"
-
 	"github.com/gorilla/websocket"
-	pb "github.com/packetflinger/q2admind/proto"
 )
 
 // Use a custom buffer struct to keep track of where
@@ -13,17 +10,6 @@ type MessageBuffer struct {
 	buffer []byte
 	index  int
 	length int // maybe not needed
-}
-
-// "This" admin server
-type RemoteAdminServer struct {
-	Users      []*pb.User      // website users
-	config     pb.Config       // global config
-	clients    []Client        // managed quake 2 servers
-	rules      []*pb.Rule      // bans/mutes/etc
-	privatekey *rsa.PrivateKey // private to us
-	publickey  *rsa.PublicKey  // known to clients
-	maintcount int             // total maintenance runs
 }
 
 /*

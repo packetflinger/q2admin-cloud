@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/rsa"
 	"database/sql"
 
 	"fmt"
@@ -8,7 +9,19 @@ import (
 	"net"
 
 	"github.com/gorilla/websocket"
+	pb "github.com/packetflinger/q2admind/proto"
 )
+
+// "This" admin server
+type RemoteAdminServer struct {
+	Users      []*pb.User      // website users
+	config     pb.Config       // global config
+	clients    []Client        // managed quake 2 servers
+	rules      []*pb.Rule      // bans/mutes/etc
+	privatekey *rsa.PrivateKey // private to us
+	publickey  *rsa.PublicKey  // known to clients
+	maintcount int             // total maintenance runs
+}
 
 var (
 	Q2A RemoteAdminServer // this server
