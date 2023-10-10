@@ -17,6 +17,7 @@ import (
 
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/api"
+	"github.com/packetflinger/q2admind/crypto"
 	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
 )
@@ -101,20 +102,18 @@ func (cl *Client) SendMessages() {
 
 	// keys have been exchanged, encrypt the message
 	if cl.Trusted && cl.Encrypted {
-		cipher := SymmetricEncrypt(
+		cipher := crypto.SymmetricEncrypt(
 			cl.AESKey,
 			cl.AESIV,
-			cl.MessageOut.buffer[:cl.MessageOut.length])
+			cl.MessageOut.Buffer[:cl.MessageOut.Length])
 
-		clearmsg(&cl.MessageOut)
-		cl.MessageOut.buffer = cipher
-		cl.MessageOut.length = len(cipher)
+		cl.MessageOut = message.NewMessageBuffer(cipher)
 	}
 
 	// only send if there is something to send
-	if cl.MessageOut.length > 0 {
-		(*cl.Connection).Write(cl.MessageOut.buffer)
-		clearmsg(&cl.MessageOut)
+	if cl.MessageOut.Length > 0 {
+		(*cl.Connection).Write(cl.MessageOut.Buffer)
+		(&cl.MessageOut).Reset()
 	}
 }
 
