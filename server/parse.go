@@ -46,7 +46,7 @@ func ParseMessage(cl *client.Client) {
 			cl.ParseCommand()
 
 		case CMDFrag:
-			cl.ParseFrag()
+			ParseFrag(cl)
 		}
 	}
 }
@@ -57,12 +57,13 @@ func ParseMessage(cl *client.Client) {
 // and of the attacker. The means of death are determined
 // by parsing the obituary print. For self and environmental
 // frags, the attacker and victim will be the same.
-func (cl *Client) ParseFrag() {
-	v := int(ReadByte(&cl.Message))
-	a := int(ReadByte(&cl.Message))
+func ParseFrag(cl *client.Client) {
+	msg := &cl.Message
+	v := msg.ReadByte()
+	a := msg.ReadByte()
 
-	victim := cl.FindPlayer(v)
-	attacker := cl.FindPlayer(a)
+	victim := cl.FindPlayer(int(v))
+	attacker := cl.FindPlayer(int(a))
 
 	if victim == nil {
 		return
