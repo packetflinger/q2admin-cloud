@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"encoding/gob"
@@ -7,9 +7,7 @@ import (
 	"os"
 )
 
-//
 // Write and struct to disk for later use
-//
 func (cl *Client) SaveState() {
 	fname := fmt.Sprintf("./states/%s.gob", cl.Name)
 	file, err := os.Create(fname)
@@ -23,9 +21,7 @@ func (cl *Client) SaveState() {
 	enc.Encode(cl)
 }
 
-//
 // Read a saved struct back into memory
-//
 func (cl *Client) LoadState() {
 	fname := fmt.Sprintf("./states/%s.gob", cl.Name)
 	file, err := os.Open(fname)
