@@ -8,6 +8,8 @@ import (
 	"net"
 	"os"
 	"strings"
+
+	"github.com/packetflinger/q2admind/client"
 )
 
 type Ban struct {
@@ -62,7 +64,7 @@ func LoadGlobalBans() {
  * Load gameserver local banlist
  * Happens after gameserver connects and authenticates
  */
-func LoadBans(cl *Client) {
+func LoadBans(cl *client.Client) {
 	/*
 		banfile := fmt.Sprintf("bans/%s.csv", cl.Name)
 
