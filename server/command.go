@@ -199,8 +199,9 @@ func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 }
 
 // Issue a command as if you were typing it into the console.
-// Sanitize cmd before use
-func (cl *Client) ConsoleCommand(cmd string) {
-	WriteByte(SCMDCommand, &cl.MessageOut)
-	WriteString(cmd, &cl.MessageOut)
+//
+// TODO: Sanitize cmd before use
+func ConsoleCommand(cl *client.Client, cmd string) {
+	(&cl.MessageOut).WriteByte(SCMDCommand)
+	(&cl.MessageOut).WriteString(cmd)
 }
