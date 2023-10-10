@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	//"github.com/packetflinger/q2admind/main"
 )
 
 type APIReply struct {
@@ -39,7 +40,7 @@ func APIGetMyServers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	svs := []Client{}
-	for _, sv := range q2a.clients {
+	for _, sv := range main.Q2A.clients {
 		if sv.Owner == user.ID {
 			svs = append(svs, sv)
 		}
