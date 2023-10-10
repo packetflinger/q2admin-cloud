@@ -99,9 +99,10 @@ func Pong(cl *client.Client) {
 //
 // 1 byte: print level
 // string: the actual message
-func (cl *Client) ParsePrint() {
-	level := ReadByte(&cl.Message)
-	text := ReadString(&cl.Message)
+func ParsePrint(cl *client.Client) {
+	msg := &cl.Message
+	level := msg.ReadByte()
+	text := msg.ReadString()
 
 	// remove newline
 	stripped := text[0 : len(text)-1]
@@ -109,10 +110,10 @@ func (cl *Client) ParsePrint() {
 	switch level {
 	case PRINT_CHAT:
 		//cl.SendToWebsiteFeed(stripped, api.FeedChat)
-		cl.LogChat(stripped)
+		//cl.LogChat(stripped)
 		log.Printf("[%s/PRINT] (%d) %s\n", cl.Name, level, stripped)
 	case PRINT_MEDIUM:
-		cl.ParseObituary(stripped)
+		ParseObituary(cl, stripped)
 	}
 }
 
@@ -180,7 +181,7 @@ func (cl *Client) ParseMap() {
 // An obit for every frag is sent from a client.
 //
 // Called from ParsePrint()
-func (cl *Client) ParseObituary(obit string) {
+func ParseObituary(cl *client.Client, obit string) {
 	death, err := cl.CalculateDeath(obit)
 	if err != nil {
 		return
