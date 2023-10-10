@@ -125,16 +125,6 @@ func (cl *Client) RemovePlayer(client int) {
 	}
 }
 
-// Send a message to every player on the server
-func (cl *Client) SayEveryone(level int, text string) {
-	if text == "" {
-		return
-	}
-	WriteByte(SCMDSayAll, &cl.MessageOut)
-	WriteByte(byte(level), &cl.MessageOut)
-	WriteString(text, &cl.MessageOut)
-}
-
 // Send a message to a particular player
 func (cl *Client) SayPlayer(p *Player, level int, text string) {
 	if text == "" {

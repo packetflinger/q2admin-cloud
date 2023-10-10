@@ -205,3 +205,13 @@ func ConsoleCommand(cl *client.Client, cmd string) {
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 }
+
+// Send a message to every player on the server
+func SayEveryone(cl *client.Client, level int, text string) {
+	if text == "" {
+		return
+	}
+	(&cl.MessageOut).WriteByte(SCMDSayAll)
+	(&cl.MessageOut).WriteByte(byte(level))
+	(&cl.MessageOut).WriteString(text)
+}
