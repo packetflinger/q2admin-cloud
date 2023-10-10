@@ -346,7 +346,7 @@ func Startup() {
 	Q2A.Privatekey = privkey
 	Q2A.Publickey = pubkey
 
-	DB = database.DatabaseConnect()
+	DB = database.DatabaseConnect(Q2A.Config.Database)
 
 	rules, err := FetchRules("config/rules")
 	if err != nil {

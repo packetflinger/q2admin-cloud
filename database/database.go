@@ -7,8 +7,8 @@ import (
 )
 
 // Open our sqlite database
-func DatabaseConnect() *sql.DB {
-	db, err := sql.Open("sqlite3", Q2A.config.Database)
+func DatabaseConnect(dbfile string) *sql.DB {
+	db, err := sql.Open("sqlite3", dbfile)
 	if err != nil {
 		panic(err)
 	}
