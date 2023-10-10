@@ -184,21 +184,21 @@ func (cl *Client) ApplyRules(p *Player) {
 			switch r.Type {
 			case "msg":
 				log.Printf("[%s/MSG/%s] %s\n", cl.Name, p.Name, r.Message)
-				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
 			case "ban":
 				log.Printf("[%s/KICK/%s] %s\n", cl.Name, p.Name, r.Message)
-				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
 				KickPlayer(cl, p, r.Message)
 				return
 			case "mute":
 				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
-				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
 				MutePlayer(cl, p, -1)
 			case "stifle":
 				p.Stifled = true
 				p.StifleLength = r.StifleLength
 				log.Printf("[%s/STIFLE/%s] %s\n", cl.Name, p.Name, r.Message)
-				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
 				MutePlayer(cl, p, r.StifleLength)
 			}
 		}
@@ -210,21 +210,21 @@ func (cl *Client) ApplyRules(p *Player) {
 			switch r.Type {
 			case "msg":
 				log.Printf("[%s/MSG/%s] %s\n", cl.Name, p.Name, r.Message)
-				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
 			case "ban":
 				log.Printf("[%s/KICK/%s] %s\n", cl.Name, p.Name, r.Message)
-				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
 				KickPlayer(cl, p, r.Message)
 				return
 			case "mute":
 				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
-				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
 				MutePlayer(cl, p, -1)
 			case "stifle":
 				p.Stifled = true
 				p.StifleLength = r.StifleLength
 				log.Printf("[%s/STIFLE/%s] %s\n", cl.Name, p.Name, r.Message)
-				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
+				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
 				MutePlayer(cl, p, r.StifleLength)
 			}
 		}

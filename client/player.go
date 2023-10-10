@@ -125,19 +125,6 @@ func (cl *Client) RemovePlayer(client int) {
 	}
 }
 
-// Send a message to a particular player
-func (cl *Client) SayPlayer(p *Player, level int, text string) {
-	if text == "" {
-		return
-	}
-
-	text += "\n"
-	WriteByte(SCMDSayClient, &cl.MessageOut)
-	WriteByte(byte(p.ClientID), &cl.MessageOut)
-	WriteByte(byte(level), &cl.MessageOut)
-	WriteString(text, &cl.MessageOut)
-}
-
 // Take a back-slash delimited string of userinfo and return
 // a key/value map
 func UserinfoMap(ui string) map[string]string {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 
 	//"strings"
 	"time"
@@ -31,15 +32,15 @@ func Teleport(cl *client.Client) {
 		listtime := now - p.LastTeleportList
 		if listtime < 30 {
 			txt := fmt.Sprintf("You can't list teleport destinations for %d more seconds\n", 30-listtime)
-			cl.SayPlayer(p, PRINT_HIGH, txt)
+			SayPlayer(cl, p, PRINT_HIGH, txt)
 			return
 		}
 
 		p.LastTeleportList = now
 		avail := TeleportAvailableReply()
-		cl.SayPlayer(p, PRINT_CHAT, avail)
+		SayPlayer(cl, p, PRINT_CHAT, avail)
 
-		cl.SayPlayer(p, PRINT_CHAT, "Active Servers\n")
+		SayPlayer(cl, p, PRINT_CHAT, "Active Servers\n")
 		line := ""
 
 		for _, c := range Q2A.Clients {
@@ -53,7 +54,7 @@ func Teleport(cl *client.Client) {
 			}
 
 			line = fmt.Sprintf(" %-15s %-15s %s\n", c.Name, c.CurrentMap, players)
-			cl.SayPlayer(p, PRINT_CHAT, line)
+			SayPlayer(cl, p, PRINT_CHAT, line)
 		}
 		return
 	}
@@ -64,7 +65,7 @@ func Teleport(cl *client.Client) {
 
 	if err != nil {
 		log.Println("warning,", err)
-		cl.SayPlayer(p, PRINT_HIGH, "Unknown destination\n")
+		SayPlayer(cl, p, PRINT_HIGH, "Unknown destination\n")
 	} else {
 		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, s.Name, s.IPAddress, s.Port)
 		SayEveryone(cl, PRINT_HIGH, txt)
@@ -129,13 +130,13 @@ func Invite(cl *client.Client) {
 			p.InvitesAvailable = 3
 		} else {
 			txt := fmt.Sprintf("You have no more invites available, wait %d seconds\n", 600-invtime)
-			cl.SayPlayer(p, PRINT_HIGH, txt)
+			SayPlayer(cl, p, PRINT_HIGH, txt)
 			return
 		}
 	} else {
 		if invtime < 30 {
 			txt := fmt.Sprintf("Invite used too recently, wait %d seconds\n", 30-invtime)
-			cl.SayPlayer(p, PRINT_HIGH, txt)
+			SayPlayer(cl, p, PRINT_HIGH, txt)
 			return
 		}
 	}
@@ -214,4 +215,21 @@ func SayEveryone(cl *client.Client, level int, text string) {
 	(&cl.MessageOut).WriteByte(SCMDSayAll)
 	(&cl.MessageOut).WriteByte(byte(level))
 	(&cl.MessageOut).WriteString(text)
+}
+
+// Send a message to a particular player
+func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
+	if text == "" {
+		return
+	}
+
+	if !strings.HasSuffix(text, "\n") {
+		text += "\n"
+	}
+
+	msg := &cl.MessageOut
+	msg.WriteByte(SCMDSayClient)
+	msg.WriteByte(byte(p.ClientID))
+	msg.WriteByte(byte(level))
+	msg.WriteString(text)
 }
