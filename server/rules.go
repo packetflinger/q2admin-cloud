@@ -193,13 +193,13 @@ func (cl *Client) ApplyRules(p *Player) {
 			case "mute":
 				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
-				cl.MutePlayer(p, -1)
+				MutePlayer(cl, p, -1)
 			case "stifle":
 				p.Stifled = true
 				p.StifleLength = r.StifleLength
 				log.Printf("[%s/STIFLE/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
-				cl.MutePlayer(p, r.StifleLength)
+				MutePlayer(cl, p, r.StifleLength)
 			}
 		}
 	}
@@ -219,13 +219,13 @@ func (cl *Client) ApplyRules(p *Player) {
 			case "mute":
 				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
-				cl.MutePlayer(p, -1)
+				MutePlayer(cl, p, -1)
 			case "stifle":
 				p.Stifled = true
 				p.StifleLength = r.StifleLength
 				log.Printf("[%s/STIFLE/%s] %s\n", cl.Name, p.Name, r.Message)
 				cl.SayPlayer(p, PRINT_MEDIUM, r.Message)
-				cl.MutePlayer(p, r.StifleLength)
+				MutePlayer(cl, p, r.StifleLength)
 			}
 		}
 	}

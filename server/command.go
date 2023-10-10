@@ -172,24 +172,20 @@ func StuffPlayer(cl *client.Client, p client.Player, cmd string) {
 	(&cl.MessageOut).WriteString(stuffcmd)
 }
 
-/**
- * Temporarily prevent the player from talking
- * using a negative number of seconds makes it
- * permanent.
- */
-func (cl *Client) MutePlayer(p *Player, seconds int) {
-	cmd := ""
+// Temporarily prevent the player from talking.
+// Using a negative number of seconds makes it permanent.
+func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
+	cmd := fmt.Sprintf("sv !mute CL %d %d", p.ClientID, seconds)
 	if seconds < 0 {
 		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)
-	} else {
-		cmd = fmt.Sprintf("sv !mute CL %d %d", p.ClientID, seconds)
 	}
-	WriteByte(SCMDCommand, &cl.MessageOut)
-	WriteString(cmd, &cl.MessageOut)
-	player := cl.FindPlayer(p.ClientID)
 
-	txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", cl.Name, p.ClientID, player.Name)
-	LogEventToDatabase(cl.ID, LogTypeCommand, txt)
+	(&cl.MessageOut).WriteByte(SCMDCommand)
+	(&cl.MessageOut).WriteString(cmd)
+
+	//player := cl.FindPlayer(p.ClientID)
+	//txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", cl.Name, p.ClientID, player.Name)
+	//LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
 /**
