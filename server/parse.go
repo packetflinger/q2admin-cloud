@@ -282,6 +282,6 @@ func ParsePlayerUpdate(cl *client.Client) {
 	player.UserInfoHash = hash
 
 	if player.Cookie == "" {
-		player.SetupCookie()
+		SetupPlayerCookie(cl, player)
 	}
 }
