@@ -10,7 +10,7 @@ import (
 
 // Open our sqlite database
 func DatabaseConnect() *sql.DB {
-	db, err := sql.Open("sqlite3", q2a.config.Database)
+	db, err := sql.Open("sqlite3", Q2A.config.Database)
 	if err != nil {
 		panic(err)
 	}
@@ -24,7 +24,7 @@ func DatabaseConnect() *sql.DB {
 
 func GetPlayerIdFromHash(hash string) int {
 	sql := "SELECT id FROM player WHERE hash = ? LIMIT 1"
-	r, err := db.Query(sql, hash)
+	r, err := DB.Query(sql, hash)
 	if err != nil {
 		log.Println(err)
 		return 0
@@ -41,7 +41,7 @@ func GetPlayerIdFromHash(hash string) int {
 
 func InsertPlayer(p *Player) int64 {
 	sql := "INSERT INTO player (hash) VALUES (?)"
-	r, err := db.Exec(sql, p.UserInfoHash)
+	r, err := DB.Exec(sql, p.UserInfoHash)
 	if err != nil {
 		log.Println(err)
 	}
@@ -58,7 +58,7 @@ func InsertPlayer(p *Player) int64 {
 // A player said something, record to use against them later
 func (cl *Client) LogChat(chat string) {
 	s := "INSERT INTO chat (uuid, chat_time, chat) VALUES (?,?,?)"
-	_, err := db.Exec(s, cl.UUID, GetUnixTimestamp(), chat)
+	_, err := DB.Exec(s, cl.UUID, GetUnixTimestamp(), chat)
 	if err != nil {
 		log.Println(err)
 	}
@@ -81,7 +81,7 @@ func LogFrag(cl *Client, victim int, attacker int) {
 func LogEventToDatabase(cid int, logtype int, logentry string) {
 	now := time.Now().Unix()
 	sql := "INSERT INTO logdata (server, msgtype, entry, entrydate) VALUES (?,?,?,?)"
-	_, err := db.Exec(sql, cid, logtype, logentry, now)
+	_, err := DB.Exec(sql, cid, logtype, logentry, now)
 	if err != nil {
 		log.Println(err)
 		return
@@ -91,7 +91,7 @@ func LogEventToDatabase(cid int, logtype int, logentry string) {
 // Insert client-specific event
 func (cl *Client) LogEvent(event string) {
 	s := "INSERT INTO client_log (uuid, event_time, event) VALUES (?,?,?)"
-	_, err := db.Exec(s, cl.UUID, GetUnixTimestamp(), event)
+	_, err := DB.Exec(s, cl.UUID, GetUnixTimestamp(), event)
 	if err != nil {
 		log.Println(err)
 	}
@@ -100,7 +100,7 @@ func (cl *Client) LogEvent(event string) {
 // Insert an system event into the db
 func LogSystemEvent(event string) {
 	s := "INSERT INTO system_log (log_time, log_entry) VALUES (?,?)"
-	_, err := db.Exec(s, GetUnixTimestamp(), event)
+	_, err := DB.Exec(s, GetUnixTimestamp(), event)
 	if err != nil {
 		log.Println(err)
 	}

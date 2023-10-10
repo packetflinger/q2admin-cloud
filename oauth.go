@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/packetflinger/q2admind/api"
 	"github.com/ravener/discord-oauth2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -115,7 +116,7 @@ func ProcessOAuthReplyOld(w http.ResponseWriter, r *http.Request) {
 		log.Println("auth fail: converting credential index from string to int")
 		return
 	}
-	cred := website.creds[index]
+	cred := api.Website.Creds[index]
 
 	data := url.Values{
 		"grant_type":    {"authorization_code"},
@@ -188,7 +189,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 		log.Println("auth fail: converting credential index from string to int")
 		return
 	}
-	cred := website.creds[index]
+	cred := api.Website.Creds[index]
 
 	conf := &oauth2.Config{
 		RedirectURL:  cred.CallbackURL,
@@ -245,7 +246,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 			Path:     "/",
 		}
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
+		http.Redirect(w, r, api.Routes.Dashboard, http.StatusFound) // 302
 	}
 }
 
@@ -266,7 +267,7 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 		log.Println("auth fail: converting credential index from string to int")
 		return
 	}
-	cred := website.creds[index]
+	cred := api.Website.Creds[index]
 
 	conf := &oauth2.Config{
 		RedirectURL:  "http://localhost:8087/oauth-processor",

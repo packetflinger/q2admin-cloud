@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	website = WebInterface{}
+	Website = WebInterface{}
 )
 
 const (
@@ -82,7 +82,7 @@ type ServerPage struct {
 
 // Represents the website
 type WebInterface struct {
-	creds []Credentials
+	Creds []Credentials
 }
 
 // needed for upgrading the websockets
@@ -169,7 +169,7 @@ func RunHTTPServer() {
 		log.Println(err)
 		os.Exit(0)
 	}
-	website.creds = cr
+	Website.Creds = cr
 
 	port := fmt.Sprintf("0.0.0.0:%d", q2a.config.GetApiPort())
 	r := LoadWebsiteRoutes()
@@ -187,7 +187,7 @@ func RunHTTPServer() {
 func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	u, err := GetSessionUser(r)
 	if err != nil {
-		http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
+		http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
 		return
 	}
 
@@ -258,24 +258,24 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 	_, e := GetSessionUser(r)
 	if e != nil {
-		http.Redirect(w, r, routes.AuthLogin, http.StatusFound) // 302
+		http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
 		return
 	}
 
-	http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
+	http.Redirect(w, r, Routes.Dashboard, http.StatusFound) // 302
 }
 
 // Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 	tmpl, e := template.ParseFiles("website/templates/sign-in.tmpl")
-	for i := range website.creds {
-		website.creds[i].URL = BuildAuthURL(website.creds[i], i)
+	for i := range Website.Creds {
+		Website.Creds[i].URL = BuildAuthURL(Website.Creds[i], i)
 	}
 
 	if e != nil {
 		log.Println(e)
 	} else {
-		tmpl.Execute(w, website.creds)
+		tmpl.Execute(w, Website.Creds)
 	}
 }
 
@@ -345,13 +345,13 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 
 	RemoveServer(srv.UUID)
 	q2a.clients = RehashServers()
-	http.Redirect(w, r, routes.Dashboard, http.StatusFound)
+	http.Redirect(w, r, Routes.Dashboard, http.StatusFound)
 }
 
 // Log a user out
 func WebSignout(w http.ResponseWriter, r *http.Request) {
 	AuthLogout(w, r)
-	http.Redirect(w, r, routes.Index, http.StatusFound)
+	http.Redirect(w, r, Routes.Index, http.StatusFound)
 }
 
 // Websocket handler for sending chat message to web clients

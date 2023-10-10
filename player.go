@@ -176,7 +176,7 @@ func UserinfoMap(ui string) map[string]string {
 // Called from ParseConnect()
 func (cl *Client) LogPlayer(pl *Player) {
 	s := "INSERT INTO player (server, name, ip, hash, userinfo, connect_time) VALUES (?,?,?,?,?,?)"
-	_, err := db.Exec(
+	_, err := DB.Exec(
 		s,
 		cl.UUID,
 		pl.Name,

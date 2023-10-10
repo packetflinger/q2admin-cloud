@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"net/http"
@@ -32,52 +32,52 @@ type APIRoutes struct {
 }
 
 var (
-	routes WebRoutes
+	Routes WebRoutes
 	api    APIRoutes
 )
 
 func LoadWebsiteRoutes() *mux.Router {
 	api.MyServers = "/api/v1/GetMyServers"
 
-	routes.Static = "/static/"
-	routes.Static2 = "/static2/"
-	routes.AuthLogin = "/signin"
-	routes.AuthLogout = "/signout"
-	routes.AuthGoogle = "/auth/google"
-	routes.AuthDiscord = "/auth/discord"
-	routes.ChatFeed = "/dashboard/sv/{ServerUUID}/feed"
-	routes.ChatFeedInput = "/dashboard/sv/{ServerUUID}/input"
-	routes.ConnectedServers = "/api/GetConnectedServers"
-	routes.Dashboard = "/dashboard"
-	routes.Index = "/"
-	routes.Groups = "/my-groups"
-	routes.Privacy = "/privacy-policy"
-	routes.ServerAdd = "/add-server"
-	routes.ServerRemove = "/dashboard/rm/{id}"
-	routes.Servers = "/my-servers"
-	routes.ServerView = routes.Servers + "/{ServerUUID}/{ServerName}"
-	routes.Terms = "/terms-of-use"
+	Routes.Static = "/static/"
+	Routes.Static2 = "/static2/"
+	Routes.AuthLogin = "/signin"
+	Routes.AuthLogout = "/signout"
+	Routes.AuthGoogle = "/auth/google"
+	Routes.AuthDiscord = "/auth/discord"
+	Routes.ChatFeed = "/dashboard/sv/{ServerUUID}/feed"
+	Routes.ChatFeedInput = "/dashboard/sv/{ServerUUID}/input"
+	Routes.ConnectedServers = "/api/GetConnectedServers"
+	Routes.Dashboard = "/dashboard"
+	Routes.Index = "/"
+	Routes.Groups = "/my-groups"
+	Routes.Privacy = "/privacy-policy"
+	Routes.ServerAdd = "/add-server"
+	Routes.ServerRemove = "/dashboard/rm/{id}"
+	Routes.Servers = "/my-servers"
+	Routes.ServerView = Routes.Servers + "/{ServerUUID}/{ServerName}"
+	Routes.Terms = "/terms-of-use"
 
 	r := mux.NewRouter()
-	r.HandleFunc(routes.Index, WebsiteHandlerIndex)
-	r.HandleFunc(routes.ServerAdd, WebAddServer).Methods("POST")
-	r.HandleFunc(routes.AuthLogin, WebsiteHandlerSignin)
-	r.HandleFunc(routes.AuthLogout, WebSignout)
-	r.HandleFunc(routes.AuthDiscord, ProcessDiscordLogin)
-	r.HandleFunc(routes.AuthGoogle, ProcessGoogleLogin)
-	r.HandleFunc(routes.ChatFeed, WebFeed)
-	r.HandleFunc(routes.ChatFeedInput, WebFeedInput)
-	r.HandleFunc(routes.Dashboard, WebsiteHandlerDashboard)
-	r.HandleFunc(routes.ServerRemove, WebDelServer)
-	r.HandleFunc(routes.ServerView, WebsiteHandlerServerView)
-	r.HandleFunc(routes.ConnectedServers, WebsiteAPIGetConnectedServers)
-	r.HandleFunc(routes.Groups, GroupsHandler)
-	r.HandleFunc(routes.Privacy, PrivacyHandler)
-	r.HandleFunc(routes.Servers, ServersHandler)
-	r.HandleFunc(routes.Terms, TermsHandler)
+	r.HandleFunc(Routes.Index, WebsiteHandlerIndex)
+	r.HandleFunc(Routes.ServerAdd, WebAddServer).Methods("POST")
+	r.HandleFunc(Routes.AuthLogin, WebsiteHandlerSignin)
+	r.HandleFunc(Routes.AuthLogout, WebSignout)
+	//r.HandleFunc(Routes.AuthDiscord, ProcessDiscordLogin)
+	//r.HandleFunc(Routes.AuthGoogle, ProcessGoogleLogin)
+	r.HandleFunc(Routes.ChatFeed, WebFeed)
+	r.HandleFunc(Routes.ChatFeedInput, WebFeedInput)
+	r.HandleFunc(Routes.Dashboard, WebsiteHandlerDashboard)
+	r.HandleFunc(Routes.ServerRemove, WebDelServer)
+	r.HandleFunc(Routes.ServerView, WebsiteHandlerServerView)
+	r.HandleFunc(Routes.ConnectedServers, WebsiteAPIGetConnectedServers)
+	r.HandleFunc(Routes.Groups, GroupsHandler)
+	r.HandleFunc(Routes.Privacy, PrivacyHandler)
+	r.HandleFunc(Routes.Servers, ServersHandler)
+	r.HandleFunc(Routes.Terms, TermsHandler)
 
-	r.PathPrefix(routes.Static).Handler(http.FileServer(http.Dir("./website")))
-	r.PathPrefix(routes.Static2).Handler(http.FileServer(http.Dir("./website")))
+	r.PathPrefix(Routes.Static).Handler(http.FileServer(http.Dir("./website")))
+	r.PathPrefix(Routes.Static2).Handler(http.FileServer(http.Dir("./website")))
 
 	r.HandleFunc(api.MyServers, APIGetMyServers)
 

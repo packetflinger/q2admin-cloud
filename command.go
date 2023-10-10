@@ -39,7 +39,7 @@ func (cl *Client) Teleport() {
 		cl.SayPlayer(p, PRINT_CHAT, "Active Servers\n")
 		line := ""
 
-		for _, c := range q2a.clients {
+		for _, c := range Q2A.clients {
 			if len(c.Players) == 0 {
 				continue
 			}
@@ -77,9 +77,9 @@ func (cl *Client) Teleport() {
  * Resolve a teleport name to an ip:port
  */
 func FindTeleportDestination(dest string) (*Client, error) {
-	for i, c := range q2a.clients {
+	for i, c := range Q2A.clients {
 		if c.Name == dest {
-			return &q2a.clients[i], nil
+			return &Q2A.clients[i], nil
 		}
 	}
 
@@ -89,7 +89,7 @@ func FindTeleportDestination(dest string) (*Client, error) {
 func TeleportAvailableReply() string {
 	var allservers []string
 
-	for _, c := range q2a.clients {
+	for _, c := range Q2A.clients {
 		if !c.Connected {
 			continue
 		}
@@ -140,7 +140,7 @@ func (cl *Client) Invite() {
 	}
 
 	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, cl.Name, cl.IPAddress, cl.Port)
-	for _, s := range q2a.clients {
+	for _, s := range Q2A.clients {
 		if s.Enabled && s.Connected {
 			s.SayEveryone(PRINT_CHAT, inv)
 		}
@@ -202,10 +202,8 @@ func (cl *Client) KickPlayer(p *Player, msg string) {
 	LogEventToDatabase(cl.ID, LogTypeCommand, txt)
 }
 
-//
 // Issue a command as if you were typing it into the console.
 // Sanitize cmd before use
-//
 func (cl *Client) ConsoleCommand(cmd string) {
 	WriteByte(SCMDCommand, &cl.MessageOut)
 	WriteString(cmd, &cl.MessageOut)

@@ -38,12 +38,12 @@ func TestUserGet(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	q2a.Users = users
+	Q2A.Users = users
 	if len(users) == 0 {
 		t.Error("No users found")
 	}
 
-	u, e := q2a.GetUser("81dbcad6-9151-460b-b475-6f728cc2d44d")
+	u, e := Q2A.GetUser("81dbcad6-9151-460b-b475-6f728cc2d44d")
 	if e != nil {
 		t.Error(e)
 	}
@@ -51,7 +51,7 @@ func TestUserGet(t *testing.T) {
 		t.Error("Name doesn't match")
 	}
 
-	u, e = q2a.GetUserByEmail("somebody@somewhere.com")
+	u, e = Q2A.GetUserByEmail("somebody@somewhere.com")
 	if e != nil {
 		t.Error(e)
 	}
@@ -59,7 +59,7 @@ func TestUserGet(t *testing.T) {
 		t.Error("Name doesn't match")
 	}
 
-	u, e = q2a.GetUserByName("claire")
+	u, e = Q2A.GetUserByName("claire")
 	if e != nil {
 		t.Error(e)
 	}

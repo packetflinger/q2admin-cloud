@@ -70,9 +70,9 @@ type ClientDiskFormat struct {
 // Locate the struct of the server for a particular
 // ID, get a pointer to it
 func FindClient(lookup string) (*Client, error) {
-	for i, cl := range q2a.clients {
+	for i, cl := range Q2A.clients {
 		if cl.UUID == lookup {
-			return &q2a.clients[i], nil
+			return &Q2A.clients[i], nil
 		}
 	}
 
@@ -147,11 +147,11 @@ func LoadClients(filename string) ([]Client, error) {
 
 	clientNames := clientspb.GetClient()
 	for _, c := range clientNames {
-		client, err := (&Client{}).LoadSettings(q2a.config.GetClientDirectory(), c)
+		client, err := (&Client{}).LoadSettings(Q2A.config.GetClientDirectory(), c)
 		if err != nil {
 			continue
 		}
-		client.Rules, err = client.FetchRules(q2a.config.GetClientDirectory())
+		client.Rules, err = client.FetchRules(Q2A.config.GetClientDirectory())
 		if err != nil {
 			log.Println(err)
 		}
@@ -164,7 +164,7 @@ func LoadClients(filename string) ([]Client, error) {
 // from them.
 func (cl *Client) LoadSettings(dir, name string) (Client, error) {
 	var client Client
-	filename := path.Join(q2a.config.GetClientDirectory(), name, "settings")
+	filename := path.Join(Q2A.config.GetClientDirectory(), name, "settings")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return client, err

@@ -80,7 +80,7 @@ func (cl *Client) ParseFrag() {
 
 // Received a ping from a client, send a pong to show we're alive
 func (cl *Client) Pong() {
-	if q2a.config.GetDebugMode() {
+	if Q2A.config.GetDebugMode() {
 		log.Printf("[%s/PING]\n", cl.Name)
 	}
 	cl.PingCount++
@@ -105,7 +105,7 @@ func (cl *Client) ParsePrint() {
 
 	switch level {
 	case PRINT_CHAT:
-		cl.SendToWebsiteFeed(stripped, FeedChat)
+		//cl.SendToWebsiteFeed(stripped, api.FeedChat)
 		cl.LogChat(stripped)
 		log.Printf("[%s/PRINT] (%d) %s\n", cl.Name, level, stripped)
 	case PRINT_MEDIUM:
@@ -139,8 +139,8 @@ func (cl *Client) ParseConnect() {
 
 	cl.LogPlayer(p)
 
-	wstxt := fmt.Sprintf("[CONNECT] %s [%s]", info["name"], info["ip"])
-	cl.SendToWebsiteFeed(wstxt, FeedJoinPart)
+	//wstxt := fmt.Sprintf("[CONNECT] %s [%s]", info["name"], info["ip"])
+	//cl.SendToWebsiteFeed(wstxt, api.FeedJoinPart)
 
 	// add a slight delay when processing rules
 	go func() {
@@ -159,8 +159,8 @@ func (cl *Client) ParseDisconnect() {
 
 	pl := cl.FindPlayer(clientnum)
 
-	wstxt := fmt.Sprintf("[DISCONNECT] %s [%s]", pl.Name, pl.IP)
-	cl.SendToWebsiteFeed(wstxt, FeedJoinPart)
+	//wstxt := fmt.Sprintf("[DISCONNECT] %s [%s]", pl.Name, pl.IP)
+	//cl.SendToWebsiteFeed(wstxt, api.FeedJoinPart)
 
 	log.Printf("[%s/DISCONNECT] %d|%s\n", cl.Name, clientnum, pl.Name)
 	cl.RemovePlayer(clientnum)
