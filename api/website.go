@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -9,9 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/packetflinger/q2admind/client"
+	//"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/util"
 )
 
@@ -45,15 +43,15 @@ type WebpageNotification struct {
 	Timing  string
 }
 type WebpageData struct {
-	Title           string
-	HeaderTitle     string
-	Notification    []WebpageNotification
-	Message         []WebpageMessage
-	SessionUser     *User
-	Gameservers     []*client.Client
+	Title        string
+	HeaderTitle  string
+	Notification []WebpageNotification
+	Message      []WebpageMessage
+	SessionUser  *User
+	//Gameservers     []*client.Client
 	GameserverCount int
-	Client          *client.Client
-	NavHighlight    struct {
+	//Client          *client.Client
+	NavHighlight struct {
 		Dashboard string
 		Servers   string
 		Groups    string
@@ -75,14 +73,14 @@ type WebUser struct {
 }
 
 type DashboardPage struct {
-	WebUser      *User
-	MyServers    []client.Client
-	OtherServers []client.Client
+	WebUser *User
+	//MyServers    []client.Client
+	//OtherServers []client.Client
 }
 
 type ServerPage struct {
-	WebUser  *User
-	MyServer client.Client
+	WebUser *User
+	//MyServer client.Client
 }
 
 // Represents the website
@@ -216,43 +214,45 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["ServerUUID"]
-	name := vars["ServerName"]
-	user, err := GetSessionUser(r)
-	if err != nil {
-		RedirectToSignon(w, r)
-		return
-	}
-
-	cl, err := FindClient(uuid)
-	if err != nil {
-		log.Println("invalid server id:", uuid)
-		return
-	}
-
-	data := WebpageData{
-		Title:       name + " management | Q2Admin CloudAdmin",
-		HeaderTitle: name,
-		SessionUser: user,
-		Client:      cl,
-	}
-	data.NavHighlight.Servers = "active"
-
-	tmpl, e := template.ParseFiles(
-		"website/templates/header-main.tmpl",
-		"website/templates/server-view.tmpl",
-		"website/templates/footer.tmpl",
-	)
-
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = tmpl.ExecuteTemplate(w, "server-view", data)
+	/*
+		vars := mux.Vars(r)
+		uuid := vars["ServerUUID"]
+		name := vars["ServerName"]
+		user, err := GetSessionUser(r)
 		if err != nil {
-			log.Println(err)
+			RedirectToSignon(w, r)
+			return
 		}
-	}
+
+		cl, err := FindClient(uuid)
+		if err != nil {
+			log.Println("invalid server id:", uuid)
+			return
+		}
+
+		data := WebpageData{
+			Title:       name + " management | Q2Admin CloudAdmin",
+			HeaderTitle: name,
+			SessionUser: user,
+			Client:      cl,
+		}
+		data.NavHighlight.Servers = "active"
+
+		tmpl, e := template.ParseFiles(
+			"website/templates/header-main.tmpl",
+			"website/templates/server-view.tmpl",
+			"website/templates/footer.tmpl",
+		)
+
+		if e != nil {
+			log.Println(e)
+		} else {
+			err = tmpl.ExecuteTemplate(w, "server-view", data)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	*/
 }
 
 // the "index" handler
@@ -281,22 +281,24 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 }
 
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
-	var activeservers []ActiveServer
-	for _, s := range q2a.clients {
-		if s.Connected {
-			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
-			activeservers = append(activeservers, srv)
+	/*
+		var activeservers []ActiveServer
+		for _, s := range q2a.clients {
+			if s.Connected {
+				srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
+				activeservers = append(activeservers, srv)
+			}
 		}
-	}
 
-	j, e := json.Marshal(activeservers)
-	if e != nil {
-		fmt.Println(e)
-		fmt.Fprintf(w, "{}")
-		return
-	}
+		j, e := json.Marshal(activeservers)
+		if e != nil {
+			fmt.Println(e)
+			fmt.Fprintf(w, "{}")
+			return
+		}
 
-	fmt.Fprintf(w, string(j))
+		fmt.Fprintf(w, string(j))
+	*/
 }
 
 func WebAddServer(w http.ResponseWriter, r *http.Request) {
@@ -328,30 +330,32 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 
 // Handler to delete a user's server
 func WebDelServer(w http.ResponseWriter, r *http.Request) {
-	//user := GetSessionUser(r)
-	vars := mux.Vars(r)
+	/*
+		//user := GetSessionUser(r)
+		vars := mux.Vars(r)
 
-	uuid_to_delete := vars["id"]
-	srv, err := FindClient(uuid_to_delete)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+		uuid_to_delete := vars["id"]
+		srv, err := FindClient(uuid_to_delete)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 
-	// check ownership
-	//if srv.Owner != user.ID {
-	//	log.Printf("%s unsuccessfuly tried to delete %s, non-ownership", user.Email, srv.Name)
-	//	return
-	//}
+		// check ownership
+		//if srv.Owner != user.ID {
+		//	log.Printf("%s unsuccessfuly tried to delete %s, non-ownership", user.Email, srv.Name)
+		//	return
+		//}
 
-	RemoveServer(srv.UUID)
-	q2a.clients = RehashServers()
-	http.Redirect(w, r, Routes.Dashboard, http.StatusFound)
+		RemoveServer(srv.UUID)
+		q2a.clients = RehashServers()
+		http.Redirect(w, r, Routes.Dashboard, http.StatusFound)
+	*/
 }
 
 // Log a user out
 func WebSignout(w http.ResponseWriter, r *http.Request) {
-	AuthLogout(w, r)
+	//AuthLogout(w, r)
 	http.Redirect(w, r, Routes.Index, http.StatusFound)
 }
 
@@ -445,45 +449,47 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ServersHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := GetSessionUser(r)
-	if err != nil {
-		RedirectToSignon(w, r)
-		return
-	}
-
-	data := WebpageData{
-		Title:       "My Servers | Q2Admin CloudAdmin",
-		HeaderTitle: "My Servers",
-		SessionUser: user,
-	}
-
-	data.NavHighlight.Servers = "active"
-
-	// build server list
-	svs := []*Client{}
-	for i := range q2a.clients {
-		if q2a.clients[i].Owner == user.ID {
-			svs = append(svs, &q2a.clients[i])
-		}
-	}
-	data.GameserverCount = len(svs)
-	data.Gameservers = svs
-
-	tmpl, e := template.ParseFiles(
-		"website/templates/header-main.tmpl",
-		"website/templates/my-servers.tmpl",
-		"website/templates/footer.tmpl",
-		"website/templates/server_templates.tmpl",
-	)
-
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = tmpl.ExecuteTemplate(w, "my-servers", data)
+	/*
+		user, err := GetSessionUser(r)
 		if err != nil {
-			log.Println(err)
+			RedirectToSignon(w, r)
+			return
 		}
-	}
+
+		data := WebpageData{
+			Title:       "My Servers | Q2Admin CloudAdmin",
+			HeaderTitle: "My Servers",
+			SessionUser: user,
+		}
+
+		data.NavHighlight.Servers = "active"
+
+		// build server list
+		svs := []*client.Client{}
+		for i := range q2a.clients {
+			if q2a.clients[i].Owner == user.ID {
+				svs = append(svs, &q2a.clients[i])
+			}
+		}
+		data.GameserverCount = len(svs)
+		data.Gameservers = svs
+
+		tmpl, e := template.ParseFiles(
+			"website/templates/header-main.tmpl",
+			"website/templates/my-servers.tmpl",
+			"website/templates/footer.tmpl",
+			"website/templates/server_templates.tmpl",
+		)
+
+		if e != nil {
+			log.Println(e)
+		} else {
+			err = tmpl.ExecuteTemplate(w, "my-servers", data)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	*/
 }
 
 func PrivacyHandler(w http.ResponseWriter, r *http.Request) {

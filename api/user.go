@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"os"
 
@@ -38,6 +37,7 @@ type UserSession struct {
 	Expires int64  // unix timestamp
 }
 
+/*
 // Get a pointer to a user based on their ID
 func (q2a *RemoteAdminServer) GetUser(id string) (*pb.User, error) {
 	log.Println(q2a.Users)
@@ -69,6 +69,7 @@ func (q2a *RemoteAdminServer) GetUserByName(n string) (*pb.User, error) {
 	}
 	return &pb.User{}, errors.New("user not found")
 }
+*/
 
 // write all User objects to json format on disk
 func WriteUsersToDisk(users []User, filename string) {

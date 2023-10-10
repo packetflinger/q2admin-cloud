@@ -1,13 +1,5 @@
 package api
 
-import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	//"github.com/packetflinger/q2admind/main"
-)
-
 type APIReply struct {
 	Status       int    // http code (404, 500, 508, etc)
 	StatusString string // string explaining the code
@@ -15,9 +7,10 @@ type APIReply struct {
 type APIServersReply struct {
 	Response APIReply // successful or not?
 	Count    int      // how many servers we have
-	Servers  []Client // the server struct
+	//Servers  []cloud Client // the server struct
 }
 
+/*
 // APIGetMyServers will send an http response containing a JSON
 // structure of all of "my" servers. The "my" part determined by
 // session.
@@ -39,8 +32,8 @@ func APIGetMyServers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svs := []Client{}
-	for _, sv := range main.Q2A.clients {
+	svs := []client.Client{}
+	for _, sv := range .Q2A.clients {
 		if sv.Owner == user.ID {
 			svs = append(svs, sv)
 		}
@@ -62,3 +55,4 @@ func APIGetMyServers(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 }
+*/

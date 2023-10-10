@@ -33,6 +33,7 @@ func TestUserRead(t *testing.T) {
 	}
 }
 
+/*
 func TestUserGet(t *testing.T) {
 	users, err := ReadUsersFromDisk("users-test.json")
 	if err != nil {
@@ -67,3 +68,4 @@ func TestUserGet(t *testing.T) {
 		t.Error("Name doesn't match")
 	}
 }
+*/
