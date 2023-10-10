@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/crypto"
+	"github.com/packetflinger/q2admind/util"
 )
 
 // Loop through all the data from the client
@@ -31,7 +33,7 @@ func ParseMessage(cl *client.Client) {
 			ParseMap(cl)
 
 		case CMDPlayerList:
-			cl.ParsePlayerlist()
+			ParsePlayerlist(cl)
 
 		case CMDPlayerUpdate:
 			cl.ParsePlayerUpdate()
@@ -199,11 +201,11 @@ func ParseObituary(cl *client.Client, obit string) {
 // Client sent a playerlist message.
 // 1 byte is quantity
 // then that number of players are sent
-func (cl *Client) ParsePlayerlist() {
-	count := ReadByte(&cl.Message)
+func ParsePlayerlist(cl *client.Client) {
+	count := (&cl.Message).ReadByte()
 	log.Printf("[%s/PLAYERLIST] %d\n", cl.Name, count)
 	for i := 0; i < int(count); i++ {
-		_ = cl.ParsePlayer()
+		_ = ParsePlayer(cl)
 	}
 }
 
@@ -212,28 +214,29 @@ func (cl *Client) ParsePlayerlist() {
 //
 // Called any time a player msg is sent, usually on
 // join or new map
-func (cl *Client) ParsePlayer() *Player {
-	clientnum := ReadByte(&cl.Message)
-	userinfo := ReadString(&cl.Message)
+func ParsePlayer(cl *client.Client) *client.Player {
+	msg := &cl.Message
+	clientnum := msg.ReadByte()
+	userinfo := msg.ReadString()
 
 	if int(clientnum) > cl.MaxPlayers {
 		log.Printf("WARNING: Invalid client number, ignoring\n")
 		return nil
 	}
 
-	info := UserinfoMap(userinfo)
+	info := client.UserinfoMap(userinfo)
 	port, _ := strconv.Atoi(info["port"])
 	fov, _ := strconv.Atoi(info["fov"])
-	newplayer := Player{
+	newplayer := client.Player{
 		ClientID:     int(clientnum),
 		Userinfo:     userinfo,
-		UserInfoHash: MD5Hash(userinfo),
+		UserInfoHash: crypto.MD5Hash(userinfo),
 		UserinfoMap:  info,
 		Name:         info["name"],
 		IP:           info["ip"],
 		Port:         port,
 		FOV:          fov,
-		ConnectTime:  GetUnixTimestamp(),
+		ConnectTime:  util.GetUnixTimestamp(),
 		Cookie:       info["cl_cookie"],
 		Client:       cl,
 	}
