@@ -99,31 +99,6 @@ const (
 	LogTypeCommand
 )
 
-/*
-// Initialize a message buffer
-func clearmsg(msg *util.MessageBuffer) {
-	msg.buffer = nil
-	msg.index = 0
-	msg.length = 0
-}
-*/
-
-type pp1 interface {
-	HelloFromAPI()
-}
-type PP2 struct {
-	PP1 pp1
-}
-
-func NewAPIRef(pp1 pp1) *PP2 {
-	return &PP2{
-		PP1: pp1,
-	}
-}
-
-// needed for avoiding circular imports
-func (ra *RemoteAdminServer) DummyFunc() {}
-
 // Locate the struct of the server for a particular
 // ID, get a pointer to it
 func FindClient(lookup string) (*client.Client, error) {
