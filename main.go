@@ -26,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = prototext.Unmarshal(textpb, &server.Q2A.Config)
+	err = prototext.Unmarshal(textpb, &server.Cloud.Config)
 	if err != nil {
 		log.Fatal(err)
 	}

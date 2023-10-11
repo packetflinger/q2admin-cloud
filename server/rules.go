@@ -236,7 +236,7 @@ func (cl *Client) ApplyRules(p *Player) {
 // Reads and parses the global rules from disk into memory.
 //
 // Called once at startup
-func (q2a *RemoteAdminServer) ReadGlobalRules() {
+func (q2a *CloudAdminServer) ReadGlobalRules() {
 	filedata, err := os.ReadFile("rules.q2a")
 	if err != nil {
 		log.Println("problems parsing rules.")

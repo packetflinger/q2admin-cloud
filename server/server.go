@@ -18,7 +18,7 @@ import (
 )
 
 // "This" admin server
-type RemoteAdminServer struct {
+type CloudAdminServer struct {
 	Users      []*pb.User      // website users
 	Config     pb.Config       // global config
 	Clients    []client.Client // managed quake 2 servers
@@ -29,8 +29,8 @@ type RemoteAdminServer struct {
 }
 
 var (
-	Q2A RemoteAdminServer // this server
-	DB  *sql.DB
+	Cloud CloudAdminServer // this server
+	DB    *sql.DB
 )
 
 const (
@@ -102,9 +102,9 @@ const (
 // Locate the struct of the server for a particular
 // ID, get a pointer to it
 func FindClient(lookup string) (*client.Client, error) {
-	for i, cl := range Q2A.Clients {
+	for i, cl := range Cloud.Clients {
 		if cl.UUID == lookup {
-			return &Q2A.Clients[i], nil
+			return &Cloud.Clients[i], nil
 		}
 	}
 
@@ -233,7 +233,7 @@ func HandleConnection(c net.Conn) {
 	}
 	cl.PublicKey = pubkey
 
-	challengeCipher := crypto.Sign(Q2A.Privatekey, clNonce)
+	challengeCipher := crypto.Sign(Cloud.Privatekey, clNonce)
 
 	//msg := message.NewMessageBuffer(&cl.MessageOut)
 	out := &cl.MessageOut
@@ -326,47 +326,47 @@ func Shutdown() {
 
 // Start the cloud admin server
 func Startup() {
-	log.Println("Loading private key:", Q2A.Config.GetPrivateKey())
-	privkey, err := crypto.LoadPrivateKey(Q2A.Config.GetPrivateKey())
+	log.Println("Loading private key:", Cloud.Config.GetPrivateKey())
+	privkey, err := crypto.LoadPrivateKey(Cloud.Config.GetPrivateKey())
 	if err != nil {
 		log.Fatalf("Problems loading private key: %s\n", err.Error())
 	}
 
 	pubkey := privkey.Public().(*rsa.PublicKey)
-	Q2A.Privatekey = privkey
-	Q2A.Publickey = pubkey
+	Cloud.Privatekey = privkey
+	Cloud.Publickey = pubkey
 
-	DB = database.DatabaseConnect(Q2A.Config.Database)
+	DB = database.DatabaseConnect(Cloud.Config.Database)
 
 	rules, err := FetchRules("config/rules")
 	if err != nil {
 		log.Println(err)
 	} else {
-		Q2A.Rules = rules
+		Cloud.Rules = rules
 	}
 
-	log.Println("Loading clients from:", Q2A.Config.GetClientFile())
-	clients, err := client.LoadClients(Q2A.Config.GetClientFile())
+	log.Println("Loading clients from:", Cloud.Config.GetClientFile())
+	clients, err := client.LoadClients(Cloud.Config.GetClientFile())
 	if err != nil {
 		log.Println(err)
 	} else {
-		Q2A.Clients = clients
+		Cloud.Clients = clients
 	}
 
 	// Read users
-	log.Println("Loading users from:", Q2A.Config.GetUserFile())
-	users, err := api.ReadUsersFromDisk(Q2A.Config.GetUserFile())
+	log.Println("Loading users from:", Cloud.Config.GetUserFile())
+	users, err := api.ReadUsersFromDisk(Cloud.Config.GetUserFile())
 	if err != nil {
 		log.Println(err)
 	} else {
-		Q2A.Users = users
+		Cloud.Users = users
 	}
 
-	for _, c := range Q2A.Clients {
+	for _, c := range Cloud.Clients {
 		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 	}
 
-	port := fmt.Sprintf("%s:%d", Q2A.Config.Address, Q2A.Config.Port)
+	port := fmt.Sprintf("%s:%d", Cloud.Config.Address, Cloud.Config.Port)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
 		fmt.Println(err)
@@ -377,12 +377,12 @@ func Startup() {
 
 	log.Printf("Listening for gameservers on %s\n", port)
 
-	if Q2A.Config.GetApiEnabled() {
-		creds, err := api.ReadOAuthCredsFromDisk(Q2A.Config.GetAuthFile())
+	if Cloud.Config.GetApiEnabled() {
+		creds, err := api.ReadOAuthCredsFromDisk(Cloud.Config.GetAuthFile())
 		if err != nil {
 			log.Println(err)
 		}
-		go api.RunHTTPServer(Q2A.Config.GetApiAddress(), int(Q2A.Config.GetApiPort()), creds)
+		go api.RunHTTPServer(Cloud.Config.GetApiAddress(), int(Cloud.Config.GetApiPort()), creds)
 	}
 
 	go startMaintenance()

@@ -13,7 +13,7 @@ import (
 func startMaintenance() {
 	//s := os.PathSeparator
 	for {
-		time.Sleep(time.Duration(Q2A.Config.MaintenanceTime) * time.Second)
+		time.Sleep(time.Duration(Cloud.Config.MaintenanceTime) * time.Second)
 
 		// every so often write all the client states to disk
 		/*
@@ -24,6 +24,6 @@ func startMaintenance() {
 				}
 			}
 		*/
-		Q2A.MaintCount++
+		Cloud.MaintCount++
 	}
 }
