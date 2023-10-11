@@ -382,7 +382,7 @@ func Startup() {
 		if err != nil {
 			log.Println(err)
 		}
-		go api.RunHTTPServer(Cloud.Config.GetApiAddress(), int(Cloud.Config.GetApiPort()), creds)
+		go RunHTTPServer(Cloud.Config.GetApiAddress(), int(Cloud.Config.GetApiPort()), creds)
 	}
 
 	go startMaintenance()

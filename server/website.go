@@ -1,4 +1,4 @@
-package api
+package server
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	//"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/util"
 )
 
@@ -47,7 +47,7 @@ type WebpageData struct {
 	HeaderTitle  string
 	Notification []WebpageNotification
 	Message      []WebpageMessage
-	SessionUser  *User
+	SessionUser  *api.User
 	//Gameservers     []*client.Client
 	GameserverCount int
 	//Client          *client.Client
@@ -73,19 +73,19 @@ type WebUser struct {
 }
 
 type DashboardPage struct {
-	WebUser *User
+	WebUser *api.User
 	//MyServers    []client.Client
 	//OtherServers []client.Client
 }
 
 type ServerPage struct {
-	WebUser *User
+	WebUser *api.User
 	//MyServer client.Client
 }
 
 // Represents the website
 type WebInterface struct {
-	Creds []Credentials
+	Creds []api.Credentials
 }
 
 // needed for upgrading the websockets
@@ -99,11 +99,11 @@ var WSUpgrader = websocket.Upgrader{
 // Session validit is also checked: expiration, user mismatch
 //
 // Called at the start of each website request
-func GetSessionUser(r *http.Request) (*User, error) {
-	var user *User
+func GetSessionUser(r *http.Request) (*api.User, error) {
+	var user *api.User
 	var cookie *http.Cookie
 	var e error
-	niluser := &User{}
+	niluser := &api.User{}
 
 	if cookie, e = r.Cookie(SessionName); e != nil {
 		return niluser, e
@@ -138,8 +138,8 @@ func GetUser(id int) WebUser {
 */
 
 // Make a new session for a user
-func CreateSession() UserSession {
-	sess := UserSession{
+func CreateSession() api.UserSession {
+	sess := api.UserSession{
 		ID:      util.GenerateUUID(),
 		Created: util.GetUnixTimestamp(),
 		Expires: util.GetUnixTimestamp() + (86400 * 2), // 2 days from now
@@ -151,7 +151,7 @@ func CreateSession() UserSession {
 // Make sure the session presented is valid.
 // 1. Current date is after the session creation date
 // 2. Current date is before the session expiration
-func ValidateSession(sess string) (*User, error) {
+func ValidateSession(sess string) (*api.User, error) {
 	/*
 		for i := range q2a.Users {
 			u := q2a.Users[i]
@@ -163,15 +163,15 @@ func ValidateSession(sess string) (*User, error) {
 			}
 		}
 	*/
-	return &User{}, errors.New("invalid session")
+	return &api.User{}, errors.New("invalid session")
 }
 
 // Load everything needed to start the web interface
-func RunHTTPServer(ip string, port int, creds []Credentials) {
+func RunHTTPServer(ip string, port int, creds []api.Credentials) {
 	Website.Creds = creds
 
 	listen := fmt.Sprintf("%s:%d", ip, port)
-	r := LoadWebsiteRoutes()
+	r := api.LoadWebsiteRoutes()
 
 	httpsrv := &http.Server{
 		Handler:      r,
@@ -186,7 +186,7 @@ func RunHTTPServer(ip string, port int, creds []Credentials) {
 func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	u, err := GetSessionUser(r)
 	if err != nil {
-		http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
+		http.Redirect(w, r, api.Routes.AuthLogin, http.StatusFound) // 302
 		return
 	}
 
@@ -259,18 +259,18 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 	_, e := GetSessionUser(r)
 	if e != nil {
-		http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
+		http.Redirect(w, r, api.Routes.AuthLogin, http.StatusFound) // 302
 		return
 	}
 
-	http.Redirect(w, r, Routes.Dashboard, http.StatusFound) // 302
+	http.Redirect(w, r, api.Routes.Dashboard, http.StatusFound) // 302
 }
 
 // Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 	tmpl, e := template.ParseFiles("website/templates/sign-in.tmpl")
 	for i := range Website.Creds {
-		Website.Creds[i].URL = BuildAuthURL(Website.Creds[i], i)
+		Website.Creds[i].URL = api.BuildAuthURL(Website.Creds[i], i)
 	}
 
 	if e != nil {
@@ -356,7 +356,7 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 // Log a user out
 func WebSignout(w http.ResponseWriter, r *http.Request) {
 	//AuthLogout(w, r)
-	http.Redirect(w, r, Routes.Index, http.StatusFound)
+	http.Redirect(w, r, api.Routes.Index, http.StatusFound)
 }
 
 // Websocket handler for sending chat message to web clients
@@ -551,5 +551,5 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
+	http.Redirect(w, r, api.Routes.AuthLogin, http.StatusFound) // 302
 }

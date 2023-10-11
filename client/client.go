@@ -16,7 +16,6 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 
 	"github.com/packetflinger/libq2/message"
-	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/crypto"
 	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
@@ -346,10 +345,12 @@ func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
 
 	colored := ""
 	switch decoration {
-	case api.FeedChat:
-		colored = now + " \\\\e[32m" + txt + "\\\\e[0m"
-	case api.FeedJoinPart:
-		colored = now + " \\\\e[33m\\\\e[42m" + txt + "\\\\e[0m"
+	/*
+		case api.FeedChat:
+			colored = now + " \\\\e[32m" + txt + "\\\\e[0m"
+		case api.FeedJoinPart:
+			colored = now + " \\\\e[33m\\\\e[42m" + txt + "\\\\e[0m"
+	*/
 	default:
 		colored = now + " " + txt
 	}
