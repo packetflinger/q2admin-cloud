@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/packetflinger/q2admind/api"
+	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/util"
 )
 
@@ -43,15 +44,15 @@ type WebpageNotification struct {
 	Timing  string
 }
 type WebpageData struct {
-	Title        string
-	HeaderTitle  string
-	Notification []WebpageNotification
-	Message      []WebpageMessage
-	SessionUser  *api.User
-	//Gameservers     []*client.Client
+	Title           string
+	HeaderTitle     string
+	Notification    []WebpageNotification
+	Message         []WebpageMessage
+	SessionUser     *api.User
+	Gameservers     []*client.Client
 	GameserverCount int
-	//Client          *client.Client
-	NavHighlight struct {
+	Client          *client.Client
+	NavHighlight    struct {
 		Dashboard string
 		Servers   string
 		Groups    string
@@ -449,47 +450,45 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ServersHandler(w http.ResponseWriter, r *http.Request) {
-	/*
-		user, err := GetSessionUser(r)
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+
+	data := WebpageData{
+		Title:       "My Servers | Q2Admin CloudAdmin",
+		HeaderTitle: "My Servers",
+		SessionUser: user,
+	}
+
+	data.NavHighlight.Servers = "active"
+
+	// build server list
+	svs := []*client.Client{}
+	for i := range Cloud.Clients {
+		if Cloud.Clients[i].Owner == user.ID {
+			svs = append(svs, &Cloud.Clients[i])
+		}
+	}
+	data.GameserverCount = len(svs)
+	data.Gameservers = svs
+
+	tmpl, e := template.ParseFiles(
+		"website/templates/header-main.tmpl",
+		"website/templates/my-servers.tmpl",
+		"website/templates/footer.tmpl",
+		"website/templates/server_templates.tmpl",
+	)
+
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "my-servers", data)
 		if err != nil {
-			RedirectToSignon(w, r)
-			return
+			log.Println(err)
 		}
-
-		data := WebpageData{
-			Title:       "My Servers | Q2Admin CloudAdmin",
-			HeaderTitle: "My Servers",
-			SessionUser: user,
-		}
-
-		data.NavHighlight.Servers = "active"
-
-		// build server list
-		svs := []*client.Client{}
-		for i := range q2a.clients {
-			if q2a.clients[i].Owner == user.ID {
-				svs = append(svs, &q2a.clients[i])
-			}
-		}
-		data.GameserverCount = len(svs)
-		data.Gameservers = svs
-
-		tmpl, e := template.ParseFiles(
-			"website/templates/header-main.tmpl",
-			"website/templates/my-servers.tmpl",
-			"website/templates/footer.tmpl",
-			"website/templates/server_templates.tmpl",
-		)
-
-		if e != nil {
-			log.Println(e)
-		} else {
-			err = tmpl.ExecuteTemplate(w, "my-servers", data)
-			if err != nil {
-				log.Println(err)
-			}
-		}
-	*/
+	}
 }
 
 func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
