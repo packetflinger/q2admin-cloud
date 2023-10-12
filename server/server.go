@@ -299,12 +299,9 @@ func HandleConnection(c net.Conn) {
 
 		// decrypt if necessary
 		if cl.Encrypted && cl.Trusted {
-			input, size = crypto.SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
+			input, _ = crypto.SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
 		}
 
-		//cl.Message.buffer = input
-		//cl.Message.index = 0
-		//cl.Message.length = size
 		cl.Message = message.NewMessageBuffer(input)
 
 		ParseMessage(cl)
@@ -378,7 +375,7 @@ func Startup() {
 	log.Printf("Listening for gameservers on %s\n", port)
 
 	if Cloud.Config.GetApiEnabled() {
-		creds, err := api.ReadOAuthCredsFromDisk(Cloud.Config.GetAuthFile())
+		creds, err := ReadOAuthCredsFromDisk(Cloud.Config.GetAuthFile())
 		if err != nil {
 			log.Println(err)
 		}
