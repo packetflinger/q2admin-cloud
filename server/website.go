@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"path"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -95,9 +96,10 @@ type WebInterface struct {
 }
 
 type AuthProvider struct {
-	URL  string
-	Icon string
-	Alt  string
+	URL     string
+	Icon    string
+	Alt     string
+	Enabled bool
 }
 
 // needed for upgrading the websockets
@@ -176,7 +178,7 @@ func ValidateSession(sess string) (*pb.User, error) {
 
 // Load everything needed to start the web interface
 func RunHTTPServer(ip string, port int, creds []*pb.OAuth) {
-	//Website.Creds = creds
+	Website.Creds = creds
 
 	listen := fmt.Sprintf("%s:%d", ip, port)
 	r := LoadWebsiteRoutes()
@@ -274,13 +276,15 @@ func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 
 // Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
-	tmpl, e := template.ParseFiles("website/templates/sign-in.tmpl")
+	infile := path.Join(Cloud.Config.GetWebRoot(), "templates", "sign-in.tmpl")
+	tmpl, e := template.ParseFiles(infile)
 	auths := []AuthProvider{}
 	for i := range Website.Creds {
 		a := AuthProvider{
-			URL:  BuildAuthURL(Website.Creds[i], i),
-			Icon: Website.Creds[i].GetImagePath(),
-			Alt:  Website.Creds[i].GetAlternateText(),
+			URL:     BuildAuthURL(Website.Creds[i], i),
+			Icon:    Website.Creds[i].GetImagePath(),
+			Alt:     Website.Creds[i].GetAlternateText(),
+			Enabled: !Website.Creds[i].GetDisabled(),
 		}
 		auths = append(auths, a)
 	}

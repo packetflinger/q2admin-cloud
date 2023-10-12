@@ -76,8 +76,8 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.Servers, ServersHandler)
 	r.HandleFunc(Routes.Terms, TermsHandler)
 
-	r.PathPrefix(Routes.Static).Handler(http.FileServer(http.Dir("./website")))
-	r.PathPrefix(Routes.Static2).Handler(http.FileServer(http.Dir("./website")))
+	r.PathPrefix(Routes.Static).Handler(http.FileServer(http.Dir("./api/website")))
+	r.PathPrefix(Routes.Static2).Handler(http.FileServer(http.Dir("./api/website")))
 
 	//r.HandleFunc(api.MyServers, APIGetMyServers)
 
