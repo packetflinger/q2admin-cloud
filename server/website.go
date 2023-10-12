@@ -142,14 +142,13 @@ func GetUser(id int) WebUser {
 */
 
 // Make a new session for a user
-func CreateSession() api.UserSession {
-	sess := api.UserSession{
-		ID:      util.GenerateUUID(),
-		Created: util.GetUnixTimestamp(),
-		Expires: util.GetUnixTimestamp() + (86400 * 2), // 2 days from now
+func CreateSession() *pb.Session {
+	sess := pb.Session{
+		Id:         util.GenerateUUID(),
+		Creation:   util.GetUnixTimestamp(),
+		Expiration: util.GetUnixTimestamp() + (86400 * 2), // 2 days from now
 	}
-
-	return sess
+	return &sess
 }
 
 // Make sure the session presented is valid.
