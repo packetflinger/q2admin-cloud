@@ -181,7 +181,7 @@ func RunHTTPServer(ip string, port int, creds []Credentials) {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	log.Printf("Listening for web requests on %d\n", port)
+	log.Printf("Listening for web requests on http://%s\n", listen)
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
