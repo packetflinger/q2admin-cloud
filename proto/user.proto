@@ -13,8 +13,17 @@ message User {
     string description = 4;
     bool disabled = 5;
     int64 access = 6; // bitmask
+    Session session = 7;
 }
 
 message Users {
     repeated User user = 1;
+}
+
+// website oauth session
+message Session {
+    string id = 1;
+    int64 creation = 2;     // unix timestamp
+    int64 expiration = 3;   // unix timestamp
+    string auth_token = 4;
 }
