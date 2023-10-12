@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/client"
+	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
 )
 
@@ -50,7 +51,7 @@ type WebpageData struct {
 	HeaderTitle     string
 	Notification    []WebpageNotification
 	Message         []WebpageMessage
-	SessionUser     *api.User
+	SessionUser     *pb.User
 	Gameservers     []*client.Client
 	GameserverCount int
 	Client          *client.Client
@@ -102,18 +103,17 @@ var WSUpgrader = websocket.Upgrader{
 // Session validit is also checked: expiration, user mismatch
 //
 // Called at the start of each website request
-func GetSessionUser(r *http.Request) (*api.User, error) {
-	var user *api.User
+func GetSessionUser(r *http.Request) (*pb.User, error) {
+	var user *pb.User
 	var cookie *http.Cookie
 	var e error
-	niluser := &api.User{}
 
 	if cookie, e = r.Cookie(SessionName); e != nil {
-		return niluser, e
+		return nil, e
 	}
 
 	if user, e = ValidateSession(cookie.Value); e != nil {
-		return niluser, e
+		return nil, e
 	}
 
 	return user, nil
@@ -154,19 +154,17 @@ func CreateSession() api.UserSession {
 // Make sure the session presented is valid.
 // 1. Current date is after the session creation date
 // 2. Current date is before the session expiration
-func ValidateSession(sess string) (*api.User, error) {
-	/*
-		for i := range q2a.Users {
-			u := q2a.Users[i]
-			if u.Session.ID == sess {
-				now := GetUnixTimestamp()
-				if now > u.Session.Created && now < u.Session.Expires {
-					return &u, nil
-				}
+func ValidateSession(sess string) (*pb.User, error) {
+	for i := range Cloud.Users {
+		u := Cloud.Users[i]
+		if u.GetSession().GetId() == sess {
+			now := util.GetUnixTimestamp()
+			if now > u.GetSession().GetCreation() && now < u.GetSession().GetExpiration() {
+				return u, nil
 			}
 		}
-	*/
-	return &api.User{}, errors.New("invalid session")
+	}
+	return &pb.User{}, errors.New("invalid session")
 }
 
 // Load everything needed to start the web interface
@@ -464,7 +462,7 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 	// build server list
 	svs := []*client.Client{}
 	for i := range Cloud.Clients {
-		if Cloud.Clients[i].Owner == user.ID {
+		if Cloud.Clients[i].Owner == user.GetUuid() {
 			svs = append(svs, &Cloud.Clients[i])
 		}
 	}
