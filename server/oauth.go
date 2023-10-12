@@ -21,20 +21,6 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
-type Credentials struct {
-	Type        string `json:"Type"`        // Identifier, "google", "discord"
-	AuthURL     string `json:"AuthURL"`     // url to present login form
-	TokenURL    string `json:"TokenURL"`    // url to fetch result token
-	ClientID    string `json:"ClientID"`    // api "username"
-	Secret      string `json:"Secret"`      // api "password"
-	Scope       string `json:"Scope"`       // what we want to access
-	Icon        string `json:"Icon"`        // svg icon to display on website
-	Alt         string `json:"Alt"`         // text to display on icon hover
-	CallbackURL string `json:"CallbackURL"` // stage 2 url
-	Enabled     bool   `json:"Enabled"`     // active or not
-	URL         string // this is the "compiled" authurl
-}
-
 type AuthResponse struct {
 	Token   string `json:"access_token"`
 	Expires int    `json:"expires_in"`
@@ -67,8 +53,11 @@ func ReadOAuthCredsFromDisk(filename string) ([]*pb.OAuth, error) {
 
 // Write all credentials objects to json format on disk.
 // Not sure this is really used for anything, but got for testing
-func WriteOAuthCredsToDisk(creds []Credentials, filename string) error {
-	filecontents, err := json.MarshalIndent(creds, "", "  ")
+func WriteOAuthCredsToDisk(creds []*pb.OAuth, filename string) error {
+	cr := pb.Credentials{
+		Oauth: creds,
+	}
+	filecontents, err := prototext.Marshal(&cr)
 	if err != nil {
 		return err
 	}
@@ -86,14 +75,14 @@ func WriteOAuthCredsToDisk(creds []Credentials, filename string) error {
 // be pre-built
 //
 // Called from WebsiteHandlerSignin() for each provider
-func BuildAuthURL(c Credentials, index int) string {
-	state := fmt.Sprintf("%s|%d|%s", c.Type, index, util.GenerateUUID())
+func BuildAuthURL(cred *pb.OAuth, index int) string {
+	state := fmt.Sprintf("%s|%d|%s", cred.GetType().String(), index, util.GenerateUUID())
 	url := fmt.Sprintf(
 		"%s?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s",
-		c.AuthURL,
-		c.ClientID,
-		url.QueryEscape(c.CallbackURL),
-		url.QueryEscape(c.Scope),
+		cred.GetAuthUrl(),
+		cred.GetClientId(),
+		url.QueryEscape(cred.GetCallbackUrl()),
+		url.QueryEscape(strings.Join(cred.GetScope(), ",")),
 		state,
 	)
 	return url
@@ -122,14 +111,14 @@ func ProcessOAuthReplyOld(w http.ResponseWriter, r *http.Request) {
 
 	data := url.Values{
 		"grant_type":    {"authorization_code"},
-		"client_id":     {cred.ClientID},
-		"client_secret": {cred.Secret},
-		"redirect_uri":  {cred.CallbackURL},
-		"scope":         {cred.Scope},
+		"client_id":     {cred.GetClientId()},
+		"client_secret": {cred.GetSecret()},
+		"redirect_uri":  {cred.GetCallbackUrl()},
+		"scope":         {strings.Join(cred.GetScope(), ",")},
 		"code":          {code},
 	}
 
-	res, err := http.PostForm(cred.TokenURL, data)
+	res, err := http.PostForm(cred.GetTokenUrl(), data)
 	if err != nil {
 		log.Println("auth fail:", err)
 		return
@@ -194,8 +183,8 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 	cred := Website.Creds[index]
 
 	conf := &oauth2.Config{
-		RedirectURL:  cred.CallbackURL,
-		ClientID:     cred.ClientID,
+		RedirectURL:  cred.GetCallbackUrl(),
+		ClientID:     cred.GetClientId(),
 		ClientSecret: cred.Secret,
 		Scopes:       []string{discord.ScopeIdentify},
 		Endpoint:     discord.Endpoint,
@@ -252,6 +241,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// TODO: hard code less of this
 func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	oauthGoogleUrlAPI := "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 	vars := r.URL.Query()
@@ -273,7 +263,7 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 
 	conf := &oauth2.Config{
 		RedirectURL:  "http://localhost:8087/oauth-processor",
-		ClientID:     cred.ClientID,
+		ClientID:     cred.GetClientId(),
 		ClientSecret: cred.Secret,
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,

@@ -90,7 +90,14 @@ type ServerPage struct {
 
 // Represents the website
 type WebInterface struct {
-	Creds []Credentials
+	Creds []*pb.OAuth
+	Auths []AuthProvider
+}
+
+type AuthProvider struct {
+	URL  string
+	Icon string
+	Alt  string
 }
 
 // needed for upgrading the websockets
@@ -268,14 +275,20 @@ func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 // Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 	tmpl, e := template.ParseFiles("website/templates/sign-in.tmpl")
+	auths := []AuthProvider{}
 	for i := range Website.Creds {
-		Website.Creds[i].URL = BuildAuthURL(Website.Creds[i], i)
+		a := AuthProvider{
+			URL:  BuildAuthURL(Website.Creds[i], i),
+			Icon: Website.Creds[i].GetImagePath(),
+			Alt:  Website.Creds[i].GetAlternateText(),
+		}
+		auths = append(auths, a)
 	}
 
 	if e != nil {
 		log.Println(e)
 	} else {
-		tmpl.Execute(w, Website.Creds)
+		tmpl.Execute(w, auths)
 	}
 }
 
