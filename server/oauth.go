@@ -13,10 +13,12 @@ import (
 	"strconv"
 	"strings"
 
+	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
 	"github.com/ravener/discord-oauth2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/protobuf/encoding/prototext"
 )
 
 type Credentials struct {
@@ -48,19 +50,19 @@ type ProfileResponse struct {
 
 // Read json file holding our oauth2 providers.
 // Called at webserver startup
-func ReadOAuthCredsFromDisk(filename string) ([]Credentials, error) {
-	cr := []Credentials{}
+func ReadOAuthCredsFromDisk(filename string) ([]*pb.OAuth, error) {
+	cr := pb.Credentials{}
 	filedata, err := os.ReadFile(filename)
 	if err != nil {
-		return cr, errors.New("unable to read credential file")
+		return []*pb.OAuth{}, errors.New("unable to read credential file")
 	}
 
-	err = json.Unmarshal([]byte(filedata), &cr)
+	err = prototext.Unmarshal(filedata, &cr)
 	if err != nil {
-		return cr, errors.New("unable to parse credential data")
+		return []*pb.OAuth{}, errors.New("unable to parse credential data")
 	}
 
-	return cr, nil
+	return cr.GetOauth(), nil
 }
 
 // Write all credentials objects to json format on disk.

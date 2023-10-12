@@ -168,8 +168,8 @@ func ValidateSession(sess string) (*pb.User, error) {
 }
 
 // Load everything needed to start the web interface
-func RunHTTPServer(ip string, port int, creds []Credentials) {
-	Website.Creds = creds
+func RunHTTPServer(ip string, port int, creds []*pb.OAuth) {
+	//Website.Creds = creds
 
 	listen := fmt.Sprintf("%s:%d", ip, port)
 	r := LoadWebsiteRoutes()
