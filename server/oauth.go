@@ -82,7 +82,7 @@ func BuildAuthURL(cred *pb.OAuth, index int) string {
 		cred.GetAuthUrl(),
 		cred.GetClientId(),
 		url.QueryEscape(cred.GetCallbackUrl()),
-		url.QueryEscape(strings.Join(cred.GetScope(), ",")),
+		url.QueryEscape(strings.Join(cred.GetScope(), " ")),
 		state,
 	)
 	return url
