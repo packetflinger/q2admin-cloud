@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -280,24 +281,22 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 }
 
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
-	/*
-		var activeservers []ActiveServer
-		for _, s := range q2a.clients {
-			if s.Connected {
-				srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
-				activeservers = append(activeservers, srv)
-			}
+	var activeservers []ActiveServer
+	for _, s := range Cloud.Clients {
+		if s.Connected {
+			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
+			activeservers = append(activeservers, srv)
 		}
+	}
 
-		j, e := json.Marshal(activeservers)
-		if e != nil {
-			fmt.Println(e)
-			fmt.Fprintf(w, "{}")
-			return
-		}
+	j, e := json.Marshal(activeservers)
+	if e != nil {
+		fmt.Println(e)
+		fmt.Fprintf(w, "{}")
+		return
+	}
 
-		fmt.Fprintf(w, string(j))
-	*/
+	fmt.Fprintf(w, "%s", string(j))
 }
 
 func WebAddServer(w http.ResponseWriter, r *http.Request) {
