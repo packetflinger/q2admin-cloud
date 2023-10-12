@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"html/template"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/client"
@@ -86,7 +88,7 @@ type ServerPage struct {
 
 // Represents the website
 type WebInterface struct {
-	Creds []api.Credentials
+	Creds []Credentials
 }
 
 // needed for upgrading the websockets
@@ -168,11 +170,11 @@ func ValidateSession(sess string) (*api.User, error) {
 }
 
 // Load everything needed to start the web interface
-func RunHTTPServer(ip string, port int, creds []api.Credentials) {
+func RunHTTPServer(ip string, port int, creds []Credentials) {
 	Website.Creds = creds
 
 	listen := fmt.Sprintf("%s:%d", ip, port)
-	r := api.LoadWebsiteRoutes()
+	r := LoadWebsiteRoutes()
 
 	httpsrv := &http.Server{
 		Handler:      r,
@@ -187,7 +189,7 @@ func RunHTTPServer(ip string, port int, creds []api.Credentials) {
 func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	u, err := GetSessionUser(r)
 	if err != nil {
-		http.Redirect(w, r, api.Routes.AuthLogin, http.StatusFound) // 302
+		http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
 		return
 	}
 
@@ -260,18 +262,18 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 	_, e := GetSessionUser(r)
 	if e != nil {
-		http.Redirect(w, r, api.Routes.AuthLogin, http.StatusFound) // 302
+		http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
 		return
 	}
 
-	http.Redirect(w, r, api.Routes.Dashboard, http.StatusFound) // 302
+	http.Redirect(w, r, Routes.Dashboard, http.StatusFound) // 302
 }
 
 // Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 	tmpl, e := template.ParseFiles("website/templates/sign-in.tmpl")
 	for i := range Website.Creds {
-		Website.Creds[i].URL = api.BuildAuthURL(Website.Creds[i], i)
+		Website.Creds[i].URL = BuildAuthURL(Website.Creds[i], i)
 	}
 
 	if e != nil {
@@ -357,7 +359,7 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 // Log a user out
 func WebSignout(w http.ResponseWriter, r *http.Request) {
 	//AuthLogout(w, r)
-	http.Redirect(w, r, api.Routes.Index, http.StatusFound)
+	http.Redirect(w, r, Routes.Index, http.StatusFound)
 }
 
 // Websocket handler for sending chat message to web clients
@@ -391,33 +393,28 @@ func WebFeed(w http.ResponseWriter, r *http.Request) {
 }
 
 func WebFeedInput(w http.ResponseWriter, r *http.Request) {
-	/*
-		vars := mux.Vars(r)
-		uuid := vars["ServerUUID"]
-		user := GetSessionUser(r)
-		srv, err := FindClient(uuid)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+	vars := mux.Vars(r)
+	uuid := vars["ServerUUID"]
+	user, _ := GetSessionUser(r)
+	srv, err := FindClient(uuid)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-		// make sure user is allowed to give commands to srv
-		// change this
-		if user.ID > 0 {
+	// make sure user is allowed to give commands to srv
+	// change this
 
-		}
+	//input64 := r.PostForm["input"]
+	input64 := r.URL.Query().Get("input")
+	input, err := base64.StdEncoding.DecodeString(input64)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-		//input64 := r.PostForm["input"]
-		input64 := r.URL.Query().Get("input")
-		input, err := base64.StdEncoding.DecodeString(input64)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		preamble := "[" + user.Email + "] "
-		srv.SendToWebsiteFeed(preamble+string(input), FeedChat)
-	*/
+	preamble := "[" + user.Email + "] "
+	srv.SendToWebsiteFeed(preamble+string(input), FeedChat)
 }
 
 func GroupsHandler(w http.ResponseWriter, r *http.Request) {
@@ -550,5 +547,5 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, api.Routes.AuthLogin, http.StatusFound) // 302
+	http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
 }

@@ -32,12 +32,12 @@ type APIRoutes struct {
 }
 
 var (
-	Routes WebRoutes
-	api    APIRoutes
+	Routes   WebRoutes
+	apiRoute APIRoutes
 )
 
 func LoadWebsiteRoutes() *mux.Router {
-	api.MyServers = "/api/v1/GetMyServers"
+	apiRoute.MyServers = "/api/v1/GetMyServers"
 
 	Routes.Static = "/static/"
 	Routes.Static2 = "/static2/"
