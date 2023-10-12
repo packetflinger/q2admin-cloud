@@ -77,14 +77,14 @@ type WebUser struct {
 }
 
 type DashboardPage struct {
-	WebUser *api.User
-	//MyServers    []client.Client
-	//OtherServers []client.Client
+	WebUser      *api.User
+	MyServers    []client.Client
+	OtherServers []client.Client
 }
 
 type ServerPage struct {
-	WebUser *api.User
-	//MyServer client.Client
+	WebUser  *api.User
+	MyServer client.Client
 }
 
 // Represents the website
