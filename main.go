@@ -40,7 +40,7 @@ func main() {
 	go func() {
 		<-c
 		server.Shutdown()
-		os.Exit(1)
+		os.Exit(0)
 	}()
 
 	// run it
