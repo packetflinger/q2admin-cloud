@@ -84,7 +84,7 @@ type DashboardPage struct {
 }
 
 type ServerPage struct {
-	WebUser  *api.User
+	WebUser  *pb.User
 	MyServer client.Client
 }
 
@@ -359,32 +359,35 @@ func WebSignout(w http.ResponseWriter, r *http.Request) {
 
 // Websocket handler for sending chat message to web clients
 func WebFeed(w http.ResponseWriter, r *http.Request) {
-	/*
-		vars := mux.Vars(r)
-		uuid := vars["ServerUUID"]
-		page := ServerPage{}
-		page.User = GetSessionUser(r)
-		srv, err := FindClient(uuid)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+	vars := mux.Vars(r)
+	uuid := vars["ServerUUID"]
+	page := ServerPage{}
+	usr, err := GetSessionUser(r)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	page.WebUser = usr
+	srv, err := FindClient(uuid)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-		WSUpgrader.CheckOrigin = func(r *http.Request) bool {
-			// check for auth here
-			return true // everyone can connect
-		}
+	WSUpgrader.CheckOrigin = func(r *http.Request) bool {
+		// check for auth here
+		return true // everyone can connect
+	}
 
-		ws, err := WSUpgrader.Upgrade(w, r, nil)
-		if err != nil {
-			log.Println(err)
-			err = nil
-		}
+	ws, err := WSUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		err = nil
+	}
 
-		srv.WebSockets = append(srv.WebSockets, ws)
+	srv.WebSockets = append(srv.WebSockets, ws)
 
-		log.Println("Chat Websocket connected")
-	*/
+	log.Println("Chat Websocket connected")
 }
 
 func WebFeedInput(w http.ResponseWriter, r *http.Request) {
