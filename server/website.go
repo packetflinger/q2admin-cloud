@@ -215,45 +215,43 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
-	/*
-		vars := mux.Vars(r)
-		uuid := vars["ServerUUID"]
-		name := vars["ServerName"]
-		user, err := GetSessionUser(r)
+	vars := mux.Vars(r)
+	uuid := vars["ServerUUID"]
+	name := vars["ServerName"]
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+
+	cl, err := FindClient(uuid)
+	if err != nil {
+		log.Println("invalid server id:", uuid)
+		return
+	}
+
+	data := WebpageData{
+		Title:       name + " management | Q2Admin CloudAdmin",
+		HeaderTitle: name,
+		SessionUser: user,
+		Client:      cl,
+	}
+	data.NavHighlight.Servers = "active"
+
+	tmpl, e := template.ParseFiles(
+		"website/templates/header-main.tmpl",
+		"website/templates/server-view.tmpl",
+		"website/templates/footer.tmpl",
+	)
+
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "server-view", data)
 		if err != nil {
-			RedirectToSignon(w, r)
-			return
+			log.Println(err)
 		}
-
-		cl, err := FindClient(uuid)
-		if err != nil {
-			log.Println("invalid server id:", uuid)
-			return
-		}
-
-		data := WebpageData{
-			Title:       name + " management | Q2Admin CloudAdmin",
-			HeaderTitle: name,
-			SessionUser: user,
-			Client:      cl,
-		}
-		data.NavHighlight.Servers = "active"
-
-		tmpl, e := template.ParseFiles(
-			"website/templates/header-main.tmpl",
-			"website/templates/server-view.tmpl",
-			"website/templates/footer.tmpl",
-		)
-
-		if e != nil {
-			log.Println(e)
-		} else {
-			err = tmpl.ExecuteTemplate(w, "server-view", data)
-			if err != nil {
-				log.Println(err)
-			}
-		}
-	*/
+	}
 }
 
 // the "index" handler
