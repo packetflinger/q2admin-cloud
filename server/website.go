@@ -168,7 +168,7 @@ func ValidateSession(sess string) (*pb.User, error) {
 		u := Cloud.Users[i]
 		if u.GetSession().GetId() == sess {
 			now := util.GetUnixTimestamp()
-			if now > u.GetSession().GetCreation() && now < u.GetSession().GetExpiration() {
+			if now >= u.GetSession().GetCreation() && now < u.GetSession().GetExpiration() {
 				return u, nil
 			}
 		}
