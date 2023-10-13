@@ -255,6 +255,7 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Servers = "active"
 
 	tmpl, e := template.ParseFiles(
+
 		"website/templates/header-main.tmpl",
 		"website/templates/server-view.tmpl",
 		"website/templates/footer.tmpl",
@@ -453,9 +454,9 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Groups = "active"
 
 	tmpl, e := template.ParseFiles(
-		"website/templates/header-main.tmpl",
-		"website/templates/my-groups.tmpl",
-		"website/templates/footer.tmpl",
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "my-groups.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 	if e != nil {
 		log.Println(e)
