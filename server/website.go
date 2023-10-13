@@ -274,11 +274,11 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 	_, e := GetSessionUser(r)
 	if e != nil {
-		http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
+		RedirectToSignon(w, r)
 		return
 	}
 
-	http.Redirect(w, r, Routes.Dashboard, http.StatusFound) // 302
+	http.Redirect(w, r, Routes.Dashboard, http.StatusSeeOther) // 303
 }
 
 // Display signin page
