@@ -35,6 +35,10 @@ const (
 	FeedMute
 )
 
+// a
+type SessionUser struct {
+}
+
 type WebpageMessage struct {
 	Quantity int
 	Icon     string
@@ -193,6 +197,9 @@ func RunHTTPServer(ip string, port int, creds []*pb.OAuth) {
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
+// Dashboard handler
+//
+// This is the main landing page after authenticating
 func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	u, err := GetSessionUser(r)
 	if err != nil {
