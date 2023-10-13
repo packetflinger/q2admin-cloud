@@ -553,9 +553,9 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl, e := template.ParseFiles(
-		"website/templates/header-main.tmpl",
-		"website/templates/terms-of-use.tmpl",
-		"website/templates/footer.tmpl",
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "terms-of-use.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 
 	if e != nil {
