@@ -467,6 +467,7 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Handler for the /my-servers page
 func ServersHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := GetSessionUser(r)
 	if err != nil {
@@ -493,10 +494,10 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 	data.Gameservers = svs
 
 	tmpl, e := template.ParseFiles(
-		"website/templates/header-main.tmpl",
-		"website/templates/my-servers.tmpl",
-		"website/templates/footer.tmpl",
-		"website/templates/server_templates.tmpl",
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "my-servers.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "server_templates.tmpl"),
 	)
 
 	if e != nil {
