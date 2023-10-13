@@ -208,9 +208,9 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Dashboard = "active"
 
 	tmpl, e := template.ParseFiles(
-		"website/templates/home.tmpl",
-		"website/templates/header-main.tmpl",
-		"website/templates/footer.tmpl",
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "home.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 
 	if e != nil {
