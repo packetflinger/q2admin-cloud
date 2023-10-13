@@ -569,5 +569,5 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, Routes.AuthLogin, http.StatusFound) // 302
+	http.Redirect(w, r, Routes.AuthLogin, http.StatusSeeOther) // 303
 }
