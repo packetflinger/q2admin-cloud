@@ -26,4 +26,5 @@ message Session {
     int64 creation = 2;     // unix timestamp
     int64 expiration = 3;   // unix timestamp
     string auth_token = 4;
+    string avatar = 5;      // url to profile pic
 }
