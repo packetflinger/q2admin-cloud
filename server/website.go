@@ -524,9 +524,9 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl, e := template.ParseFiles(
-		"website/templates/header-main.tmpl",
-		"website/templates/privacy-policy.tmpl",
-		"website/templates/footer.tmpl",
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "privacy-policy.tmpl"),
+		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 
 	if e != nil {
