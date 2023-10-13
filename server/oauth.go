@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
 	"github.com/ravener/discord-oauth2"
@@ -169,13 +170,13 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 	code := vars.Get("code")
 	state := vars.Get("state")
 
-	parts := strings.Split(state, "|")
-	if len(parts) != 3 {
+	tokens := strings.Split(state, "|")
+	if len(tokens) != 3 {
 		log.Println("auth fail: state returned in invalid format")
 		return
 	}
 
-	index, err := strconv.Atoi(parts[1])
+	index, err := strconv.Atoi(tokens[1])
 	if err != nil {
 		log.Println("auth fail: converting credential index from string to int")
 		return
@@ -216,22 +217,23 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//user, err := q2a.GetUserByEmail(profres.Email)
+	user, err := GetUserByEmail(profres.Email)
 	if err != nil {
 		log.Println(err)
 	} else {
-		/*
-			user.Session = UserSession{
-				ID:      token.AccessToken,
-				Expires: token.Expiry.Unix(),
-			}
-			user.Avatar = fmt.Sprintf(
-				"https://cdn.discordapp.com/avatars/%s/%s.png", profres.ID, profres.Avatar,
-			)
-		*/
+		pic := fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", profres.ID, profres.Avatar)
+		session := pb.Session{
+			Id:         uuid.New().String(),
+			Creation:   util.GetUnixTimestamp(),
+			Expiration: token.Expiry.Unix(),
+			AuthToken:  token.AccessToken,
+			Avatar:     pic,
+		}
+		user.Session = &session
+
 		cookie := http.Cookie{
 			Name:     SessionName,
-			Value:    token.AccessToken,
+			Value:    session.GetId(),
 			SameSite: http.SameSiteLaxMode,
 			Expires:  token.Expiry,
 			Path:     "/",

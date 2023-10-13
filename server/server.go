@@ -111,6 +111,16 @@ func FindClient(lookup string) (*client.Client, error) {
 	return nil, errors.New("unknown client")
 }
 
+// Get a pointer to a user based on their email
+func GetUserByEmail(email string) (*pb.User, error) {
+	for _, u := range Cloud.Users {
+		if u.GetEmail() == email {
+			return u, nil
+		}
+	}
+	return &pb.User{}, errors.New("user not found")
+}
+
 // Someone deleted a managed server via the web interface.
 // This should mean:
 // - remove from database, including foreign key constraints
