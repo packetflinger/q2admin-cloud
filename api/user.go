@@ -39,7 +39,7 @@ type UserSession struct {
 
 /*
 // Get a pointer to a user based on their ID
-func (q2a *RemoteAdminServer) GetUser(id string) (*pb.User, error) {
+func (q2a *CloudAdminServer) GetUser(id string) (*pb.User, error) {
 	log.Println(q2a.Users)
 	for _, u := range q2a.Users {
 		//log.Println(u.ID)
@@ -49,17 +49,8 @@ func (q2a *RemoteAdminServer) GetUser(id string) (*pb.User, error) {
 	}
 	return &pb.User{}, errors.New("user not found")
 }
-
-// Get a pointer to a user based on their email
-func (q2a *RemoteAdminServer) GetUserByEmail(email string) (*pb.User, error) {
-	for _, u := range q2a.Users {
-		if u.GetEmail() == email {
-			return u, nil
-		}
-	}
-	return &pb.User{}, errors.New("user not found")
-}
-
+*/
+/*
 // Get a pointer to a user based on their name
 func (q2a *RemoteAdminServer) GetUserByName(n string) (*pb.User, error) {
 	for _, u := range q2a.Users {
