@@ -5,6 +5,7 @@ package client
 
 import (
 	"crypto/rsa"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -363,4 +364,16 @@ func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
 			cl.DeleteWebSocket(cl.WebSockets[i])
 		}
 	}
+}
+
+// convert to
+func (cl *Client) ToProto() *pb.Clients_Client {
+	p := pb.Clients_Client{}
+	p.Address = fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port)
+	p.Name = cl.Name
+	p.Uuid = cl.UUID
+	p.Description = cl.Description
+	p.Owner = cl.Owner
+	p.Verified = cl.Verified
+	return &p
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"database/sql"
 	"errors"
+	"os"
 
 	"fmt"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/database"
 	pb "github.com/packetflinger/q2admind/proto"
+	"google.golang.org/protobuf/encoding/prototext"
 )
 
 // "This" admin server
@@ -180,6 +182,34 @@ func RotateKeys(cl *client.Client) {
 
 	cl.AESKey = key
 	cl.AESIV = iv
+}
+
+// Write the clients proto to disk as text-format
+func WriteClients(outfile string, clients []client.Client) error {
+	clientspb := []*pb.Clients_Client{}
+	for _, c := range clients {
+		p := c.ToProto()
+		clientspb = append(clientspb, p)
+	}
+
+	// combine into a single message
+	cls := pb.Clients{
+		Client: clientspb,
+	}
+
+	opt := prototext.MarshalOptions{
+		Multiline: true,
+		Indent:    "  ",
+	}
+	textpb, err := opt.Marshal(&cls)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(outfile, textpb, 0777)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Setup the connection
