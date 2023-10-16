@@ -27,4 +27,5 @@ message Session {
     int64 expiration = 3;   // unix timestamp
     string auth_token = 4;
     string avatar = 5;      // url to profile pic
+    string name = 6;        // either first name or q2 alias
 }
