@@ -35,6 +35,18 @@ type ProfileResponse struct {
 	Email    string `json:"email"`
 }
 
+type GoogleProfileResponse struct {
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	VerifiedEmail bool   `json:"verified_email"`
+	Name          string `json:"name"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Picture       string `json:"picture"`
+	Locale        string `json:"locale"`
+	HD            string `json:"hd"`
+}
+
 // Read json file holding our oauth2 providers.
 // Called at webserver startup
 func ReadOAuthCredsFromDisk(filename string) ([]*pb.OAuth, error) {
@@ -221,6 +233,10 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 	} else {
+		alias := profres.Username
+		if len(user.Name) > 0 {
+			alias = user.Name
+		}
 		pic := fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", profres.ID, profres.Avatar)
 		session := pb.Session{
 			Id:         uuid.New().String(),
@@ -228,6 +244,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 			Expiration: token.Expiry.Unix(),
 			AuthToken:  token.AccessToken,
 			Avatar:     pic,
+			Name:       alias,
 		}
 		user.Session = &session
 
@@ -264,11 +281,15 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	cred := Website.Creds[index]
 
 	conf := &oauth2.Config{
-		RedirectURL:  "http://localhost:8087/oauth-processor",
+		RedirectURL:  cred.GetCallbackUrl(),
 		ClientID:     cred.GetClientId(),
 		ClientSecret: cred.Secret,
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
-		Endpoint:     google.Endpoint,
+		Scopes: []string{
+			"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/userinfo.profile",
+			"openid",
+		},
+		Endpoint: google.Endpoint,
 	}
 
 	token, err := conf.Exchange(context.Background(), code)
@@ -276,8 +297,6 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-
-	fmt.Println(token)
 
 	res, err := conf.Client(context.Background(), token).Get(oauthGoogleUrlAPI + token.AccessToken)
 	if err != nil || res.StatusCode != 200 {
@@ -292,12 +311,39 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(body)
-	profres := ProfileResponse{}
+	profres := GoogleProfileResponse{}
 	err = json.Unmarshal(body, &profres)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	fmt.Println(profres)
+
+	user, err := GetUserByEmail(profres.Email)
+	if err != nil {
+		log.Println(err)
+	} else {
+		alias := profres.GivenName
+		if len(user.Name) > 0 {
+			alias = user.Name
+		}
+		session := pb.Session{
+			Id:         uuid.New().String(),
+			Creation:   util.GetUnixTimestamp(),
+			Expiration: token.Expiry.Unix(),
+			AuthToken:  token.AccessToken,
+			Avatar:     profres.Picture,
+			Name:       alias,
+		}
+		user.Session = &session
+
+		cookie := http.Cookie{
+			Name:     SessionName,
+			Value:    session.GetId(),
+			SameSite: http.SameSiteLaxMode,
+			Expires:  token.Expiry,
+			Path:     "/",
+		}
+		http.SetCookie(w, &cookie)
+		http.Redirect(w, r, Routes.Dashboard, http.StatusFound) // 302
+	}
 }
