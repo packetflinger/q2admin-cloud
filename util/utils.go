@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
 	uuid "github.com/google/uuid"
@@ -26,25 +25,6 @@ func GetTimeNow() string {
 // Convert unix timestamp to a time struct
 func GetTimeFromTimestamp(ts int64) time.Time {
 	return time.Unix(ts, 0)
-}
-
-// Remove any active sessions
-func AuthLogout(w http.ResponseWriter, r *http.Request) {
-	/*
-		user, err := api.GetSessionUser(r)
-		// no current session
-		if err != nil {
-			return
-		}
-
-		// remove current session
-		//user.Session = UserSession{}
-
-		// remove the client's cookie
-		expire := time.Now()
-		cookie := http.Cookie{Name: SessionName, Value: "", Expires: expire}
-		http.SetCookie(w, &cookie)
-	*/
 }
 
 // TimeAgo gives you a string of how long ago something was

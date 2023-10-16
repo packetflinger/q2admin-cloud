@@ -374,9 +374,26 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 	*/
 }
 
+// Remove any active sessions
+func AuthLogout(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	// no current session
+	if err != nil {
+		return
+	}
+
+	// remove current session
+	user.Session = &pb.Session{}
+
+	// remove the client's cookie
+	expire := time.Now()
+	cookie := http.Cookie{Name: SessionName, Value: "", Expires: expire}
+	http.SetCookie(w, &cookie)
+}
+
 // Log a user out
 func WebSignout(w http.ResponseWriter, r *http.Request) {
-	//AuthLogout(w, r)
+	AuthLogout(w, r)
 	http.Redirect(w, r, Routes.Index, http.StatusFound)
 }
 
