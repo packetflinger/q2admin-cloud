@@ -348,12 +348,15 @@ func HandleConnection(c net.Conn) {
 
 	cl.Players = make([]client.Player, cl.MaxPlayers)
 
-	// main connection loop
+	// main connection loop for this client
+	// - wait for input
+	// - parse any messages received, react as necessary
+	// - send any responses
 	for {
 		input := make([]byte, 5000)
 		size, err := c.Read(input)
 		if err != nil {
-			log.Printf("%s disconnected: %s\n", c.RemoteAddr().String(), err.Error())
+			log.Printf("[%s] read error (disconnecting): %s\n", cl.Name, err.Error())
 			break
 		}
 
