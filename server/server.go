@@ -357,7 +357,6 @@ func HandleConnection(c net.Conn) {
 			break
 		}
 
-		// decrypt if necessary
 		if cl.Encrypted && cl.Trusted {
 			input, _ = crypto.SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
 		}
