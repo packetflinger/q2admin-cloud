@@ -353,10 +353,7 @@ func HandleConnection(c net.Conn) {
 		input := make([]byte, 5000)
 		size, err := c.Read(input)
 		if err != nil {
-			log.Printf(
-				"%s disconnected: %s\n",
-				c.RemoteAddr().String(),
-				err.Error())
+			log.Printf("%s disconnected: %s\n", c.RemoteAddr().String(), err.Error())
 			break
 		}
 
