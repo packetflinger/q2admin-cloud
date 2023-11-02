@@ -287,7 +287,6 @@ func HandleConnection(c net.Conn) {
 
 	challengeCipher := crypto.Sign(Cloud.Privatekey, clNonce)
 
-	//msg := message.NewMessageBuffer(&cl.MessageOut)
 	out := &cl.MessageOut
 	out.WriteByte(SCMDHelloAck)
 	out.WriteShort(uint16(len(challengeCipher)))
