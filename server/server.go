@@ -232,7 +232,11 @@ func HandleConnection(c net.Conn) {
 		return
 	}
 
-	_ = msg.ReadByte() // should be CMDHello
+	if msg.ReadByte() != CMDHello {
+		log.Println("Protocol error: expecting CMDHello, closing connection")
+		c.Close()
+		return
+	}
 	uuid := msg.ReadString()
 	ver := msg.ReadLong()
 	port := msg.ReadShort()
