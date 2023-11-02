@@ -308,7 +308,12 @@ func HandleConnection(c net.Conn) {
 	cl.SendMessages()
 
 	// read the client signature
-	_, _ = c.Read(input)
+	_, err = c.Read(input)
+	if err != nil {
+		log.Println("Error reading client auth response:", err)
+		c.Close()
+		return
+	}
 	msg = message.NewMessageBuffer(input)
 
 	op := msg.ReadByte() // should be CMDAuth (0x0d)
