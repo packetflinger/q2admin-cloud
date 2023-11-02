@@ -326,6 +326,7 @@ func HandleConnection(c net.Conn) {
 
 	op := msg.ReadByte() // should be CMDAuth (0x0d)
 	if op != CMDAuth {
+		log.Printf("Protocol auth error - got %d, want %d\n", op, CMDAuth)
 		c.Close()
 		return
 	}
