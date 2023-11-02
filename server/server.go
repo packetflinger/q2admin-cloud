@@ -222,9 +222,14 @@ func HandleConnection(c net.Conn) {
 	log.Printf("Serving %s\n", c.RemoteAddr().String())
 
 	input := make([]byte, 5000)
-	_, err := c.Read(input)
+	readlen, err := c.Read(input)
 	if err != nil {
 		log.Println("Client read error:", err)
+		c.Close()
+		return
+	}
+	if readlen != 50+challengeLength {
+		log.Printf("Invalid hello length - got %d, want %d\n", readlen, 50+challengeLength)
 		c.Close()
 		return
 	}
