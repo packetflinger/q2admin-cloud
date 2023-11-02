@@ -418,7 +418,7 @@ func Startup() {
 	port := fmt.Sprintf("%s:%d", Cloud.Config.Address, Cloud.Config.Port)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
@@ -439,7 +439,7 @@ func Startup() {
 	for {
 		c, err := listener.Accept()
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			return
 		}
 		go HandleConnection(c)
