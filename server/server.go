@@ -262,7 +262,8 @@ func HandleConnection(c net.Conn) {
 	cl.Connected = true
 	cl.Version = int(ver)
 	cl.MaxPlayers = int(maxplayers)
-	keyname := fmt.Sprintf("keys/%s.pem", uuid)
+
+	keyname := fmt.Sprintf("clients/%s/key", cl.Name)
 
 	log.Printf("[%s] Loading public key: %s\n", cl.Name, keyname)
 	pubkey, err := crypto.LoadPublicKey(keyname)
