@@ -222,7 +222,12 @@ func HandleConnection(c net.Conn) {
 	log.Printf("Serving %s\n", c.RemoteAddr().String())
 
 	input := make([]byte, 5000)
-	_, _ = c.Read(input)
+	_, err := c.Read(input)
+	if err != nil {
+		log.Println("Client read error:", err)
+		c.Close()
+		return
+	}
 	msg := message.NewMessageBuffer(input)
 
 	if msg.ReadLong() != ProtocolMagic {
