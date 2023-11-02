@@ -370,7 +370,6 @@ func HandleConnection(c net.Conn) {
 	cl.Connected = false
 	cl.Trusted = false
 	c.Close()
-	//cl.LogEvent("disconnected")
 }
 
 // Gracefully shut everything down
