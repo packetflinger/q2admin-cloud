@@ -219,31 +219,28 @@ func WriteClients(outfile string, clients []client.Client) error {
 //
 // Called from main loop when a new connection is made
 func HandleConnection(c net.Conn) {
+	defer c.Close()
 	log.Printf("Serving %s\n", c.RemoteAddr().String())
 
 	input := make([]byte, 5000)
 	readlen, err := c.Read(input)
 	if err != nil {
 		log.Println("Client read error:", err)
-		c.Close()
 		return
 	}
 	if readlen != 50+challengeLength {
 		log.Printf("Invalid hello length - got %d, want %d\n", readlen, 50+challengeLength)
-		c.Close()
 		return
 	}
 	msg := message.NewMessageBuffer(input)
 
 	if msg.ReadLong() != ProtocolMagic {
 		log.Println("Bad magic value in new connection, not a valid client")
-		c.Close()
 		return
 	}
 
 	if msg.ReadByte() != CMDHello {
 		log.Println("Protocol error: expecting CMDHello, closing connection")
-		c.Close()
 		return
 	}
 	uuid := msg.ReadString()
@@ -255,14 +252,12 @@ func HandleConnection(c net.Conn) {
 
 	if ver < versionRequired {
 		log.Printf("Old client - got version %d, want at least %d\n", ver, versionRequired)
-		c.Close()
 		return
 	}
 
 	cl, err := FindClient(uuid)
 	if err != nil {
 		log.Println(err)
-		c.Close()
 		return
 	}
 	log.Printf("[%s] connecting...\n", cl.Name)
@@ -280,7 +275,6 @@ func HandleConnection(c net.Conn) {
 	pubkey, err := crypto.LoadPublicKey(keyFile)
 	if err != nil {
 		log.Printf("Public key error: %s\n", err.Error())
-		c.Close()
 		return
 	}
 	cl.PublicKey = pubkey
@@ -311,7 +305,6 @@ func HandleConnection(c net.Conn) {
 	readlen, err = c.Read(input)
 	if err != nil {
 		log.Println("Error reading client auth response:", err)
-		c.Close()
 		return
 	}
 
@@ -319,7 +312,6 @@ func HandleConnection(c net.Conn) {
 	// at least 32 + 3 (command bit + length) bytes
 	if readlen < 35 {
 		log.Printf("Invalid client auth length read - got %d, want at least 35\n", readlen)
-		c.Close()
 		return
 	}
 	msg = message.NewMessageBuffer(input)
@@ -327,7 +319,6 @@ func HandleConnection(c net.Conn) {
 	op := msg.ReadByte() // should be CMDAuth (0x0d)
 	if op != CMDAuth {
 		log.Printf("Protocol auth error - got %d, want %d\n", op, CMDAuth)
-		c.Close()
 		return
 	}
 
@@ -337,7 +328,6 @@ func HandleConnection(c net.Conn) {
 
 	if !verified {
 		log.Printf("[%s] signature verifcation failed...", cl.Name)
-		c.Close()
 		return
 	}
 
@@ -372,7 +362,6 @@ func HandleConnection(c net.Conn) {
 
 	cl.Connected = false
 	cl.Trusted = false
-	c.Close()
 }
 
 // Gracefully shut everything down
