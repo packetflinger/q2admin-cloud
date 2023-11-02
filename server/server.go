@@ -366,6 +366,7 @@ func HandleConnection(c net.Conn) {
 
 // Gracefully shut everything down
 func Shutdown() {
+	fmt.Println("")
 	log.Println("Shutting down...")
 	//LogSystemEvent("shutdown")
 	DB.Close() // not sure if this is necessary
