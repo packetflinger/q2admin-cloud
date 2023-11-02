@@ -111,7 +111,7 @@ func (cl *Client) SendMessages() {
 	}
 
 	// only send if there is something to send
-	if cl.MessageOut.Length > 0 {
+	if len(cl.MessageOut.Buffer) > 0 {
 		(*cl.Connection).Write(cl.MessageOut.Buffer)
 		(&cl.MessageOut).Reset()
 	}
