@@ -254,7 +254,7 @@ func HandleConnection(c net.Conn) {
 	clNonce := msg.ReadData(challengeLength)
 
 	if ver < versionRequired {
-		log.Println("Version too old")
+		log.Printf("Old client - got version %d, want at least %d\n", ver, versionRequired)
 		c.Close()
 		return
 	}
