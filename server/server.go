@@ -261,7 +261,6 @@ func HandleConnection(c net.Conn) {
 
 	cl, err := FindClient(uuid)
 	if err != nil {
-		// write an error, close socket, returns
 		log.Println(err)
 		c.Close()
 		return
