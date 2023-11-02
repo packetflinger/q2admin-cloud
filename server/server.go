@@ -335,15 +335,13 @@ func HandleConnection(c net.Conn) {
 	clientSignature := msg.ReadData(int(sigsize))
 	verified := crypto.VerifySignature(cl.PublicKey, svchallenge, clientSignature)
 
-	if verified {
-		log.Printf("[%s] signature verified, server trusted\n", cl.Name)
-		//cl.LogEvent("connected")
-	} else {
+	if !verified {
 		log.Printf("[%s] signature verifcation failed...", cl.Name)
 		c.Close()
 		return
 	}
 
+	log.Printf("[%s] authenticated\n", cl.Name)
 	out.WriteByte(SCMDTrusted)
 	cl.SendMessages()
 	cl.Trusted = true
