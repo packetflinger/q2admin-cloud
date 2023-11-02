@@ -274,10 +274,10 @@ func HandleConnection(c net.Conn) {
 	cl.Version = int(ver)
 	cl.MaxPlayers = int(maxplayers)
 
-	keyname := fmt.Sprintf("clients/%s/key", cl.Name)
+	keyFile := fmt.Sprintf("clients/%s/key", cl.Name)
 
-	log.Printf("[%s] Loading public key: %s\n", cl.Name, keyname)
-	pubkey, err := crypto.LoadPublicKey(keyname)
+	log.Printf("[%s] Loading public key: %s\n", cl.Name, keyFile)
+	pubkey, err := crypto.LoadPublicKey(keyFile)
 	if err != nil {
 		log.Printf("Public key error: %s\n", err.Error())
 		c.Close()
