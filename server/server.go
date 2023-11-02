@@ -308,9 +308,17 @@ func HandleConnection(c net.Conn) {
 	cl.SendMessages()
 
 	// read the client signature
-	_, err = c.Read(input)
+	readlen, err = c.Read(input)
 	if err != nil {
 		log.Println("Error reading client auth response:", err)
+		c.Close()
+		return
+	}
+
+	// We're using a 256bit hashing algo for signing, so we should read
+	// at least 32 + 3 (command bit + length) bytes
+	if readlen < 35 {
+		log.Printf("Invalid client auth length read - got %d, want at least 35\n", readlen)
 		c.Close()
 		return
 	}
