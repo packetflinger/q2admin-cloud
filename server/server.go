@@ -225,8 +225,7 @@ func HandleConnection(c net.Conn) {
 	_, _ = c.Read(input)
 	msg := message.NewMessageBuffer(input)
 
-	magic := msg.ReadLong()
-	if magic != ProtocolMagic {
+	if msg.ReadLong() != ProtocolMagic {
 		// not a valid client, just close connection
 		log.Println("Bad magic value in new connection, not a valid client")
 		c.Close()
