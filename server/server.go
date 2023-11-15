@@ -1,8 +1,10 @@
 package server
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"os"
 
@@ -228,8 +230,8 @@ func HandleConnection(c net.Conn) {
 		log.Println("Client read error:", err)
 		return
 	}
-	if readlen != 50+challengeLength {
-		log.Printf("Invalid hello length - got %d, want %d\n", readlen, 50+challengeLength)
+	if readlen != 50+crypto.RSAKeyLength {
+		log.Printf("Invalid hello length - got %d, want %d\n", readlen, 50+crypto.RSAKeyLength)
 		return
 	}
 	msg := message.NewMessageBuffer(input)
@@ -248,7 +250,11 @@ func HandleConnection(c net.Conn) {
 	port := msg.ReadShort()
 	maxplayers := msg.ReadByte()
 	enc := msg.ReadByte()
-	clNonce := msg.ReadData(challengeLength)
+	//clNonce := msg.ReadData(challengeLength)
+	challenge := msg.ReadData(256)
+	clNonce := crypto.PrivateDecrypt(Cloud.Privatekey, challenge)
+	hash := crypto.DigestSHA256(clNonce)
+	fmt.Printf("nonce hash:\n%s\n", hex.Dump(hash))
 
 	if ver < versionRequired {
 		log.Printf("Old client - got version %d, want at least %d\n", ver, versionRequired)
@@ -279,25 +285,35 @@ func HandleConnection(c net.Conn) {
 	}
 	cl.PublicKey = pubkey
 
-	challengeCipher := crypto.Sign(Cloud.Privatekey, clNonce)
+	//challengeCipher := crypto.Sign(Cloud.Privatekey, clNonce)
+	//hashCipher := crypto.PublicEncrypt(cl.PublicKey, hash)
+	svNonce := crypto.RandomBytes(16)
+	blob := append(hash, svNonce...)
+	//fmt.Printf("auth blob:\n%s\n", hex.Dump(authblob))
 
-	out := &cl.MessageOut
-	out.WriteByte(SCMDHelloAck)
-	out.WriteShort(uint16(len(challengeCipher)))
-	out.WriteData(challengeCipher)
+	//fmt.Printf("auth blog cipher:\n%s\n", hex.Dump(svAuthCipher))
 
 	// If client requests encrypted transit, encrypt the session key/iv
 	// with the client's public key to keep it confidential
 	if cl.Encrypted {
 		cl.AESKey = crypto.RandomBytes(crypto.AESBlockLength)
 		cl.AESIV = crypto.RandomBytes(crypto.AESIVLength)
-		blob := append(cl.AESKey, cl.AESIV...)
-		aescipher := crypto.PublicEncrypt(cl.PublicKey, blob)
-		out.WriteData(aescipher)
+		blob = append(blob, cl.AESKey...)
+		blob = append(blob, cl.AESIV...)
+
+		fmt.Printf("key\n%s\n", hex.Dump(cl.AESKey))
+		fmt.Printf("iv\n%s\n", hex.Dump(cl.AESIV))
 	}
 
-	svchallenge := crypto.RandomBytes(challengeLength)
-	out.WriteData(svchallenge)
+	blobCipher := crypto.PublicEncrypt(cl.PublicKey, blob)
+
+	out := &cl.MessageOut
+	out.WriteByte(SCMDHelloAck)
+	out.WriteShort(uint16(len(blobCipher)))
+	out.WriteData(blobCipher)
+
+	//svchallenge := crypto.RandomBytes(challengeLength)
+	//out.WriteData(svchallenge)
 
 	cl.SendMessages()
 
@@ -322,12 +338,18 @@ func HandleConnection(c net.Conn) {
 		return
 	}
 
-	sigsize := msg.ReadShort()
-	clientSignature := msg.ReadData(int(sigsize))
-	verified := crypto.VerifySignature(cl.PublicKey, svchallenge, clientSignature)
+	authLen := msg.ReadShort()
+	authCipher := msg.ReadData(int(authLen))
+	authMD := crypto.PrivateDecrypt(Cloud.Privatekey, authCipher)
+	authHash := crypto.DigestSHA256(svNonce)
+
+	verified := false
+	if bytes.Equal(authHash, authMD) {
+		verified = true
+	}
 
 	if !verified {
-		log.Printf("[%s] signature verifcation failed...", cl.Name)
+		log.Printf("[%s] authentication failed...", cl.Name)
 		return
 	}
 
@@ -342,6 +364,7 @@ func HandleConnection(c net.Conn) {
 	// - wait for input
 	// - parse any messages received, react as necessary
 	// - send any responses
+	var inputSize int
 	for {
 		input := make([]byte, 5000)
 		size, err := c.Read(input)
@@ -351,7 +374,11 @@ func HandleConnection(c net.Conn) {
 		}
 
 		if cl.Encrypted && cl.Trusted {
-			input, _ = crypto.SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
+			input, inputSize = crypto.SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
+			if inputSize == 0 {
+				log.Printf("[%s] decryption error, dropping client\n", cl.Name)
+				break
+			}
 		}
 
 		cl.Message = message.NewMessageBuffer(input)

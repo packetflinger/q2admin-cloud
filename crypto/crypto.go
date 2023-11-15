@@ -24,8 +24,9 @@ import (
 )
 
 const (
-	AESBlockLength = 16 // 128 bit
-	AESIVLength    = 16 // 128 bit
+	AESBlockLength = 16  // 128 bit
+	AESIVLength    = 16  // 128 bit
+	RSAKeyLength   = 256 // 2048 bits
 )
 
 // Get a SHA256 hash of an input byte slice
@@ -102,7 +103,7 @@ func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
 	}
 	privPem, _ := pem.Decode(priv)
 
-	if privPem.Type != "RSA PRIVATE KEY" {
+	if privPem.Type != "PRIVATE KEY" {
 		return nil, errors.New("not a private key file")
 	}
 
@@ -160,7 +161,8 @@ func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) []byte {
 	plaintext, err := key.Decrypt(
 		nil,
 		ciphertext,
-		&rsa.OAEPOptions{Hash: 5}) // sha256 (https://pkg.go.dev/crypto#DecrypterOpts)
+		//&rsa.OAEPOptions{Hash: 5}) // sha256 (https://pkg.go.dev/crypto#DecrypterOpts)
+		nil)
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -211,13 +213,20 @@ func SymmetricDecrypt(key []byte, nonce []byte, ciphertext []byte) ([]byte, int)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		fmt.Println("newcipher:", err)
+
 	}
 
 	plaintext := make([]byte, len(ciphertext))
 	cbc := cipher.NewCBCDecrypter(block, nonce)
 	cbc.CryptBlocks(plaintext, ciphertext)
 
+	// the last byte
 	padding := int(plaintext[len(plaintext)-1])
+
+	// padding bit should never exceed message length,
+	if padding > len(plaintext) {
+		return []byte{}, 0
+	}
 	unpadded := plaintext[:len(plaintext)-padding]
 
 	return unpadded, len(unpadded)
