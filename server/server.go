@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"os"
 
@@ -250,11 +249,9 @@ func HandleConnection(c net.Conn) {
 	port := msg.ReadShort()
 	maxplayers := msg.ReadByte()
 	enc := msg.ReadByte()
-	//clNonce := msg.ReadData(challengeLength)
 	challenge := msg.ReadData(256)
 	clNonce := crypto.PrivateDecrypt(Cloud.Privatekey, challenge)
 	hash := crypto.DigestSHA256(clNonce)
-	fmt.Printf("nonce hash:\n%s\n", hex.Dump(hash))
 
 	if ver < versionRequired {
 		log.Printf("Old client - got version %d, want at least %d\n", ver, versionRequired)
@@ -269,7 +266,7 @@ func HandleConnection(c net.Conn) {
 	log.Printf("[%s] connecting...\n", cl.Name)
 
 	cl.Port = int(port)
-	cl.Encrypted = int(enc) == 1 // stupid bool conversion
+	cl.Encrypted = int(enc) == 1
 	cl.Connection = &c
 	cl.Connected = true
 	cl.Version = int(ver)
@@ -285,13 +282,8 @@ func HandleConnection(c net.Conn) {
 	}
 	cl.PublicKey = pubkey
 
-	//challengeCipher := crypto.Sign(Cloud.Privatekey, clNonce)
-	//hashCipher := crypto.PublicEncrypt(cl.PublicKey, hash)
 	svNonce := crypto.RandomBytes(16)
 	blob := append(hash, svNonce...)
-	//fmt.Printf("auth blob:\n%s\n", hex.Dump(authblob))
-
-	//fmt.Printf("auth blog cipher:\n%s\n", hex.Dump(svAuthCipher))
 
 	// If client requests encrypted transit, encrypt the session key/iv
 	// with the client's public key to keep it confidential
@@ -300,9 +292,6 @@ func HandleConnection(c net.Conn) {
 		cl.AESIV = crypto.RandomBytes(crypto.AESIVLength)
 		blob = append(blob, cl.AESKey...)
 		blob = append(blob, cl.AESIV...)
-
-		fmt.Printf("key\n%s\n", hex.Dump(cl.AESKey))
-		fmt.Printf("iv\n%s\n", hex.Dump(cl.AESIV))
 	}
 
 	blobCipher := crypto.PublicEncrypt(cl.PublicKey, blob)
@@ -311,10 +300,6 @@ func HandleConnection(c net.Conn) {
 	out.WriteByte(SCMDHelloAck)
 	out.WriteShort(uint16(len(blobCipher)))
 	out.WriteData(blobCipher)
-
-	//svchallenge := crypto.RandomBytes(challengeLength)
-	//out.WriteData(svchallenge)
-
 	cl.SendMessages()
 
 	// read the client signature
