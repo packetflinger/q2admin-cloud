@@ -5,7 +5,6 @@ package client
 
 import (
 	"crypto/rsa"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -99,20 +98,14 @@ func (cl *Client) SendMessages() {
 		return
 	}
 
-	//fmt.Printf("%s", hex.Dump(cl.MessageOut.buffer[:cl.MessageOut.length]))
-
 	// keys have been exchanged, encrypt the message
 	if cl.Trusted && cl.Encrypted {
 		cipher := crypto.SymmetricEncrypt(
 			cl.AESKey,
 			cl.AESIV,
 			cl.MessageOut.Buffer[:cl.MessageOut.Index])
-		//fmt.Printf("cipher:\n%s\n", hex.Dump(cipher))
-
 		cl.MessageOut = message.NewMessageBuffer(cipher)
 	}
-
-	fmt.Printf("Sent\n%s\n\n", hex.Dump(cl.MessageOut.Buffer[:len(cl.MessageOut.Buffer)]))
 
 	// only send if there is something to send
 	if len(cl.MessageOut.Buffer) > 0 {
