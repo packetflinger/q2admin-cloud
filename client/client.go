@@ -179,46 +179,6 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	return rules, nil
 }
 
-/*
-// Write key portions of the Client struct
-// to disk as JSON.
-func (cl *Client) WriteToDisk(filename string) bool {
-	rules := []ClientRuleFormat{}
-	for _, r := range cl.Rules {
-		rules = append(rules, r.ToDiskFormat())
-	}
-
-	df := ClientDiskFormat{
-		UUID:        cl.UUID,
-		Enabled:     cl.Enabled,
-		Verified:    cl.Verified,
-		Address:     fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port),
-		Name:        cl.Name,
-		Owner:       cl.Owner,
-		Description: cl.Description,
-		Rules:       rules,
-	}
-
-	// name property is required, if not found, set random one
-	if df.Name == "" {
-		df.Name = hex.EncodeToString(RandomBytes(20))
-	}
-
-	filecontents, err := json.MarshalIndent(df, "", "  ")
-	if err != nil {
-		log.Println(err)
-		return false
-	}
-
-	err = os.WriteFile(filename, filecontents, 0644)
-	if err != nil {
-		log.Println(err)
-		return false
-	}
-	return true
-}
-*/
-
 // Each client keeps track of the websocket for people "looking at it".
 // When they close the browser or logout, remove the pointer
 // to that socket
