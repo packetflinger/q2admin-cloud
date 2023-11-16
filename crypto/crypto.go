@@ -34,12 +34,9 @@ const (
 // Currently using SHA256, if that changes, update the DigestLength constant above!
 func MessageDigest(input []byte) ([]byte, error) {
 	hash := sha256.New()
-	len, err := hash.Write(input)
+	_, err := hash.Write(input)
 	if err != nil {
 		return []byte{}, err
-	}
-	if len != DigestLength {
-		return []byte{}, errors.New("invalid digest length, something went wrong")
 	}
 	checksum := hash.Sum(nil)
 	return checksum, nil
