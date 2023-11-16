@@ -249,7 +249,7 @@ func HandleConnection(c net.Conn) {
 	port := msg.ReadShort()
 	maxplayers := msg.ReadByte()
 	enc := msg.ReadByte()
-	challenge := msg.ReadData(256)
+	challenge := msg.ReadData(crypto.RSAKeyLength)
 	clNonce := crypto.PrivateDecrypt(Cloud.Privatekey, challenge)
 	hash := crypto.DigestSHA256(clNonce)
 
