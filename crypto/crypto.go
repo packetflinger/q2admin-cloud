@@ -30,7 +30,7 @@ const (
 )
 
 // Get a SHA256 hash of an input byte slice
-func DigestSHA256(input []byte) []byte {
+func MessageDigest(input []byte) []byte {
 	hash := sha256.New()
 	_, _ = hash.Write(input)
 	checksum := hash.Sum(nil)
