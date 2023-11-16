@@ -251,7 +251,11 @@ func HandleConnection(c net.Conn) {
 	enc := msg.ReadByte()
 	challenge := msg.ReadData(crypto.RSAKeyLength)
 	clNonce := crypto.PrivateDecrypt(Cloud.Privatekey, challenge)
-	hash := crypto.MessageDigest(clNonce)
+	hash, err := crypto.MessageDigest(clNonce)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
 	if ver < versionRequired {
 		log.Printf("Old client - got version %d, want at least %d\n", ver, versionRequired)
@@ -326,7 +330,11 @@ func HandleConnection(c net.Conn) {
 	authLen := msg.ReadShort()
 	authCipher := msg.ReadData(int(authLen))
 	authMD := crypto.PrivateDecrypt(Cloud.Privatekey, authCipher)
-	authHash := crypto.MessageDigest(svNonce)
+	authHash, err := crypto.MessageDigest(svNonce)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
 	verified := false
 	if bytes.Equal(authHash, authMD) {

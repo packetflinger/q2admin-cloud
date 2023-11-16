@@ -27,14 +27,22 @@ const (
 	AESBlockLength = 16  // 128 bit
 	AESIVLength    = 16  // 128 bit
 	RSAKeyLength   = 256 // 2048 bits
+	DigestLength   = 32  // 256 bits
 )
 
-// Get a SHA256 hash of an input byte slice
-func MessageDigest(input []byte) []byte {
+// Get a hash of an input byte slice
+// Currently using SHA256, if that changes, update the DigestLength constant above!
+func MessageDigest(input []byte) ([]byte, error) {
 	hash := sha256.New()
-	_, _ = hash.Write(input)
+	len, err := hash.Write(input)
+	if err != nil {
+		return []byte{}, err
+	}
+	if len != DigestLength {
+		return []byte{}, errors.New("invalid digest length, something went wrong")
+	}
 	checksum := hash.Sum(nil)
-	return checksum
+	return checksum, nil
 }
 
 // Get an MD5 hash of an input string. Just used for
