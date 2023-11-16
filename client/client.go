@@ -70,28 +70,6 @@ type ClientDiskFormat struct {
 	//Rules []ClientRuleFormat `json:"Controls"`
 }
 
-// Reads the client textproto file. This file contains
-// every client we expect to interacat with.
-//
-// Called from initialize() at startup
-/*
-func (s *RemoteAdminServer) ReadClientFile() ([]string, error) {
-	clients := []string{}
-	clientspb := pb.ClientList{}
-	contents, err := os.ReadFile(s.config.GetClientFile())
-	if err != nil {
-		return clients, err
-	}
-	err = prototext.Unmarshal(contents, &clientspb)
-	if err != nil {
-		return clients, err
-	}
-
-	clients = clientspb.GetClient()
-	return clients, nil
-}
-*/
-
 // Send all messages in the outgoing queue to the client (gameserver)
 func (cl *Client) SendMessages() {
 	if !cl.Connected {
