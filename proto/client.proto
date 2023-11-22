@@ -8,15 +8,59 @@ package proto;
 
 message Clients {
     message Client {
+        // This is just a random unique identifier. Can be anything really as
+        // long as it's unique among all clients. Using a v4 uuid is easy way
+        // to ensure that.
+        //
+        // Private to server
         string uuid = 1;
+
+        // A more meaningful identifier, typically teleport name of the server.
+        // Should not have spaces or special characters. Good rule of thumb
+        // would be all lower case characters and groups separated by dashes.
+        //
+        // User definable. Examples: pf-tdm-nj, ctf-main, etc
         string name = 2;
+
+        // Email address of the user who created it.
+        //
+        // Private to server
         string owner = 3;
+
+        // Short blurb about the server, displayed to players when teleport
+        // is used.
+        //
+        // User definable.
         string description = 4;
+
+        // The ip:port of the server. Can be either ip address or DNS name
+        //
+        // Examples: "192.0.2.4:27910", "frag.gr:27999"
+        // Raw IPv6 example: "[2001:db8:beef:c0ff:ee]:27933"
+        //
+        // User definable.
         string address = 5;
+
+        // The local file in the client's directory containing the client's
+        // public key. This key is an RSA public key, not an SSH public key.
+        //
+        // Default: "key"
         string public_key = 6;
+
+        // The client has been verified by the server. This is in addition
+        // to the standard challenge-based authentication.
         bool verified = 7;
+
+        // Players on this client are allowed to use the teleport feature
         bool allow_teleport = 8;
+
+        // Players on this client are allowed to use the invite feature
         bool allow_invite = 9;
+
+        // The filename used for logging inside the client's directory
+        //
+        // default: "log"
+        string log_file = 10;
     }
     repeated Client client = 1;
 }
