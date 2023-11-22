@@ -52,6 +52,7 @@ type Client struct {
 	Rules       []*pb.Rule            // bans, mutes, etc
 	PingCount   int                   // how many pings client has seen
 	WebSockets  []*websocket.Conn     // slice of web clients
+	Log         *log.Logger           // log stuff here
 }
 
 // JSON structure for persistent storage
