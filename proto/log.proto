@@ -1,0 +1,31 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative log.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+enum LogType {
+    WARNING = 0;    // Meh
+    ERROR = 1;      // Something bad happend
+    FATAL = 2;      // Some serious enough to quit over
+    CONNECTION = 3; // Related to clients connecting
+}
+
+message ServerLog {
+    message LogEntry {
+        // Unix timestamp of when the log entry was emitted
+        int64 time = 1;
+
+        // The UUID of a client for this log entry
+        string client = 2;
+
+        // What's the context?
+        LogType type = 3;
+
+        // the actual log entry
+        string entry = 4;
+    }
+    repeated LogEntry log = 1;
+}
