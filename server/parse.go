@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/hex"
-	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -71,7 +70,7 @@ func ParseFrag(cl *client.Client) {
 		return
 	}
 
-	log.Printf("[%s/FRAG] %d > %d\n", cl.Name, a, v)
+	cl.Log.Println("FRAG", a, ">", v)
 
 	if attacker == victim || attacker == nil {
 		victim.Suicides++
@@ -113,7 +112,7 @@ func ParsePrint(cl *client.Client) {
 	case PRINT_CHAT:
 		//cl.SendToWebsiteFeed(stripped, api.FeedChat)
 		//cl.LogChat(stripped)
-		log.Printf("[%s/PRINT] (%d) %s\n", cl.Name, level, stripped)
+		cl.Log.Printf("PRINT (%d) %s\n", level, stripped)
 	case PRINT_MEDIUM:
 		ParseObituary(cl, stripped)
 	}
@@ -140,8 +139,7 @@ func ParseConnect(cl *client.Client) {
 
 	info := p.UserinfoMap
 
-	txt := fmt.Sprintf("[%s/CONNECT] %d|%s|%s|%s", cl.Name, p.ClientID, info["name"], info["ip"], p.UserInfoHash)
-	log.Printf("%s\n", txt)
+	cl.Log.Printf("CONNECT %d|%s|%s\n", p.ClientID, info["name"], info["ip"])
 
 	//LogPlayer(cl, p, )
 
@@ -168,7 +166,7 @@ func ParseDisconnect(cl *client.Client) {
 	//wstxt := fmt.Sprintf("[DISCONNECT] %s [%s]", pl.Name, pl.IP)
 	//cl.SendToWebsiteFeed(wstxt, api.FeedJoinPart)
 
-	log.Printf("[%s/DISCONNECT] %d|%s\n", cl.Name, clientnum, pl.Name)
+	cl.Log.Printf("DISCONNECT %d|%s\n", clientnum, pl.Name)
 	cl.RemovePlayer(clientnum)
 }
 
@@ -177,7 +175,7 @@ func ParseDisconnect(cl *client.Client) {
 func ParseMap(cl *client.Client) {
 	mapname := (&cl.Message).ReadString()
 	cl.CurrentMap = mapname
-	log.Printf("[%s/MAP] %s\n", cl.Name, cl.CurrentMap)
+	cl.Log.Println("MAP", cl.CurrentMap)
 }
 
 // An obit for every frag is sent from a client.
@@ -188,7 +186,7 @@ func ParseObituary(cl *client.Client, obit string) {
 	if err != nil {
 		return
 	}
-	log.Printf(
+	cl.Log.Printf(
 		"Obituary: %s[%d] -> %s[%d] (%d)\n",
 		death.Murderer.Name,
 		death.Murderer.ClientID,
@@ -203,7 +201,7 @@ func ParseObituary(cl *client.Client, obit string) {
 // then that number of players are sent
 func ParsePlayerlist(cl *client.Client) {
 	count := (&cl.Message).ReadByte()
-	log.Printf("[%s/PLAYERLIST] %d\n", cl.Name, count)
+	cl.Log.Println("PLAYERLIST", count)
 	for i := 0; i < int(count); i++ {
 		_ = ParsePlayer(cl)
 	}
@@ -220,7 +218,7 @@ func ParsePlayer(cl *client.Client) *client.Player {
 	userinfo := msg.ReadString()
 
 	if int(clientnum) > cl.MaxPlayers {
-		log.Printf("WARNING: Invalid client number, ignoring\n")
+		cl.Log.Println("WARN: invalid client number:", clientnum)
 		return nil
 	}
 
@@ -241,7 +239,7 @@ func ParsePlayer(cl *client.Client) *client.Player {
 		Client:       cl,
 	}
 
-	log.Printf("[%s/PLAYER] %d|%s|%s\n", cl.Name, clientnum, newplayer.UserInfoHash, userinfo)
+	cl.Log.Printf("PLAYER %d|%s|%s\n", clientnum, newplayer.UserInfoHash, userinfo)
 
 	cl.Players[newplayer.ClientID] = newplayer
 	cl.PlayerCount++

@@ -348,11 +348,11 @@ func HandleConnection(c net.Conn) {
 	}
 
 	if !verified {
-		log.Printf("[%s] authentication failed...", cl.Name)
+		cl.Log.Println("authentication failed, disconnecting")
 		return
 	}
 
-	log.Printf("[%s] authenticated\n", cl.Name)
+	cl.Log.Println("authenticated")
 	out.WriteByte(SCMDTrusted)
 	cl.SendMessages()
 	cl.Trusted = true
@@ -368,14 +368,14 @@ func HandleConnection(c net.Conn) {
 		input := make([]byte, 5000)
 		size, err := c.Read(input)
 		if err != nil {
-			log.Printf("[%s] read error (disconnecting): %s\n", cl.Name, err.Error())
+			cl.Log.Println("read error:", err)
 			break
 		}
 
 		if cl.Encrypted && cl.Trusted {
 			input, inputSize = crypto.SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
 			if inputSize == 0 {
-				log.Printf("[%s] decryption error, dropping client\n", cl.Name)
+				cl.Log.Println("decryption error, dropping client")
 				break
 			}
 		}
