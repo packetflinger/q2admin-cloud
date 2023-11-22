@@ -267,7 +267,12 @@ func HandleConnection(c net.Conn) {
 		log.Println(err)
 		return
 	}
-	log.Printf("[%s] connecting...\n", cl.Name)
+
+	cl.Log, err = NewClientLogger(cl)
+	if err != nil {
+		log.Printf("[%s] error creating logger: %v\n", cl.Name, err)
+	}
+	cl.Log.Printf("connecting...\n")
 
 	cl.Port = int(port)
 	cl.Encrypted = int(enc) == 1
