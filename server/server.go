@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"path"
 
 	"fmt"
 	"log"
@@ -281,7 +282,7 @@ func HandleConnection(c net.Conn) {
 	cl.Version = int(ver)
 	cl.MaxPlayers = int(maxplayers)
 
-	keyFile := fmt.Sprintf("clients/%s/key", cl.Name)
+	keyFile := path.Join(Cloud.Config.ClientDirectory, cl.Name, "key")
 
 	log.Printf("[%s] Loading public key: %s\n", cl.Name, keyFile)
 	pubkey, err := crypto.LoadPublicKey(keyFile)
