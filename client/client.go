@@ -53,6 +53,7 @@ type Client struct {
 	PingCount   int                   // how many pings client has seen
 	WebSockets  []*websocket.Conn     // slice of web clients
 	Log         *log.Logger           // log stuff here
+	LogFile     *os.File              // pointer to file so we can close when client disconnects
 }
 
 // JSON structure for persistent storage

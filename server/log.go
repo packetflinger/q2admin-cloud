@@ -79,6 +79,7 @@ func NewClientLogger(cl *client.Client) (*log.Logger, error) {
 	if err != nil {
 		return nil, err
 	}
+	cl.LogFile = fp
 	flags := log.Ldate | log.Ltime | log.Lmicroseconds
 	return log.New(fp, "", flags), nil
 }
