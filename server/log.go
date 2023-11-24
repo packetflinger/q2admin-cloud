@@ -1,15 +1,12 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path"
 
 	"github.com/packetflinger/q2admind/client"
-	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
-	"google.golang.org/protobuf/encoding/prototext"
 )
 
 // A player said something, record to use against them later
@@ -85,39 +82,4 @@ func NewClientLogger(cl *client.Client) (*log.Logger, error) {
 	cl.LogFile = fp
 	flags := log.Ldate | log.Ltime | log.Lmicroseconds
 	return log.New(fp, "", flags), nil
-}
-
-// Get a new logger for the cloud admin server itself. Don't bother keeping
-// track of the file pointer, this log will be open as long as the program
-// is running.
-func NewServerLogger(filename string) (*log.Logger, error) {
-	fp, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		return nil, err
-	}
-	return log.New(fp, "", 0), nil
-}
-
-// Build a log proto and write it to the logger
-func logServerEvent(cl *client.Client, sev pb.LogSeverity, lc pb.LogContext, format string, v ...any) {
-	msg := fmt.Sprintf(format, v...)
-	client := ""
-	if cl != nil {
-		client = cl.UUID
-	}
-	entry := &pb.LogEntry{
-		Time:     util.GetUnixTimestamp(),
-		Client:   client,
-		Severity: sev,
-		Context:  lc,
-		Entry:    msg,
-	}
-	textpb, err := prototext.Marshal(entry)
-	if err != nil {
-		fmt.Println("error marshalling log:", err)
-		return
-	}
-	if Cloud.Logger != nil {
-		Cloud.Logger.Println(string(textpb))
-	}
 }
