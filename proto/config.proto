@@ -22,4 +22,6 @@ message Config {
     uint32 maintenance_time = 13; // seconds
     bool debug_mode = 14;
     string web_root = 15;       // where are website file?
+    string log_file = 16;
+    bool foreground = 17;
 }
