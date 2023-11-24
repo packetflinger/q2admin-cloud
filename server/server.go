@@ -30,6 +30,7 @@ type CloudAdminServer struct {
 	Privatekey *rsa.PrivateKey // private to us
 	Publickey  *rsa.PublicKey  // known to clients
 	MaintCount int             // total maintenance runs
+	Logger     *log.Logger     // our logger
 }
 
 var (
@@ -401,6 +402,13 @@ func Shutdown() {
 
 // Start the cloud admin server
 func Startup() {
+	logger, err := NewServerLogger("server.log")
+	if err != nil {
+		log.Println("unable to create logger:", err)
+	}
+	Cloud.Logger = logger
+	logServerEvent(nil, pb.LogSeverity_INFO, pb.LogContext_UNKNOWN, "Guess what? %s", "chicken butt")
+
 	log.Println("Loading private key:", Cloud.Config.GetPrivateKey())
 	privkey, err := crypto.LoadPrivateKey(Cloud.Config.GetPrivateKey())
 	if err != nil {
