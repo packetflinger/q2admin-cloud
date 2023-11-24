@@ -14,6 +14,7 @@ import (
 
 var (
 	Configfile = flag.String("config", "config/config", "The main config file")
+	foreground = flag.Bool("foreground", false, "log to the console or file")
 )
 
 // start here
@@ -30,6 +31,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	server.Cloud.Config.Foreground = *foreground
 
 	// not needed in Go 1.20+
 	rand.Seed(time.Now().Unix())

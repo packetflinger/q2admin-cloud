@@ -401,6 +401,14 @@ func Shutdown() {
 
 // Start the cloud admin server
 func Startup() {
+	if !Cloud.Config.Foreground {
+		f, err := os.OpenFile(Cloud.Config.GetLogFile(), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+		log.SetOutput(f)
+	}
 	log.Println("Loading private key:", Cloud.Config.GetPrivateKey())
 	privkey, err := crypto.LoadPrivateKey(Cloud.Config.GetPrivateKey())
 	if err != nil {
