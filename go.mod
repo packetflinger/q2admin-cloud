@@ -1,6 +1,6 @@
 module github.com/packetflinger/q2admind
 
-go 1.16
+go 1.18
 
 require (
 	github.com/google/uuid v1.3.0
@@ -11,4 +11,11 @@ require (
 	github.com/ravener/discord-oauth2 v0.0.0-20220615092331-f6a9839c223e
 	golang.org/x/oauth2 v0.4.0
 	google.golang.org/protobuf v1.31.0
+)
+
+require (
+	cloud.google.com/go/compute/metadata v0.2.0 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
+	golang.org/x/net v0.5.0 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
 )
