@@ -469,6 +469,7 @@ func Startup() {
 	}
 
 	go startMaintenance()
+	go startManagement()
 
 	for {
 		c, err := listener.Accept()
