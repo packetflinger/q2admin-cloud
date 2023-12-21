@@ -72,26 +72,44 @@ type ClientDiskFormat struct {
 	//Rules []ClientRuleFormat `json:"Controls"`
 }
 
-// Send all messages in the outgoing queue to the client (gameserver)
-func (cl *Client) SendMessages() {
-	if !cl.Connected {
+// Each client keeps track of the websocket for people "looking at it".
+// When they close the browser or logout, remove the pointer
+// to that socket
+func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
+	location := -1
+	// find it's index first
+	for i := range cl.WebSockets {
+		if cl.WebSockets[i] == sock {
+			location = i
+			break
+		}
+	}
+
+	// wasn't found, forget it
+	if location == -1 {
 		return
 	}
 
-	// keys have been exchanged, encrypt the message
-	if cl.Trusted && cl.Encrypted {
-		cipher := crypto.SymmetricEncrypt(
-			cl.AESKey,
-			cl.AESIV,
-			cl.MessageOut.Buffer[:cl.MessageOut.Index])
-		cl.MessageOut = message.NewMessageBuffer(cipher)
-	}
+	tempws := cl.WebSockets[0:location]
+	tempws = append(tempws, cl.WebSockets[location+1:]...)
+	cl.WebSockets = tempws
+}
 
-	// only send if there is something to send
-	if len(cl.MessageOut.Buffer) > 0 {
-		(*cl.Connection).Write(cl.MessageOut.Buffer)
-		(&cl.MessageOut).Reset()
+// Read rules from disk and return a slice of them
+func (cl *Client) FetchRules() ([]*pb.Rule, error) {
+	var rules []*pb.Rule
+	filename := path.Join("clients", cl.Name, "rules")
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		return rules, err
 	}
+	rl := pb.Rules{}
+	err = prototext.Unmarshal(contents, &rl)
+	if err != nil {
+		return rules, err
+	}
+	rules = rl.GetRule()
+	return rules, nil
 }
 
 // Read all client names from disk, load their data
@@ -164,44 +182,26 @@ func (cl *Client) LoadSettings(name string) (Client, error) {
 	return client, nil
 }
 
-// Read rules from disk and return a slice of them
-func (cl *Client) FetchRules() ([]*pb.Rule, error) {
-	var rules []*pb.Rule
-	filename := path.Join("clients", cl.Name, "rules")
-	contents, err := os.ReadFile(filename)
-	if err != nil {
-		return rules, err
-	}
-	rl := pb.Rules{}
-	err = prototext.Unmarshal(contents, &rl)
-	if err != nil {
-		return rules, err
-	}
-	rules = rl.GetRule()
-	return rules, nil
-}
-
-// Each client keeps track of the websocket for people "looking at it".
-// When they close the browser or logout, remove the pointer
-// to that socket
-func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
-	location := -1
-	// find it's index first
-	for i := range cl.WebSockets {
-		if cl.WebSockets[i] == sock {
-			location = i
-			break
-		}
-	}
-
-	// wasn't found, forget it
-	if location == -1 {
+// Send all messages in the outgoing queue to the client (gameserver)
+func (cl *Client) SendMessages() {
+	if !cl.Connected {
 		return
 	}
 
-	tempws := cl.WebSockets[0:location]
-	tempws = append(tempws, cl.WebSockets[location+1:]...)
-	cl.WebSockets = tempws
+	// keys have been exchanged, encrypt the message
+	if cl.Trusted && cl.Encrypted {
+		cipher := crypto.SymmetricEncrypt(
+			cl.AESKey,
+			cl.AESIV,
+			cl.MessageOut.Buffer[:cl.MessageOut.Index])
+		cl.MessageOut = message.NewMessageBuffer(cipher)
+	}
+
+	// only send if there is something to send
+	if len(cl.MessageOut.Buffer) > 0 {
+		(*cl.Connection).Write(cl.MessageOut.Buffer)
+		(&cl.MessageOut).Reset()
+	}
 }
 
 // Send the txt string to all the websockets listening
