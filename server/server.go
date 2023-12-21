@@ -188,7 +188,7 @@ func RotateKeys(cl *client.Client) {
 
 // Write the clients proto to disk as text-format
 func WriteClients(outfile string, clients []client.Client) error {
-	clientspb := []*pb.Clients_Client{}
+	clientspb := []*pb.Client{}
 	for _, c := range clients {
 		p := c.ToProto()
 		clientspb = append(clientspb, p)

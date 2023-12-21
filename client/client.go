@@ -231,8 +231,8 @@ func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
 }
 
 // convert to
-func (cl *Client) ToProto() *pb.Clients_Client {
-	p := pb.Clients_Client{}
+func (cl *Client) ToProto() *pb.Client {
+	p := pb.Client{}
 	p.Address = fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port)
 	p.Name = cl.Name
 	p.Uuid = cl.UUID
