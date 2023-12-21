@@ -79,9 +79,9 @@ message Delegate {
 }
 
 enum DelegateRestriction {
-    NONE = 0;      // can do anything
-    VIEWONLY = 1;  // only creep
-    CHATONLY = 2;  // only creep and talk back
+    DELEGATE_RESTRICTION_NONE = 0;      // can do anything
+    DELEGATE_RESTRICTION_VIEWONLY = 1;  // only creep
+    DELEGATE_RESTRICTION_CHATONLY = 2;  // only creep and talk back
 }
 
 // Used by the main server program to keep track of which clients it should 
