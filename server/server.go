@@ -165,11 +165,11 @@ func RemoveClient(uuid string) bool {
 
 // Acquire a slice of client pointers that a particular identity
 // has access to (owners and delegates)
-func ClientsByIdentity(ident string) []*client.Client {
-	list := []*client.Client{}
-	for i, cl := range Cloud.Clients {
+func ClientsByIdentity(ident string) []client.Client {
+	list := []client.Client{}
+	for _, cl := range Cloud.Clients {
 		if strings.EqualFold(cl.Owner, ident) {
-			list = append(list, &Cloud.Clients[i])
+			list = append(list, cl)
 		}
 	}
 	return list

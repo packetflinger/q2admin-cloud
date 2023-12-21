@@ -58,7 +58,7 @@ type WebpageData struct {
 	Notification    []WebpageNotification
 	Message         []WebpageMessage
 	SessionUser     *pb.User
-	Gameservers     []*client.Client
+	Gameservers     []client.Client
 	GameserverCount int
 	Client          *client.Client
 	NavHighlight    struct {
@@ -492,23 +492,16 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cls := ClientsByIdentity(user.Email)
 	data := WebpageData{
-		Title:       "My Servers | Q2Admin CloudAdmin",
-		HeaderTitle: "My Servers",
-		SessionUser: user,
+		Title:           "My Servers | Q2Admin CloudAdmin",
+		HeaderTitle:     "My Servers",
+		SessionUser:     user,
+		Gameservers:     cls,
+		GameserverCount: len(cls),
 	}
 
 	data.NavHighlight.Servers = "active"
-
-	// build server list
-	svs := []*client.Client{}
-	for i := range Cloud.Clients {
-		if Cloud.Clients[i].Owner == user.GetUuid() {
-			svs = append(svs, &Cloud.Clients[i])
-		}
-	}
-	data.GameserverCount = len(svs)
-	data.Gameservers = svs
 
 	tmpl, e := template.ParseFiles(
 		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
