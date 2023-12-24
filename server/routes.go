@@ -28,7 +28,9 @@ type WebRoutes struct {
 }
 
 type APIRoutes struct {
-	MyServers string
+	MyServers     string
+	ServerDetails string
+	ServerList    string
 }
 
 var (
@@ -37,7 +39,7 @@ var (
 )
 
 func LoadWebsiteRoutes() *mux.Router {
-	apiRoute.MyServers = "/api/v1/GetMyServers"
+	apiRoute.ServerList = "/api/v1/ListServers"
 
 	Routes.Static = "/static/"
 	Routes.Static2 = "/static2/"
@@ -79,7 +81,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.PathPrefix(Routes.Static).Handler(http.FileServer(http.Dir("./api/website")))
 	r.PathPrefix(Routes.Static2).Handler(http.FileServer(http.Dir("./api/website")))
 
-	//r.HandleFunc(api.MyServers, APIGetMyServers)
+	r.HandleFunc(apiRoute.ServerList, APIServerList)
 
 	return r
 }
