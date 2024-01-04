@@ -1,0 +1,24 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative api.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+enum ApiScope {
+    API_SCOPE_READ_INFO = 0;
+    API_SCOPE_READ_LOGS = 1;
+    API_SCOPE_WRITE_INFO = 2;
+    API_SCOPE_CREATE_APIKEY = 3;
+    API_SCOPE_ISSUE_COMMANDS = 4;
+}
+
+message ApiKeys {
+    repeated ApiKey key = 1;
+}
+
+message ApiKey {
+    string secret = 1;
+    repeated ApiScope scope = 2;
+}
