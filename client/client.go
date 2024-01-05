@@ -54,6 +54,7 @@ type Client struct {
 	WebSockets  []*websocket.Conn     // slice of web clients
 	Log         *log.Logger           // log stuff here
 	LogFile     *os.File              // pointer to file so we can close when client disconnects
+	APIKeys     *pb.ApiKeys           // keys generated for accessing this client
 }
 
 // JSON structure for persistent storage
