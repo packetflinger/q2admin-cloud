@@ -163,6 +163,26 @@ func RemoveClient(uuid string) bool {
 	return true
 }
 
+// ClientsByContext will provide a collection of pointers for clients
+// accessible to the context.
+//
+// Circular: find clients by context to include in that context
+func ClientsByContext(ctx *IdentityContext) []*client.Client {
+	cls := []*client.Client{}
+	for i, cl := range Cloud.Clients {
+		if cl.Owner == ctx.user.Email {
+			cls = append(cls, &Cloud.Clients[i])
+			continue
+		}
+		for _, key := range cl.APIKeys.GetKey() {
+			if key.GetSecret() == ctx.apiKey {
+				cls = append(cls, &Cloud.Clients[i])
+			}
+		}
+	}
+	return cls
+}
+
 // Acquire a slice of client pointers that a particular identity
 // has access to (owners and delegates)
 func ClientsByIdentity(ident string) []client.Client {
