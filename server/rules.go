@@ -28,7 +28,10 @@ func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 	return len(rules) > 0, rules
 }
 
-// Check of a player matches a particular rule
+// Check if a player matches a particular rule.
+//
+// Rule matching is GREEDY, so if multiple critera are specified in the rule,
+// all of them have to match, not just any single one.
 func CheckRule(p *client.Player, r *pb.Rule) bool {
 	match := false
 	now := time.Now().Unix()
@@ -113,7 +116,15 @@ func CheckRule(p *client.Player, r *pb.Rule) bool {
 		}
 	}
 
-	return match && (need <= have)
+	exception := false
+	for _, ex := range r.GetException() {
+		if RuleExceptionMatch(ex, p) {
+			exception = true
+			break
+		}
+	}
+
+	return match && (need <= have) && !exception
 }
 
 // Read rules from disk
