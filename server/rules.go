@@ -12,38 +12,6 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
-// An ACL
-//
-// Match on network or hostname
-// Then any additional criteria:
-// - name
-// - userinfo value
-// - etc
-//
-// Password field is checked against the "pw" userinfo variable.
-// If the password matches, then the rule is considered to be
-// not a match.
-type ClientRule struct {
-	ID           string       // uuid
-	Type         string       // ["ban","mute","stifle","msg"]
-	Address      []string     // ip/cidrs
-	Network      []*net.IPNet // byte version of address
-	Hostname     []string     // hostname
-	HostAddrNot  bool         // != instead of == for ip/host
-	Name         []string     // optional, names to match
-	NameNot      bool         // != instead of ==
-	Client       []string     // optional, probably remove later
-	UserInfoKey  []string     // optional
-	UserinfoVal  []string     // optional
-	UserInfoNot  []bool       // != instead of ==
-	Description  string       // internal only
-	Message      string       // message displayed to matched players
-	Password     string       // password to bypass this rule
-	StifleLength int          // secs
-	Created      int64        // unix timestamp
-	Length       int64        // secs after Created before expiring. 0 = perm
-}
-
 // Check a client against the rules, returns whether there were
 // any matches and what specific rules matched, for processing
 // later
