@@ -17,10 +17,10 @@ import (
 // later
 //
 // Called every time a player connects from ApplyRules() in ParseConnect()
-func CheckRules(cl *client.Client, p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
+func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 	rules := []*pb.Rule{} // which ones match
 	for _, r := range ruleset {
-		if CheckRule(cl, p, r) {
+		if CheckRule(p, r) {
 			rules = append(rules, r)
 		}
 	}
@@ -29,7 +29,7 @@ func CheckRules(cl *client.Client, p *client.Player, ruleset []*pb.Rule) (bool, 
 }
 
 // Check of a player matches a particular rule
-func CheckRule(cl *client.Client, p *client.Player, r *pb.Rule) bool {
+func CheckRule(p *client.Player, r *pb.Rule) bool {
 	match := false
 	now := time.Now().Unix()
 	need := 0
