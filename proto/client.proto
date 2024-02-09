@@ -5,6 +5,7 @@ syntax="proto3";
 option go_package = "github.com/packetflinger/q2admind/proto";
 
 package proto;
+import "api.proto";
 
 message Clients {
     repeated Client client = 1;
@@ -67,6 +68,9 @@ message Client {
 
     // other people given access
     repeated Delegate delegate = 11;
+
+    // any api keys that have been created for this client
+    ApiKeys api_keys = 12;
 }
 
 // A client delegate is a user other than the owner (creator) who has access
