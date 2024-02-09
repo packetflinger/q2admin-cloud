@@ -14,12 +14,12 @@ import (
 	"strings"
 
 	"github.com/gorilla/websocket"
-	"google.golang.org/protobuf/encoding/prototext"
-
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/crypto"
-	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
+	"google.golang.org/protobuf/encoding/prototext"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 // This struct is partially populated by parsing disk a file
