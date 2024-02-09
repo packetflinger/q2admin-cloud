@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/packetflinger/q2admind/client"
-	pb "github.com/packetflinger/q2admind/proto"
 	"google.golang.org/protobuf/encoding/prototext"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 // Check a client against the rules, returns whether there were
