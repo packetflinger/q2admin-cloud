@@ -148,69 +148,6 @@ func CheckRule(cl *client.Client, p *client.Player, r *pb.Rule) bool {
 	return match && (need <= have)
 }
 
-/*
-// Player should already match each rule, just apply the action.
-//
-// Called immediately after CheckRules() on ParseConnect() twice,
-// for local server rules and then again for global ones
-func (cl *Client) ApplyRules(p *Player) {
-	matched1, rules1 := cl.CheckRules(p, cl.Rules)  // local
-	matched2, rules2 := cl.CheckRules(p, q2a.rules) // global
-
-	if matched1 {
-		for _, r := range rules1 {
-			log.Printf("%s [%d|%s] matched global rule %s\n", p.Name, p.ClientID, p.IP, r.ID)
-			switch r.Type {
-			case "msg":
-				log.Printf("[%s/MSG/%s] %s\n", cl.Name, p.Name, r.Message)
-				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
-			case "ban":
-				log.Printf("[%s/KICK/%s] %s\n", cl.Name, p.Name, r.Message)
-				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
-				KickPlayer(cl, p, r.Message)
-				return
-			case "mute":
-				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
-				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
-				MutePlayer(cl, p, -1)
-			case "stifle":
-				p.Stifled = true
-				p.StifleLength = r.StifleLength
-				log.Printf("[%s/STIFLE/%s] %s\n", cl.Name, p.Name, r.Message)
-				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
-				MutePlayer(cl, p, r.StifleLength)
-			}
-		}
-	}
-
-	if matched2 {
-		for _, r := range rules2 {
-			log.Printf("%s [%d|%s] matched global rule %s\n", p.Name, p.ClientID, p.IP, r.ID)
-			switch r.Type {
-			case "msg":
-				log.Printf("[%s/MSG/%s] %s\n", cl.Name, p.Name, r.Message)
-				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
-			case "ban":
-				log.Printf("[%s/KICK/%s] %s\n", cl.Name, p.Name, r.Message)
-				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
-				KickPlayer(cl, p, r.Message)
-				return
-			case "mute":
-				log.Printf("[%s/MUTE/%s] %s\n", cl.Name, p.Name, r.Message)
-				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
-				MutePlayer(cl, p, -1)
-			case "stifle":
-				p.Stifled = true
-				p.StifleLength = r.StifleLength
-				log.Printf("[%s/STIFLE/%s] %s\n", cl.Name, p.Name, r.Message)
-				SayPlayer(cl, p, PRINT_MEDIUM, r.Message)
-				MutePlayer(cl, p, r.StifleLength)
-			}
-		}
-	}
-}
-*/
-
 // Reads and parses the global rules from disk into memory.
 //
 // Called once at startup
