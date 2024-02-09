@@ -405,3 +405,109 @@ func TestRuleExceptionMatch(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckRule(t *testing.T) {
+	tests := []struct {
+		desc   string
+		rule   *pb.Rule
+		player *client.Player
+		want   bool
+	}{
+		{
+			desc: "test1_expired",
+			rule: &pb.Rule{
+				ExpirationTime: 12345,
+			},
+			player: &client.Player{},
+			want:   false,
+		},
+		{
+			desc: "test2_address",
+			rule: &pb.Rule{
+				Address: []string{
+					"192.0.2.0/24",
+					"100.64.0.0/17",
+				},
+			},
+			player: &client.Player{
+				IP: "100.64.3.16",
+			},
+			want: true,
+		},
+		{
+			desc: "test3_address_name",
+			rule: &pb.Rule{
+				Address: []string{
+					"192.0.2.0/24",
+					"100.64.0.0/17",
+				},
+				Name: []string{
+					"snooder",
+				},
+			},
+			player: &client.Player{
+				IP:   "100.64.3.16",
+				Name: "claire",
+			},
+			want: false,
+		},
+		{
+			desc: "test4_address_name",
+			rule: &pb.Rule{
+				Address: []string{
+					"192.0.2.0/24",
+					"100.64.0.0/17",
+				},
+				Name: []string{
+					"snooder",
+					"sn00der",
+				},
+			},
+			player: &client.Player{
+				IP:   "100.64.3.16",
+				Name: "snoodersmith",
+			},
+			want: true,
+		},
+		{
+			desc: "test4_address_name_exception",
+			rule: &pb.Rule{
+				Address: []string{
+					"192.0.2.0/24",
+					"100.64.0.0/17",
+				},
+				Name: []string{
+					"snooder",
+					"sn00der",
+				},
+				Exception: []*pb.Exception{
+					{
+						UserInfo: []*pb.UserInfo{
+							{
+								Property: "pw",
+								Value:    "^to3b34ns$",
+							},
+						},
+					},
+				},
+			},
+			player: &client.Player{
+				IP:   "100.64.3.16",
+				Name: "snoodersmith",
+				UserinfoMap: map[string]string{
+					"pw": "to3b34ns",
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			got := CheckRule(tc.player, tc.rule)
+			if got != tc.want {
+				t.Error("Got:", got, "Want:", tc.want)
+			}
+		})
+	}
+}
