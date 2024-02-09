@@ -258,3 +258,150 @@ func TestSingleRule(t *testing.T) {
 	}
 }
 */
+
+func TestRuleExceptionMatch(t *testing.T) {
+	tests := []struct {
+		desc      string
+		exception *pb.Exception
+		player    *client.Player
+		want      bool
+	}{
+		{
+			desc: "test1_expired",
+			exception: &pb.Exception{
+				ExpirationTime: 12345,
+			},
+			player: &client.Player{},
+			want:   false,
+		},
+		{
+			desc: "test2_name",
+			exception: &pb.Exception{
+				Name: []string{
+					"^claire$",
+					"cla..e.+",
+				},
+			},
+			player: &client.Player{
+				Name: "clairesucks",
+			},
+			want: true,
+		},
+		{
+			desc: "test3_name",
+			exception: &pb.Exception{
+				Name: []string{
+					"^claire$",
+					"cla..e.+",
+				},
+			},
+			player: &client.Player{
+				Name: "ts-claire",
+			},
+			want: false,
+		},
+		{
+			desc: "test4_addr",
+			exception: &pb.Exception{
+				Address: []string{
+					"192.168.1.0/24",
+				},
+			},
+			player: &client.Player{
+				IP: "192.168.1.244",
+			},
+			want: true,
+		},
+		{
+			desc: "test5_addr",
+			exception: &pb.Exception{
+				Address: []string{
+					"192.168.1.0/24",
+				},
+			},
+			player: &client.Player{
+				IP: "192.168.2.244",
+			},
+			want: false,
+		},
+		{
+			desc: "test6_ui",
+			exception: &pb.Exception{
+				UserInfo: []*pb.UserInfo{
+					{
+						Property: "skin",
+						Value:    "cyborg/.+",
+					},
+				},
+			},
+			player: &client.Player{
+				UserinfoMap: map[string]string{
+					"skin": "cyborg/ps9000",
+					"hand": "2",
+				},
+			},
+			want: true,
+		},
+		{
+			desc: "test7_ui",
+			exception: &pb.Exception{
+				UserInfo: []*pb.UserInfo{
+					{
+						Property: "pw",
+						Value:    "^twatwaffle$", // be careful with complex passwords
+					},
+				},
+			},
+			player: &client.Player{
+				UserinfoMap: map[string]string{
+					"pw":   "twatwaffle",
+					"hand": "2",
+				},
+			},
+			want: true,
+		},
+		{
+			desc: "test8_ui",
+			exception: &pb.Exception{
+				UserInfo: []*pb.UserInfo{
+					{
+						Property: "hand",
+						Value:    "[12]", // be careful with complex passwords
+					},
+				},
+			},
+			player: &client.Player{
+				UserinfoMap: map[string]string{
+					"hand": "0",
+				},
+			},
+			want: false,
+		},
+		{
+			desc: "test9_ui",
+			exception: &pb.Exception{
+				UserInfo: []*pb.UserInfo{
+					{
+						Property: "hand",
+						Value:    "[12]", // be careful with complex passwords
+					},
+				},
+			},
+			player: &client.Player{
+				UserinfoMap: map[string]string{
+					"hand": "2",
+				},
+			},
+			want: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			got := RuleExceptionMatch(tc.exception, tc.player)
+			if got != tc.want {
+				t.Error("Got:", got, "Want:", tc.want)
+			}
+		})
+	}
+}

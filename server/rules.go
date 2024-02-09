@@ -203,3 +203,52 @@ func UserinfoMatches(ui *pb.UserInfo, p *client.Player) bool {
 	}
 	return false
 }
+
+// RuleExcptionMatch will decide if a player struct matches a particular
+// exception, therefore causing the parent rule to not match this player
+// when it otherwise would have.
+func RuleExceptionMatch(ex *pb.Exception, p *client.Player) bool {
+	now := time.Now().Unix()
+
+	// expired exception, ignore it
+	if ex.GetExpirationTime() > 0 && now > ex.GetExpirationTime() {
+		return false
+	}
+
+	if len(ex.GetAddress()) > 0 {
+		for _, address := range ex.GetAddress() {
+			_, network, err := net.ParseCIDR(address)
+			if err != nil {
+				continue
+			}
+			if network.Contains(net.ParseIP(p.IP)) {
+				return true
+			}
+		}
+	}
+
+	if len(ex.GetName()) > 0 {
+		for _, name := range ex.GetName() {
+			match, err := regexp.MatchString(name, p.Name)
+			if err != nil {
+				continue
+			}
+			if match {
+				return true
+			}
+		}
+	}
+
+	if len(ex.GetUserInfo()) > 0 {
+		for _, uipair := range ex.GetUserInfo() {
+			match, err := regexp.MatchString(uipair.Value, p.UserinfoMap[uipair.Property])
+			if err != nil {
+				continue
+			}
+			if match {
+				return true
+			}
+		}
+	}
+	return false
+}
