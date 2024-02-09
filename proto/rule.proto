@@ -39,7 +39,7 @@ message Rule {
     string uuid = 1;
     RuleType type = 2;
     repeated string address = 3;       // IP addr/cidr
-    repeated string hostname = 18;     // PTR record (or partial) for the player's IP
+    repeated string hostname = 18;     // PTR record (case-INsensitive regex)
     repeated string name = 4;          // player name (case-INsensitive regex)
     repeated string client = 5;        // game client/version (regex)
     repeated UserInfo user_info = 6;   // UI key/value pair (case-sensitive regex)

@@ -226,7 +226,7 @@ type Rule struct {
 	Uuid           string       `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
 	Type           RuleType     `protobuf:"varint,2,opt,name=type,proto3,enum=proto.RuleType" json:"type,omitempty"`
 	Address        []string     `protobuf:"bytes,3,rep,name=address,proto3" json:"address,omitempty"`                                      // IP addr/cidr
-	Hostname       []string     `protobuf:"bytes,18,rep,name=hostname,proto3" json:"hostname,omitempty"`                                   // PTR record (or partial) for the player's IP
+	Hostname       []string     `protobuf:"bytes,18,rep,name=hostname,proto3" json:"hostname,omitempty"`                                   // PTR record (case-INsensitive regex)
 	Name           []string     `protobuf:"bytes,4,rep,name=name,proto3" json:"name,omitempty"`                                            // player name (case-INsensitive regex)
 	Client         []string     `protobuf:"bytes,5,rep,name=client,proto3" json:"client,omitempty"`                                        // game client/version (regex)
 	UserInfo       []*UserInfo  `protobuf:"bytes,6,rep,name=user_info,json=userInfo,proto3" json:"user_info,omitempty"`                    // UI key/value pair (case-sensitive regex)
