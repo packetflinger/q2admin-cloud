@@ -44,28 +44,6 @@ type ClientRule struct {
 	Length       int64        // secs after Created before expiring. 0 = perm
 }
 
-// Disk format for ACLs
-type ClientRuleFormat struct {
-	ID           string   `json:"ID"`           // UUID
-	Type         string   `json:"Type"`         // ["ban","mute","stifle","msg"]
-	Address      []string `json:"Address"`      // x.x.x.x/y
-	Hostname     []string `json:"Hostname"`     // dns name
-	HostAddrNot  bool     `json:"HostAddrNot"`  // != instead of ==
-	Name         []string `json:"Name"`         // optional, player names
-	NameNot      bool     `json:"NameNot"`      // != instead of ==
-	Client       []string `json:"Client"`       // optional, player client versions
-	Message      string   `json:"Message"`      // shown to user
-	UserInfoKey  []string `json:"UserInfoKey"`  // optional
-	UserinfoVal  []string `json:"UserInfoVal"`  // optional
-	UserInfoNot  []bool   `json:"UserInfoNot"`  // !=
-	Description  string   `json:"Description"`  // internal only
-	Insensitive  bool     `json:"Insensitive"`  // case insensitive?
-	Password     string   `json:"Password"`     // override userinfo password
-	StifleLength int      `json:"StifleLength"` // seconds
-	Created      int64    `json:"Created"`      // unix timestamp
-	Length       int64    `json:"Length"`       // seconds after created before expires
-}
-
 // Check a client against the rules, returns whether there were
 // any matches and what specific rules matched, for processing
 // later
@@ -300,30 +278,6 @@ func SortRules(rules []*pb.Rule) []*pb.Rule {
 	newruleset = append(newruleset, stifles...)
 	newruleset = append(newruleset, msgs...)
 	return newruleset
-}
-
-// Transform a ClientRule into the format necessary
-// to write it to disk
-func (r ClientRule) ToDiskFormat() ClientRuleFormat {
-	return ClientRuleFormat{
-		ID:           r.ID,
-		Type:         r.Type,
-		Address:      r.Address,
-		Hostname:     r.Hostname,
-		HostAddrNot:  r.HostAddrNot,
-		Name:         r.Name,
-		NameNot:      r.NameNot,
-		Client:       r.Client,
-		UserInfoKey:  r.UserInfoKey,
-		UserinfoVal:  r.UserinfoVal,
-		UserInfoNot:  r.UserInfoNot,
-		Description:  r.Description,
-		Message:      r.Message,
-		Password:     r.Password,
-		StifleLength: r.StifleLength,
-		Created:      r.Created,
-		Length:       r.Length,
-	}
 }
 
 // Does a player's userinfo match the rules?
