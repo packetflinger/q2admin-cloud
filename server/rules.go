@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"net"
 	"os"
 	"regexp"
@@ -115,24 +114,6 @@ func CheckRule(cl *client.Client, p *client.Player, r *pb.Rule) bool {
 	}
 
 	return match && (need <= have)
-}
-
-// Reads and parses the global rules from disk into memory.
-//
-// Called once at startup
-func (q2a *CloudAdminServer) ReadGlobalRules() {
-	filedata, err := os.ReadFile("rules.q2a")
-	if err != nil {
-		log.Println("problems parsing rules.")
-		return
-	}
-
-	rules := &pb.Rules{}
-	err = prototext.Unmarshal(filedata, rules)
-	if err != nil {
-		log.Println()
-	}
-	q2a.Rules = SortRules(rules.GetRule())
 }
 
 // Read rules from disk
