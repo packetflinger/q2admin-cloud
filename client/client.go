@@ -57,22 +57,6 @@ type Client struct {
 	APIKeys     *pb.ApiKeys           // keys generated for accessing this client
 }
 
-// JSON structure for persistent storage
-type ClientDiskFormat struct {
-	UUID          string `json:"UUID"` // match client to server config
-	AllowTeleport bool   `json:"AllowTeleport"`
-	AllowInvite   bool   `json:"AllowInvite"`
-	Enabled       bool   `json:"Enabled"`
-	Verified      bool   `json:"Verified"`
-	Address       string `json:"Address"`
-	Name          string `json:"Name"`        // teleport name, must be unique
-	Owner         string `json:"Owner"`       // ID from UserFormat
-	Description   string `json:"Description"` // shows up in teleport
-	Contacts      string `json:"Contacts"`    // for getting ahold of operator
-	/*PublicKey     string             `json:"PublicKey"`   // relative path to file */
-	//Rules []ClientRuleFormat `json:"Controls"`
-}
-
 // Each client keeps track of the websocket for people "looking at it".
 // When they close the browser or logout, remove the pointer
 // to that socket
