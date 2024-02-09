@@ -99,7 +99,7 @@ func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
 // Read rules from disk and return a slice of them
 func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	var rules []*pb.Rule
-	filename := path.Join("clients", cl.Name, "rules")
+	filename := path.Join("clients", cl.Name, "rules.pb")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return rules, err
@@ -149,7 +149,7 @@ func LoadClients(filename string) ([]Client, error) {
 // from them.
 func (cl *Client) LoadSettings(name string) (Client, error) {
 	var client Client
-	filename := path.Join("clients", name, "settings")
+	filename := path.Join("clients", name, "settings.pb")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return client, err

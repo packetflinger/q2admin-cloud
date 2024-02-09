@@ -454,7 +454,7 @@ func Startup() {
 
 	DB = database.DatabaseConnect(Cloud.Config.Database)
 
-	rules, err := FetchRules("config/rules")
+	rules, err := FetchRules("config/rules.pb")
 	if err != nil {
 		log.Println(err)
 	} else {

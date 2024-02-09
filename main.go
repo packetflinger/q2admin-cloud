@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Configfile = flag.String("config", "config/config", "The main config file")
+	Configfile = flag.String("config", "config/config.pb", "The main config file")
 	foreground = flag.Bool("foreground", false, "log to the console or file")
 )
 
