@@ -1,5 +1,5 @@
 // compile with:
-// protoc --go_out=. --go_opt=paths=source_relative *.proto
+// protoc --go_out=. --go_opt=paths=source_relative rule.proto
 syntax="proto3";
 
 option go_package = "github.com/packetflinger/q2admind/proto";
@@ -12,33 +12,47 @@ enum RuleType {
     MESSAGE = 2;  // triggered message to user
     STIFLE = 3;   // they can talk, but only once per amount of time
 }
+
+// A single key-value pair from a player's client.
 message UserInfo {
     string property = 1;
     string value = 2;
 }
+
+// If an exception matches as part of a rule that matches, the rule will
+// be considered to have not matched.
+//
+// Instead of including password as an exception method, use the user_info. Players
+// would need to include any passwords in their userinfo string anyway to get them 
+// to the server, so just look for a "password" or "pw" keyed ui value instead.
 message Exception {
-    repeated string address = 1;
-    repeated string name = 2;
-    repeated string client = 3;
-    repeated UserInfo user_info = 4;
+    repeated string address = 1;     // IP addr/cidr
+    repeated string name = 2;        // player name (regex)
+    repeated string client = 3;      // game client name/version (regex)
+    repeated UserInfo user_info = 4; // UI key/value pair
+    int64 expiration_time = 5;       // unix timestamp when exception no long valid
 }
+
+// An player ACL. When a player connects to a cloudadmin-enabled gameserver, the
+// server will attempt to match the player's information to each rule one at a time.
 message Rule {
     string uuid = 1;
     RuleType type = 2;
-    repeated string address = 3;
-    repeated string name = 4;
-    repeated string client = 5;
-    repeated UserInfo user_info = 6;
-    repeated string message = 7;
-    int64 creation_time = 8;
-    int64 expiration_time = 9;
-    uint32 delay = 11; // ms
-    bool case_sensitive = 12;
-    bool exact_match = 13;
-    repeated string description = 14;
-    repeated Exception exception = 17;
+    repeated string address = 3;       // IP addr/cidr
+    repeated string name = 4;          // player name (regex)
+    repeated string client = 5;        // game client/version (regex)
+    repeated UserInfo user_info = 6;   // UI key/value pair
+    repeated string message = 7;       // text to send on type MESSAGE
+    int64 creation_time = 8;           // unix timestamp when rule was created
+    int64 expiration_time = 9;         // unix timestamp when no longer applies
+    uint32 delay = 11;                 // wait this man millisecs before action 
+    bool case_sensitive = 12;          // will probably be removed
+    bool exact_match = 13;             // will also probably be removed
+    repeated string description = 14;  // details on why this rule was created
+    repeated Exception exception = 17; // prevent a rule match 
 }
 
+// A collection of rules
 message Rules {
     repeated Rule rule = 1;
 }
