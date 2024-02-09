@@ -64,23 +64,21 @@ func CheckRule(p *client.Player, r *pb.Rule) bool {
 		}
 	}
 
-	/*
-		// any hostnames (regex)
-		if len(r.Hostname) > 0 {
-			need++
-			for _, host := range r.Hostname {
-				hm, err := regexp.MatchString(host, p.Hostname)
-				if err != nil {
-					continue
-				}
-				if hm {
-					have++
-					match = true
-					break
-				}
+	if len(r.Hostname) > 0 {
+		need++
+		for _, host := range r.Hostname {
+			// case insensitive
+			hm, err := regexp.MatchString("(?i)"+host, p.Hostname)
+			if err != nil {
+				continue
+			}
+			if hm {
+				have++
+				match = true
+				break
 			}
 		}
-	*/
+	}
 
 	if len(r.Name) > 0 {
 		need++

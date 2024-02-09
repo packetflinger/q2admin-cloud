@@ -500,6 +500,38 @@ func TestCheckRule(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			desc: "test5_hostname",
+			rule: &pb.Rule{
+				Hostname: []string{
+					"rh.rit.edu",
+				},
+			},
+			player: &client.Player{
+				Hostname: "192-0-2-44.cpe.rh.rit.edu",
+				Name:     "snoodersmith",
+				UserinfoMap: map[string]string{
+					"pw": "to3b34ns",
+				},
+			},
+			want: true,
+		},
+		{
+			desc: "test6_hostname",
+			rule: &pb.Rule{
+				Hostname: []string{
+					"^192.+rh.rit.edu$",
+				},
+			},
+			player: &client.Player{
+				Hostname: "192-0-2-44.cpe.rh.rit.EDU",
+				Name:     "snoodersmith",
+				UserinfoMap: map[string]string{
+					"pw": "to3b34ns",
+				},
+			},
+			want: true,
+		},
 	}
 
 	for _, tc := range tests {
