@@ -39,9 +39,10 @@ message Rule {
     string uuid = 1;
     RuleType type = 2;
     repeated string address = 3;       // IP addr/cidr
-    repeated string name = 4;          // player name (regex)
+    repeated string hostname = 18;     // PTR record (or partial) for the player's IP
+    repeated string name = 4;          // player name (case-INsensitive regex)
     repeated string client = 5;        // game client/version (regex)
-    repeated UserInfo user_info = 6;   // UI key/value pair
+    repeated UserInfo user_info = 6;   // UI key/value pair (case-sensitive regex)
     repeated string message = 7;       // text to send on type MESSAGE
     int64 creation_time = 8;           // unix timestamp when rule was created
     int64 expiration_time = 9;         // unix timestamp when no longer applies
