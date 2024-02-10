@@ -20,6 +20,7 @@ message Config {
     string access_file = 11;
     string auth_file = 12;
     string rule_file = 20;
+    string vpn_file = 21;       // VPN detection/action settings
     uint32 maintenance_time = 13; // seconds
     bool debug_mode = 14;
     string web_root = 15;       // where are website file?

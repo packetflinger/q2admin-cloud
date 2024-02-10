@@ -1,0 +1,14 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative vpn.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+message VPNConfig {
+    bool enabled = 1;        // should we do vpn lookups at all?
+    string lookup_url = 2;   // URL pattern for the api lookup
+    string api_key = 3;      // Auth auth key to use the service
+    bool kick_vpn_users = 4; // should we kick VPN users?
+}
