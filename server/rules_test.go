@@ -394,6 +394,18 @@ func TestRuleExceptionMatch(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			desc: "test10_hostname",
+			exception: &pb.Exception{
+				Hostname: []string{
+					"google.com",
+				},
+			},
+			player: &client.Player{
+				Hostname: "ip66xyz.google.COM",
+			},
+			want: true,
+		},
 	}
 
 	for _, tc := range tests {

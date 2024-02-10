@@ -27,8 +27,9 @@ message UserInfo {
 // to the server, so just look for a "password" or "pw" keyed ui value instead.
 message Exception {
     repeated string address = 1;     // IP addr/cidr
-    repeated string name = 2;        // player name (regex)
-    repeated string client = 3;      // game client name/version (regex)
+    repeated string hostname = 6;    // PTR record (case-insensitive regex)
+    repeated string name = 2;        // player name (case-insensitive regex)
+    repeated string client = 3;      // game client name/version (case-sensitive regex)
     repeated UserInfo user_info = 4; // UI key/value pair
     int64 expiration_time = 5;       // unix timestamp when exception no long valid
 }

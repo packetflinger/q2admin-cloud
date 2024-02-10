@@ -217,6 +217,18 @@ func RuleExceptionMatch(ex *pb.Exception, p *client.Player) bool {
 		}
 	}
 
+	if len(ex.GetHostname()) > 0 {
+		for _, host := range ex.GetHostname() {
+			match, err := regexp.MatchString("(?i)"+host, p.Hostname)
+			if err != nil {
+				continue
+			}
+			if match {
+				return true
+			}
+		}
+	}
+
 	if len(ex.GetName()) > 0 {
 		for _, name := range ex.GetName() {
 			match, err := regexp.MatchString(name, p.Name)
