@@ -91,7 +91,6 @@ func CheckRule(p *client.Player, r *pb.Rule) bool {
 	}
 
 	// userinfo stuff, all have to match
-	//uinot := false
 	if len(r.GetUserInfo()) > 0 {
 		for _, ui := range r.GetUserInfo() {
 			need++
