@@ -43,11 +43,6 @@ func CheckRule(p *client.Player, r *pb.Rule) bool {
 		return false
 	}
 
-	// if user has the password, the rule will never match
-	//if r.Password != "" && p.UserinfoMap["pw"] == r.Password {
-	//	return false
-	//}
-
 	// any IPs
 	if len(r.GetAddress()) > 0 {
 		need++
