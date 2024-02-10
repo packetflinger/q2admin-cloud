@@ -88,17 +88,9 @@ func CheckRule(p *client.Player, r *pb.Rule) bool {
 			if err != nil {
 				continue
 			}
-			/*
-				if r.NameNot {
-					if !namematch {
-						match = true
-						have++
-					}
-				} else*/{
-				if namematch {
-					match = true
-					have++
-				}
+			if namematch {
+				match = true
+				have++
 			}
 		}
 	}
