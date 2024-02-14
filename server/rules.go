@@ -100,6 +100,14 @@ func CheckRule(p *client.Player, r *pb.Rule) bool {
 		}
 	}
 
+	if r.GetVpn() {
+		need++
+		if p.VPN {
+			have++
+			match = true
+		}
+	}
+
 	exception := false
 	for _, ex := range r.GetException() {
 		if RuleExceptionMatch(ex, p) {

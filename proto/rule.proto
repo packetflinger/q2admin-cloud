@@ -45,6 +45,7 @@ message Rule {
     repeated string client = 5;        // game client/version (regex)
     repeated UserInfo user_info = 6;   // UI key/value pair (case-sensitive regex)
     repeated string message = 7;       // text to send on type MESSAGE or ban/mute message
+    bool vpn = 19;                     // player IP is a VPN
     int64 creation_time = 8;           // unix timestamp when rule was created
     int64 expiration_time = 9;         // unix timestamp when no longer applies
     uint32 delay = 11;                 // wait this man millisecs before action 

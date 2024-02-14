@@ -380,6 +380,17 @@ func TestCheckRule(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			desc: "test7_vpn",
+			rule: &pb.Rule{
+				Vpn: true,
+			},
+			player: &client.Player{
+				Name: "snoodersmith",
+				VPN:  true,
+			},
+			want: true,
+		},
 	}
 
 	for _, tc := range tests {

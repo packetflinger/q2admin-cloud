@@ -32,6 +32,7 @@ type Player struct {
 	IP               string
 	Port             int
 	Hostname         string
+	VPN              bool
 	FOV              int
 	ConnectTime      int64
 	Rules            []*pb.Rule // rules that match this player
