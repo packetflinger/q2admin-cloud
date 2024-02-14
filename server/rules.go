@@ -92,11 +92,16 @@ func CheckRule(p *client.Player, r *pb.Rule) bool {
 
 	// userinfo stuff, all have to match
 	if len(r.GetUserInfo()) > 0 {
+		originalNeed := need
+		originalHave := have
 		for _, ui := range r.GetUserInfo() {
 			need++
 			if UserinfoMatches(ui, p) {
 				have++
 			}
+		}
+		if need-originalNeed == have-originalHave {
+			match = true
 		}
 	}
 

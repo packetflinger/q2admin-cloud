@@ -391,6 +391,31 @@ func TestCheckRule(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			desc: "test8_lefty_girls",
+			rule: &pb.Rule{
+				UserInfo: []*pb.UserInfo{
+					{
+						Property: "hand",
+						Value:    "2",
+					},
+					{
+						Property: "skin",
+						Value:    "female/.+",
+					},
+				},
+			},
+			player: &client.Player{
+				Name: "snoodersmith",
+				VPN:  true,
+				UserinfoMap: map[string]string{
+					"hand": "2",
+					"skin": "female/jezebel",
+					"rate": "8000",
+				},
+			},
+			want: true,
+		},
 	}
 
 	for _, tc := range tests {
