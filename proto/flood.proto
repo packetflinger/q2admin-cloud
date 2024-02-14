@@ -1,0 +1,28 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative flood.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+message FloodInfo {
+    // The last time (unix timestamp + millis) a print was seen
+    // from this player
+    int64 last_print_time = 1;
+
+    // The first time seen
+    int64 first_print_time = 2;
+
+    // The total number of prints seen
+    int32 print_total = 3;
+
+    // The last time we saw a UI change from this player
+    int64 last_userinfo_time = 4;
+
+    // This will be set to the time they joined
+    int64 first_userinfo_time = 5; 
+
+    // total UI changes
+    int32 userinfo_total = 6;
+}
