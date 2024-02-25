@@ -32,7 +32,7 @@ type CloudAdminServer struct {
 	Privatekey *rsa.PrivateKey   // private to us
 	Publickey  *rsa.PublicKey    // known to clients
 	MaintCount int               // total maintenance runs
-	IPCache    map[string]IPInfo // info about all IPs we've seen
+	IPCache    map[string]IPInfo // key is the IP address
 }
 
 // Information about a particular IP address, including any PTR records from DNS,
