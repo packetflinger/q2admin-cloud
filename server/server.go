@@ -24,13 +24,24 @@ import (
 
 // "This" admin server
 type CloudAdminServer struct {
-	Users      []*pb.User      // website users
-	Config     pb.Config       // global config
-	Clients    []client.Client // managed quake 2 servers
-	Rules      []*pb.Rule      // bans/mutes/etc
-	Privatekey *rsa.PrivateKey // private to us
-	Publickey  *rsa.PublicKey  // known to clients
-	MaintCount int             // total maintenance runs
+	Users      []*pb.User        // website users
+	Config     pb.Config         // global config
+	Clients    []client.Client   // managed quake 2 servers
+	Rules      []*pb.Rule        // bans/mutes/etc
+	Privatekey *rsa.PrivateKey   // private to us
+	Publickey  *rsa.PublicKey    // known to clients
+	MaintCount int               // total maintenance runs
+	IPCache    map[string]IPInfo // info about all IPs we've seen
+}
+
+// Information about a particular IP address, including any PTR records from DNS,
+// and whether it's associated with a VPN provider.
+type IPInfo struct {
+	Addr       string
+	Hostname   string
+	TimeToLive int64
+	VPN        bool
+	Lookups    int64
 }
 
 var (
