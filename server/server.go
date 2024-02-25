@@ -18,8 +18,9 @@ import (
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/database"
-	pb "github.com/packetflinger/q2admind/proto"
 	"google.golang.org/protobuf/encoding/prototext"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 // "This" admin server
