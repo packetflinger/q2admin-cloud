@@ -51,8 +51,6 @@ message Rule {
     int64 expiration_time = 9;         // unix timestamp when no longer applies
     uint32 delay = 11;                 // wait this man millisecs before action
     int32 stifle_length = 20;          // seconds 
-    bool case_sensitive = 12;          // will probably be removed
-    bool exact_match = 13;             // will also probably be removed
     repeated string description = 14;  // details on why this rule was created
     repeated Exception exception = 17; // prevent a rule match 
 }
