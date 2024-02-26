@@ -5,11 +5,14 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/util"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 // Loop through all the data from the client
@@ -145,6 +148,35 @@ func ParseConnect(cl *client.Client) {
 
 	//wstxt := fmt.Sprintf("[CONNECT] %s [%s]", info["name"], info["ip"])
 	//cl.SendToWebsiteFeed(wstxt, api.FeedJoinPart)
+
+	match, rules := CheckRules(p, cl.Rules)
+	if match {
+		p.Rules = rules
+		cl.Log.Printf("%s|%d matched the following rules:\n", p.Name, p.ClientID)
+		for _, rule := range rules {
+			cl.Log.Printf("  - %s (%s)\n", strings.Join(rule.GetDescription(), " "), rule.GetType())
+		}
+		for _, rule := range rules {
+			if rule.GetType() == pb.RuleType_BAN {
+				SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
+				KickPlayer(cl, p, "")
+				break
+			}
+			if rule.GetType() == pb.RuleType_MUTE {
+				p.Muted = true
+				SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
+				MutePlayer(cl, p, -1) // rule mutes are not temporary (but the rule can be)
+			}
+			if rule.GetType() == pb.RuleType_STIFLE {
+				p.Stifled = true
+				p.StifleLength = int(rule.GetStifleLength())
+				SayPlayer(cl, p, PRINT_HIGH, "You're stifled")
+			}
+			if rule.GetType() == pb.RuleType_MESSAGE {
+				SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
+			}
+		}
+	}
 
 	// add a slight delay when processing rules
 	go func() {
