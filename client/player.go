@@ -39,6 +39,7 @@ type Player struct {
 	Stifled          bool
 	StifleLength     int     // seconds
 	Client           *Client // circular ref
+	Muted            bool    // is this player muted?
 }
 
 // Get a pointer to a player based on a client number
