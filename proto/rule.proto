@@ -26,6 +26,7 @@ message UserInfo {
 // would need to include any passwords in their userinfo string anyway to get them 
 // to the server, so just look for a "password" or "pw" keyed ui value instead.
 message Exception {
+    repeated string description = 7; // why? who is this exception for?
     repeated string address = 1;     // IP addr/cidr
     repeated string hostname = 6;    // PTR record (case-insensitive regex)
     repeated string name = 2;        // player name (case-insensitive regex)
