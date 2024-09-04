@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
@@ -33,7 +34,8 @@ type APIServeListResponse struct {
 // APIKeyList will fetch an array of active API keys for the client
 func APIKeyList(w http.ResponseWriter, r *http.Request) {
 	res := APIKeyListResponse{}
-	_, err := GetSessionUser(r)
+	ident, err := CreateIdentContext(r)
+	fmt.Println(ident)
 	if err != nil {
 		res.State = APIResponse{
 			Code:        http.StatusForbidden,
@@ -47,7 +49,10 @@ func APIKeyList(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, string(contents))
 		return
 	}
-	client, err := FindClient(r.URL.Query().Get("key"))
+
+	// uuid in the url, this is the client we want to access
+	uuid := mux.Vars(r)["UUID"]
+	client, err := identityAllowed(ident, uuid)
 	if err != nil {
 		log.Println("APIKeyList:", err)
 		return
@@ -56,6 +61,10 @@ func APIKeyList(w http.ResponseWriter, r *http.Request) {
 	res.State = APIResponse{
 		Code:        http.StatusOK,
 		Description: "ok",
+	}
+	res.Server = ServerWithUUID{
+		Name: client.Name,
+		UUID: client.UUID,
 	}
 	contents, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
