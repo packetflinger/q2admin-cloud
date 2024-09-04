@@ -41,7 +41,7 @@ var (
 
 func LoadWebsiteRoutes() *mux.Router {
 	apiRoute.ServerList = "/api/v1/ListServers"
-	apiRoute.APIKeyList = "/api/v1/ListAPIKeys"
+	apiRoute.APIKeyList = "/api/v1/ListAPIKeys/{UUID}/key/{APIKEY}"
 
 	Routes.Static = "/static/"
 	Routes.Static2 = "/static2/"
