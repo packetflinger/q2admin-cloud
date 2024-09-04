@@ -119,6 +119,12 @@ func ParsePrint(cl *client.Client) {
 	case PRINT_MEDIUM:
 		ParseObituary(cl, stripped)
 	}
+
+	// re-stifle if needed
+	//   1. find the name of the player who said something
+	//   2. find all players matching that name
+	//   3. loop through rules affecting that player, if stifled, re-mute
+	//count := strings.Count(text, ": ") // delimiter between player name and what they said
 }
 
 // A player connected to the a q2 client.
@@ -150,37 +156,38 @@ func ParseConnect(cl *client.Client) {
 	//cl.SendToWebsiteFeed(wstxt, api.FeedJoinPart)
 
 	match, rules := CheckRules(p, cl.Rules)
-	if match {
-		p.Rules = rules
-		cl.Log.Printf("%s|%d matched the following rules:\n", p.Name, p.ClientID)
-		for _, rule := range rules {
-			cl.Log.Printf("  - %s (%s)\n", strings.Join(rule.GetDescription(), " "), rule.GetType())
-		}
-		for _, rule := range rules {
-			if rule.GetType() == pb.RuleType_BAN {
-				SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
-				KickPlayer(cl, p, "")
-				break
-			}
-			if rule.GetType() == pb.RuleType_MUTE {
-				p.Muted = true
-				SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
-				MutePlayer(cl, p, -1) // rule mutes are not temporary (but the rule can be)
-			}
-			if rule.GetType() == pb.RuleType_STIFLE {
-				p.Stifled = true
-				p.StifleLength = int(rule.GetStifleLength())
-				SayPlayer(cl, p, PRINT_HIGH, "You're stifled")
-			}
-			if rule.GetType() == pb.RuleType_MESSAGE {
-				SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
-			}
-		}
-	}
 
 	// add a slight delay when processing rules
 	go func() {
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
+		if match {
+			p.Rules = rules
+			cl.Log.Printf("%s|%d matched the following rules:\n", p.Name, p.ClientID)
+			for _, rule := range rules {
+				cl.Log.Printf("  - %s (%s)\n", strings.Join(rule.GetDescription(), " "), rule.GetType())
+			}
+			for _, rule := range rules {
+				if rule.GetType() == pb.RuleType_BAN {
+					SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
+					KickPlayer(cl, p, "")
+					break
+				}
+				if rule.GetType() == pb.RuleType_MUTE {
+					p.Muted = true
+					SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
+					MutePlayer(cl, p, -1) // rule mutes are not temporary (but the rule can be)
+				}
+				if rule.GetType() == pb.RuleType_STIFLE {
+					p.Stifled = true
+					p.StifleLength = int(rule.GetStifleLength())
+					SayPlayer(cl, p, PRINT_CHAT, "You're stifled")
+					MutePlayer(cl, p, p.StifleLength)
+				}
+				if rule.GetType() == pb.RuleType_MESSAGE {
+					SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
+				}
+			}
+		}
 	}()
 }
 
