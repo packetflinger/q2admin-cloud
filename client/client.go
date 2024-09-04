@@ -5,6 +5,7 @@ package client
 
 import (
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -165,6 +166,44 @@ func (cl *Client) LoadSettings(name string) (Client, error) {
 		client.IPAddress = tokens[0]
 	}
 	return client, nil
+}
+
+// GetPlayerFromPrint attempts to identify a player object associated with a
+// print message. Returns a slice since Q2 allows multiple players to use the
+// same name.
+//
+// Quake 2 servers don't care who said what, they just send an
+// svc_print in the format of "<name>: message". Team-based messages have the
+// name in parens. The only delimiter is ": " between the name and message.
+// But ": " is allowed in both player names and the messages they type.
+//
+// Examples:
+//
+//	"claire: nice shot!" - valid
+//	"best: me: Nice Shot!!" - valid (player name "best: me")
+//	"worst: you: hahah, nice shot: dumbass" - valid (player name "worst: you")
+//
+// So, if there is only 1 ": " in the string, it's easy. If more than one, loop
+// through the known players on the map and try to
+func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
+	var players []*Player
+	var names []string
+
+	count := strings.Count(txt, ": ")
+	if count == 0 {
+		return nil, errors.New("no name in print")
+	} else {
+		names = append(names, strings.Split(txt, ": ")...)
+		for _, name := range names[:count-1] {
+			for i, p := range cl.Players {
+				if p.Name == name {
+					players = append(players, &cl.Players[i])
+				}
+			}
+		}
+	}
+
+	return players, nil
 }
 
 // Send all messages in the outgoing queue to the client (gameserver)
