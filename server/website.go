@@ -230,6 +230,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Displays info page for a particular client
 func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["ServerUUID"]
