@@ -40,6 +40,7 @@ type Player struct {
 	StifleLength     int     // seconds
 	Client           *Client // circular ref
 	Muted            bool    // is this player muted?
+	FloodInfo        *pb.FloodInfo
 }
 
 // Get a pointer to a player based on a client number
