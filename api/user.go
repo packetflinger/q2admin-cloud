@@ -50,17 +50,6 @@ func (q2a *CloudAdminServer) GetUser(id string) (*pb.User, error) {
 	return &pb.User{}, errors.New("user not found")
 }
 */
-/*
-// Get a pointer to a user based on their name
-func (q2a *RemoteAdminServer) GetUserByName(n string) (*pb.User, error) {
-	for _, u := range q2a.Users {
-		if u.GetName() == n {
-			return u, nil
-		}
-	}
-	return &pb.User{}, errors.New("user not found")
-}
-*/
 
 // write all User objects to json format on disk
 func WriteUsersToDisk(users []User, filename string) {
