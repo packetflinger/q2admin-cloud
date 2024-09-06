@@ -37,20 +37,6 @@ type UserSession struct {
 	Expires int64  // unix timestamp
 }
 
-/*
-// Get a pointer to a user based on their ID
-func (q2a *CloudAdminServer) GetUser(id string) (*pb.User, error) {
-	log.Println(q2a.Users)
-	for _, u := range q2a.Users {
-		//log.Println(u.ID)
-		if u.GetUuid() == id {
-			return u, nil
-		}
-	}
-	return &pb.User{}, errors.New("user not found")
-}
-*/
-
 // write all User objects to json format on disk
 func WriteUsersToDisk(users []User, filename string) {
 	dusers := []UserDiskFormat{}
