@@ -61,7 +61,8 @@ func WriteUsersToDisk(users []User, filename string) {
 	}
 }
 
-// Read a json file containing users and parse into a struct.
+// Read a text proto file containing api users and unmarshal it.
+//
 // Called at startup
 func ReadUsersFromDisk(filename string) ([]*pb.User, error) {
 	users := []*pb.User{}
@@ -76,4 +77,23 @@ func ReadUsersFromDisk(filename string) ([]*pb.User, error) {
 		return users, err
 	}
 	return df.GetUser(), nil
+}
+
+// Write the user proto to disk
+func WriteUsers(users []*pb.User, name string) error {
+	userspb := &pb.Users{
+		User: users,
+	}
+	data, err := prototext.MarshalOptions{
+		Multiline: true,
+		Indent:    "  ",
+	}.Marshal(userspb)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(name, data, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	return nil
 }
