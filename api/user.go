@@ -20,15 +20,6 @@ type User struct {
 	Session     UserSession
 }
 
-// These are users who will be admining the clients
-type UserDiskFormat struct {
-	ID          string `json:"ID"` // uuid
-	Email       string `json:"Email"`
-	Name        string `json:"Name"`
-	Description string `json:"Description"`
-	Disabled    bool   `json:"Disabled"`
-}
-
 // A website session
 type UserSession struct {
 	ID      string // uuid
