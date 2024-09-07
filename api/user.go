@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"log"
 	"os"
 
@@ -35,30 +34,6 @@ type UserSession struct {
 	ID      string // uuid
 	Created int64  // unix timestamp
 	Expires int64  // unix timestamp
-}
-
-// write all User objects to json format on disk
-func WriteUsersToDisk(users []User, filename string) {
-	dusers := []UserDiskFormat{}
-	for _, u := range users {
-		df := UserDiskFormat{}
-		df.ID = u.ID
-		df.Name = u.Name
-		df.Email = u.Email
-		df.Description = u.Description
-		df.Disabled = u.Disabled
-		dusers = append(dusers, df)
-	}
-
-	filecontents, err := json.MarshalIndent(dusers, "", "  ")
-	if err != nil {
-		log.Println(err)
-	}
-
-	err = os.WriteFile(filename, filecontents, 0644)
-	if err != nil {
-		log.Println(err)
-	}
 }
 
 // Read a text proto file containing api users and unmarshal it.
