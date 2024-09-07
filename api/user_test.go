@@ -37,43 +37,6 @@ func TestUserRead(t *testing.T) {
 	}
 }
 
-/*
-func TestUserGet(t *testing.T) {
-	users, err := ReadUsersFromDisk("users-test.json")
-	if err != nil {
-		t.Error(err)
-	}
-	Q2A.Users = users
-	if len(users) == 0 {
-		t.Error("No users found")
-	}
-
-	u, e := Q2A.GetUser("81dbcad6-9151-460b-b475-6f728cc2d44d")
-	if e != nil {
-		t.Error(e)
-	}
-	if u.Name != "claire" {
-		t.Error("Name doesn't match")
-	}
-
-	u, e = Q2A.GetUserByEmail("somebody@somewhere.com")
-	if e != nil {
-		t.Error(e)
-	}
-	if u.Name != "claire" {
-		t.Error("Name doesn't match")
-	}
-
-	u, e = Q2A.GetUserByName("claire")
-	if e != nil {
-		t.Error(e)
-	}
-	if u.Email != "somebody@somewhere.com" {
-		t.Error("Name doesn't match")
-	}
-}
-*/
-
 func TestWriteUser(t *testing.T) {
 	tests := []struct {
 		name    string
