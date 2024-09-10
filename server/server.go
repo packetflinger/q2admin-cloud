@@ -303,22 +303,24 @@ func HandleConnection(c net.Conn) {
 		return
 	}
 
-	if ver < versionRequired {
-		log.Printf("Old client - got version %d, want at least %d\n", ver, versionRequired)
-		return
-	}
-
 	cl, err := FindClient(uuid)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	cl.Path = path.Join(Cloud.Config.GetClientDirectory(), cl.Name)
 
 	cl.Log, err = NewClientLogger(cl)
 	if err != nil {
 		log.Printf("[%s] error creating logger: %v\n", cl.Name, err)
 	}
-	cl.Log.Printf("connecting...\n")
+	cl.Log.Printf("[%s] connecting...\n", cl.IPAddress)
+
+	if ver < versionRequired {
+		log.Printf("Old client - got version %d, want at least %d\n", ver, versionRequired)
+		cl.Log.Printf("q2admin library too old - found version %d, need at least %d\n", ver, versionRequired)
+		return
+	}
 
 	cl.Port = int(port)
 	cl.Encrypted = int(enc) == 1
