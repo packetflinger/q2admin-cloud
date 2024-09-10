@@ -231,6 +231,38 @@ func RotateKeys(cl *client.Client) {
 	cl.AESIV = iv
 }
 
+// Read all client names from disk, load their data
+// into memory. Add each to the client list.
+//
+// Called from initialize() at startup
+func LoadClients(filename string) ([]client.Client, error) {
+	clients := []client.Client{}
+	clientspb := pb.ClientList{}
+
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		return clients, err
+	}
+	err = prototext.Unmarshal(contents, &clientspb)
+	if err != nil {
+		return clients, err
+	}
+
+	clientNames := clientspb.GetClient()
+	for _, c := range clientNames {
+		cl, err := (&client.Client{}).LoadSettings(c)
+		if err != nil {
+			continue
+		}
+		cl.Rules, err = cl.FetchRules()
+		if err != nil {
+			log.Println(err)
+		}
+		clients = append(clients, cl)
+	}
+	return clients, nil
+}
+
 // Write the clients proto to disk as text-format
 func WriteClients(outfile string, clients []client.Client) error {
 	clientspb := []*pb.Client{}
@@ -477,7 +509,7 @@ func Startup() {
 	}
 
 	log.Println("Loading clients from:", Cloud.Config.GetClientFile())
-	clients, err := client.LoadClients(Cloud.Config.GetClientFile())
+	clients, err := LoadClients(Cloud.Config.GetClientFile())
 	if err != nil {
 		log.Println(err)
 	} else {

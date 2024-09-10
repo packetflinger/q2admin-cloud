@@ -23,14 +23,14 @@ import (
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
-// This struct is partially populated by parsing disk a file
-// on disk on init and the rest is filled in when the game
+// This struct is partially populated by parsing a config file
+// on disk during init and the rest is filled in when the game
 // server actually connects
 type Client struct {
 	ID          int                   // this is the database index, remove later
 	UUID        string                // random identifier
 	Owner       string                // email addr
-	Version     int                   // what version are we running
+	Version     int                   // q2admin library version
 	Name        string                // the teleport name
 	Description string                // used in teleporting
 	IPAddress   string                // used for teleporting
@@ -56,6 +56,7 @@ type Client struct {
 	Log         *log.Logger           // log stuff here
 	LogFile     *os.File              // pointer to file so we can close when client disconnects
 	APIKeys     *pb.ApiKeys           // keys generated for accessing this client
+	Path        string                // the fs path for this client
 }
 
 // Each client keeps track of the websocket for people "looking at it".
@@ -84,7 +85,7 @@ func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
 // Read rules from disk and return a slice of them
 func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	var rules []*pb.Rule
-	filename := path.Join("clients", cl.Name, "rules.pb")
+	filename := path.Join(cl.Path, "rules.pb")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return rules, err
