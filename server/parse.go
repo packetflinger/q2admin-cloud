@@ -73,16 +73,15 @@ func ParseFrag(cl *client.Client) {
 		return
 	}
 
-	cl.Log.Println("FRAG", a, ">", v)
+	cl.Log.Println("FRAG", attacker.Name, ">", victim.Name)
 
 	if attacker == victim || attacker == nil {
 		victim.Suicides++
 		victim.Frags--
-		victim.Deaths++
 	} else {
 		attacker.Frags++
-		victim.Deaths++
 	}
+	victim.Deaths++
 }
 
 // Received a ping from a client, send a pong to show we're alive
