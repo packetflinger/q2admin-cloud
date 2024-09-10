@@ -44,7 +44,7 @@ func CreateIdentContext(request *http.Request) (*IdentityContext, error) {
 // Is the supplied identity allowed to access this client identified by uuid?
 // If so, return a pointer to that client
 func identityAllowed(ident *IdentityContext, uuid string) (*client.Client, error) {
-	cl, err := FindClient(uuid)
+	cl, err := srv.FindClient(uuid)
 	if err != nil {
 		return nil, err
 	}

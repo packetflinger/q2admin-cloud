@@ -241,7 +241,7 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cl, err := FindClient(uuid)
+	cl, err := srv.FindClient(uuid)
 	if err != nil {
 		log.Println("invalid server id:", uuid)
 		return
@@ -409,7 +409,7 @@ func WebFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page.WebUser = usr
-	srv, err := FindClient(uuid)
+	srv, err := srv.FindClient(uuid)
 	if err != nil {
 		log.Println(err)
 		return
@@ -435,7 +435,7 @@ func WebFeedInput(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["ServerUUID"]
 	user, _ := GetSessionUser(r)
-	srv, err := FindClient(uuid)
+	srv, err := srv.FindClient(uuid)
 	if err != nil {
 		log.Println(err)
 		return

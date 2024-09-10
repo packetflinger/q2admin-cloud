@@ -118,10 +118,10 @@ const (
 
 // Locate the struct of the server for a particular
 // ID, get a pointer to it
-func FindClient(lookup string) (*client.Client, error) {
-	for i := range srv.clients {
-		if srv.clients[i].UUID == lookup {
-			return &srv.clients[i], nil
+func (s *Server) FindClient(lookup string) (*client.Client, error) {
+	for i := range s.clients {
+		if s.clients[i].UUID == lookup {
+			return &s.clients[i], nil
 		}
 	}
 	return nil, errors.New("unknown client")
@@ -145,7 +145,7 @@ func GetUserByEmail(email string) (*pb.User, error) {
 //
 // TODO: make this better
 func RemoveClient(uuid string) bool {
-	cl, err := FindClient(uuid)
+	cl, err := srv.FindClient(uuid)
 	if err != nil {
 		return false
 	}
@@ -334,7 +334,7 @@ func HandleConnection(c net.Conn) {
 		return
 	}
 
-	cl, err := FindClient(uuid)
+	cl, err := srv.FindClient(uuid)
 	if err != nil {
 		log.Println(err)
 		return
