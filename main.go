@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Configfile = flag.String("config", "config/config.pb", "The main config file")
+	config     = flag.String("config", "config/config.pb", "The main config file")
 	foreground = flag.Bool("foreground", false, "log to the console or file")
 )
 
@@ -21,8 +21,8 @@ var (
 func main() {
 	flag.Parse()
 
-	log.Println("Loading config:", *Configfile)
-	textpb, err := os.ReadFile(*Configfile)
+	log.Println("Loading config:", *config)
+	textpb, err := os.ReadFile(*config)
 	if err != nil {
 		log.Fatal(err)
 	}
