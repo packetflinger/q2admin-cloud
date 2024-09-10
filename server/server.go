@@ -24,7 +24,7 @@ import (
 )
 
 // "This" admin server
-type CloudAdminServer struct {
+type Server struct {
 	users      []*pb.User      // website users
 	config     pb.Config       // global config
 	clients    []client.Client // managed quake 2 servers
@@ -46,7 +46,7 @@ type IPInfo struct {
 }
 
 var (
-	srv CloudAdminServer // this server
+	srv Server // this server
 	DB  *sql.DB
 )
 
