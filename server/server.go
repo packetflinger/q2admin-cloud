@@ -250,7 +250,7 @@ func LoadClients(filename string) ([]client.Client, error) {
 
 	clientNames := clientspb.GetClient()
 	for _, c := range clientNames {
-		cl, err := (&client.Client{}).LoadSettings(c)
+		cl, err := client.LoadSettings(c)
 		if err != nil {
 			continue
 		}

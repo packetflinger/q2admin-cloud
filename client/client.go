@@ -101,7 +101,7 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 
 // Read settings file for client from disk and make a *Client struct
 // from them.
-func (cl *Client) LoadSettings(name string) (Client, error) {
+func LoadSettings(name string) (Client, error) {
 	var client Client
 	filename := path.Join("clients", name, "settings.pb")
 	contents, err := os.ReadFile(filename)
