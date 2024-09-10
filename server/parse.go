@@ -112,7 +112,9 @@ func ParsePrint(cl *client.Client) {
 
 	switch level {
 	case PRINT_CHAT:
-		cl.Log.Printf("PRINT (%d) %s\n", level, stripped)
+		cl.Log.Println("CHAT", stripped)
+	case PRINT_HIGH:
+		cl.Log.Println("PRINT", stripped)
 	case PRINT_MEDIUM:
 		ParseObituary(cl, stripped)
 	}
@@ -121,7 +123,6 @@ func ParsePrint(cl *client.Client) {
 	//   1. find the name of the player who said something
 	//   2. find all players matching that name
 	//   3. loop through rules affecting that player, if stifled, re-mute
-	//count := strings.Count(text, ": ") // delimiter between player name and what they said
 }
 
 // A player connected to the a q2 client.
