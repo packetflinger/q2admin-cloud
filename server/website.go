@@ -168,8 +168,8 @@ func CreateSession() *pb.Session {
 // 1. Current date is after the session creation date
 // 2. Current date is before the session expiration
 func ValidateSession(sess string) (*pb.User, error) {
-	for i := range Cloud.Users {
-		u := Cloud.Users[i]
+	for i := range Cloud.users {
+		u := Cloud.users[i]
 		if u.GetSession().GetId() == sess {
 			now := util.GetUnixTimestamp()
 			if now >= u.GetSession().GetCreation() && now < u.GetSession().GetExpiration() {
@@ -306,7 +306,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	var activeservers []ActiveServer
-	for _, s := range Cloud.Clients {
+	for _, s := range Cloud.clients {
 		if s.Connected {
 			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
 			activeservers = append(activeservers, srv)

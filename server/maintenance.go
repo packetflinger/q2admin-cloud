@@ -24,6 +24,6 @@ func startMaintenance() {
 				}
 			}
 		*/
-		Cloud.MaintCount++
+		Cloud.maintCount++
 	}
 }

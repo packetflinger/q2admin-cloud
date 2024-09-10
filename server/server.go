@@ -25,14 +25,14 @@ import (
 
 // "This" admin server
 type CloudAdminServer struct {
-	Users      []*pb.User        // website users
-	Config     pb.Config         // global config
-	Clients    []client.Client   // managed quake 2 servers
-	Rules      []*pb.Rule        // bans/mutes/etc
-	Privatekey *rsa.PrivateKey   // private to us
-	Publickey  *rsa.PublicKey    // known to clients
-	MaintCount int               // total maintenance runs
-	IPCache    map[string]IPInfo // key is the IP address
+	users      []*pb.User      // website users
+	Config     pb.Config       // global config
+	clients    []client.Client // managed quake 2 servers
+	rules      []*pb.Rule      // bans/mutes/etc
+	privateKey *rsa.PrivateKey // private to us
+	publicKey  *rsa.PublicKey  // known to clients
+	maintCount int             // total maintenance runs
+	// ipCache    map[string]IPInfo // key is the IP address
 }
 
 // Information about a particular IP address, including any PTR records from DNS,
@@ -119,9 +119,9 @@ const (
 // Locate the struct of the server for a particular
 // ID, get a pointer to it
 func FindClient(lookup string) (*client.Client, error) {
-	for i := range Cloud.Clients {
-		if Cloud.Clients[i].UUID == lookup {
-			return &Cloud.Clients[i], nil
+	for i := range Cloud.clients {
+		if Cloud.clients[i].UUID == lookup {
+			return &Cloud.clients[i], nil
 		}
 	}
 	return nil, errors.New("unknown client")
@@ -129,7 +129,7 @@ func FindClient(lookup string) (*client.Client, error) {
 
 // Get a pointer to a user based on their email
 func GetUserByEmail(email string) (*pb.User, error) {
-	for _, u := range Cloud.Users {
+	for _, u := range Cloud.users {
 		if u.GetEmail() == email {
 			return u, nil
 		}
@@ -180,14 +180,14 @@ func RemoveClient(uuid string) bool {
 // Circular: find clients by context to include in that context
 func ClientsByContext(ctx *IdentityContext) []*client.Client {
 	cls := []*client.Client{}
-	for i, cl := range Cloud.Clients {
+	for i, cl := range Cloud.clients {
 		if cl.Owner == ctx.user.Email {
-			cls = append(cls, &Cloud.Clients[i])
+			cls = append(cls, &Cloud.clients[i])
 			continue
 		}
 		for _, key := range cl.APIKeys.GetKey() {
 			if key.GetSecret() == ctx.apiKey {
-				cls = append(cls, &Cloud.Clients[i])
+				cls = append(cls, &Cloud.clients[i])
 			}
 		}
 	}
@@ -198,7 +198,7 @@ func ClientsByContext(ctx *IdentityContext) []*client.Client {
 // has access to (owners and delegates)
 func ClientsByIdentity(ident string) []client.Client {
 	list := []client.Client{}
-	for _, cl := range Cloud.Clients {
+	for _, cl := range Cloud.clients {
 		if strings.EqualFold(cl.Owner, ident) {
 			list = append(list, cl)
 		}
@@ -327,7 +327,7 @@ func HandleConnection(c net.Conn) {
 	maxplayers := msg.ReadByte()
 	enc := msg.ReadByte()
 	challenge := msg.ReadData(crypto.RSAKeyLength)
-	clNonce := crypto.PrivateDecrypt(Cloud.Privatekey, challenge)
+	clNonce := crypto.PrivateDecrypt(Cloud.privateKey, challenge)
 	hash, err := crypto.MessageDigest(clNonce)
 	if err != nil {
 		log.Println(err)
@@ -413,7 +413,7 @@ func HandleConnection(c net.Conn) {
 
 	authLen := msg.ReadShort()
 	authCipher := msg.ReadData(int(authLen))
-	authMD := crypto.PrivateDecrypt(Cloud.Privatekey, authCipher)
+	authMD := crypto.PrivateDecrypt(Cloud.privateKey, authCipher)
 	authHash, err := crypto.MessageDigest(svNonce)
 	if err != nil {
 		log.Println(err)
@@ -494,8 +494,8 @@ func Startup() {
 	}
 
 	pubkey := privkey.Public().(*rsa.PublicKey)
-	Cloud.Privatekey = privkey
-	Cloud.Publickey = pubkey
+	Cloud.privateKey = privkey
+	Cloud.publicKey = pubkey
 
 	DB = database.DatabaseConnect(Cloud.Config.Database)
 
@@ -504,7 +504,7 @@ func Startup() {
 	if err != nil {
 		log.Println(err)
 	} else {
-		Cloud.Rules = rules
+		Cloud.rules = rules
 	}
 
 	log.Println("Loading clients from:", Cloud.Config.GetClientFile())
@@ -512,7 +512,7 @@ func Startup() {
 	if err != nil {
 		log.Println(err)
 	} else {
-		Cloud.Clients = clients
+		Cloud.clients = clients
 	}
 
 	// Read users
@@ -521,10 +521,10 @@ func Startup() {
 	if err != nil {
 		log.Println(err)
 	} else {
-		Cloud.Users = users
+		Cloud.users = users
 	}
 
-	for _, c := range Cloud.Clients {
+	for _, c := range Cloud.clients {
 		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 	}
 
