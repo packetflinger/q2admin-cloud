@@ -119,12 +119,11 @@ const (
 // Locate the struct of the server for a particular
 // ID, get a pointer to it
 func FindClient(lookup string) (*client.Client, error) {
-	for i, cl := range Cloud.Clients {
-		if cl.UUID == lookup {
+	for i := range Cloud.Clients {
+		if Cloud.Clients[i].UUID == lookup {
 			return &Cloud.Clients[i], nil
 		}
 	}
-
 	return nil, errors.New("unknown client")
 }
 
