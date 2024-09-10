@@ -26,7 +26,7 @@ import (
 // "This" admin server
 type CloudAdminServer struct {
 	users      []*pb.User      // website users
-	Config     pb.Config       // global config
+	config     pb.Config       // global config
 	clients    []client.Client // managed quake 2 servers
 	rules      []*pb.Rule      // bans/mutes/etc
 	privateKey *rsa.PrivateKey // private to us
@@ -46,8 +46,8 @@ type IPInfo struct {
 }
 
 var (
-	Cloud CloudAdminServer // this server
-	DB    *sql.DB
+	srv CloudAdminServer // this server
+	DB  *sql.DB
 )
 
 const (
@@ -119,9 +119,9 @@ const (
 // Locate the struct of the server for a particular
 // ID, get a pointer to it
 func FindClient(lookup string) (*client.Client, error) {
-	for i := range Cloud.clients {
-		if Cloud.clients[i].UUID == lookup {
-			return &Cloud.clients[i], nil
+	for i := range srv.clients {
+		if srv.clients[i].UUID == lookup {
+			return &srv.clients[i], nil
 		}
 	}
 	return nil, errors.New("unknown client")
@@ -129,7 +129,7 @@ func FindClient(lookup string) (*client.Client, error) {
 
 // Get a pointer to a user based on their email
 func GetUserByEmail(email string) (*pb.User, error) {
-	for _, u := range Cloud.users {
+	for _, u := range srv.users {
 		if u.GetEmail() == email {
 			return u, nil
 		}
@@ -180,14 +180,14 @@ func RemoveClient(uuid string) bool {
 // Circular: find clients by context to include in that context
 func ClientsByContext(ctx *IdentityContext) []*client.Client {
 	cls := []*client.Client{}
-	for i, cl := range Cloud.clients {
+	for i, cl := range srv.clients {
 		if cl.Owner == ctx.user.Email {
-			cls = append(cls, &Cloud.clients[i])
+			cls = append(cls, &srv.clients[i])
 			continue
 		}
 		for _, key := range cl.APIKeys.GetKey() {
 			if key.GetSecret() == ctx.apiKey {
-				cls = append(cls, &Cloud.clients[i])
+				cls = append(cls, &srv.clients[i])
 			}
 		}
 	}
@@ -198,7 +198,7 @@ func ClientsByContext(ctx *IdentityContext) []*client.Client {
 // has access to (owners and delegates)
 func ClientsByIdentity(ident string) []client.Client {
 	list := []client.Client{}
-	for _, cl := range Cloud.clients {
+	for _, cl := range srv.clients {
 		if strings.EqualFold(cl.Owner, ident) {
 			list = append(list, cl)
 		}
@@ -327,7 +327,7 @@ func HandleConnection(c net.Conn) {
 	maxplayers := msg.ReadByte()
 	enc := msg.ReadByte()
 	challenge := msg.ReadData(crypto.RSAKeyLength)
-	clNonce := crypto.PrivateDecrypt(Cloud.privateKey, challenge)
+	clNonce := crypto.PrivateDecrypt(srv.privateKey, challenge)
 	hash, err := crypto.MessageDigest(clNonce)
 	if err != nil {
 		log.Println(err)
@@ -339,7 +339,7 @@ func HandleConnection(c net.Conn) {
 		log.Println(err)
 		return
 	}
-	cl.Path = path.Join(Cloud.Config.GetClientDirectory(), cl.Name)
+	cl.Path = path.Join(srv.config.GetClientDirectory(), cl.Name)
 
 	cl.Log, err = NewClientLogger(cl)
 	if err != nil {
@@ -360,7 +360,7 @@ func HandleConnection(c net.Conn) {
 	cl.Version = int(ver)
 	cl.MaxPlayers = int(maxplayers)
 
-	keyFile := path.Join(Cloud.Config.ClientDirectory, cl.Name, "key")
+	keyFile := path.Join(srv.config.ClientDirectory, cl.Name, "key")
 
 	log.Printf("[%s] Loading public key: %s\n", cl.Name, keyFile)
 	pubkey, err := crypto.LoadPublicKey(keyFile)
@@ -413,7 +413,7 @@ func HandleConnection(c net.Conn) {
 
 	authLen := msg.ReadShort()
 	authCipher := msg.ReadData(int(authLen))
-	authMD := crypto.PrivateDecrypt(Cloud.privateKey, authCipher)
+	authMD := crypto.PrivateDecrypt(srv.privateKey, authCipher)
 	authHash, err := crypto.MessageDigest(svNonce)
 	if err != nil {
 		log.Println(err)
@@ -478,57 +478,67 @@ func Shutdown() {
 }
 
 // Start the cloud admin server
-func Startup() {
-	if !Cloud.Config.Foreground {
-		f, err := os.OpenFile(Cloud.Config.GetLogFile(), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+func Startup(configFile string, foreground bool) {
+	log.Println("Loading config:", configFile)
+	textpb, err := os.ReadFile(configFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = prototext.Unmarshal(textpb, &srv.config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !foreground {
+		f, err := os.OpenFile(srv.config.GetLogFile(), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			panic(err)
 		}
 		defer f.Close()
 		log.SetOutput(f)
 	}
-	log.Println("Loading private key:", Cloud.Config.GetPrivateKey())
-	privkey, err := crypto.LoadPrivateKey(Cloud.Config.GetPrivateKey())
+	log.Println("Loading private key:", srv.config.GetPrivateKey())
+	privkey, err := crypto.LoadPrivateKey(srv.config.GetPrivateKey())
 	if err != nil {
 		log.Fatalf("Problems loading private key: %s\n", err.Error())
 	}
 
 	pubkey := privkey.Public().(*rsa.PublicKey)
-	Cloud.privateKey = privkey
-	Cloud.publicKey = pubkey
+	srv.privateKey = privkey
+	srv.publicKey = pubkey
 
-	DB = database.DatabaseConnect(Cloud.Config.Database)
+	DB = database.DatabaseConnect(srv.config.Database)
 
-	log.Println("Loading global rules from:", Cloud.Config.GetRuleFile())
-	rules, err := FetchRules(Cloud.Config.GetRuleFile())
+	log.Println("Loading global rules from:", srv.config.GetRuleFile())
+	rules, err := FetchRules(srv.config.GetRuleFile())
 	if err != nil {
 		log.Println(err)
 	} else {
-		Cloud.rules = rules
+		srv.rules = rules
 	}
 
-	log.Println("Loading clients from:", Cloud.Config.GetClientFile())
-	clients, err := LoadClients(Cloud.Config.GetClientFile())
+	log.Println("Loading clients from:", srv.config.GetClientFile())
+	clients, err := LoadClients(srv.config.GetClientFile())
 	if err != nil {
 		log.Println(err)
 	} else {
-		Cloud.clients = clients
+		srv.clients = clients
 	}
 
 	// Read users
-	log.Println("Loading users from:", Cloud.Config.GetUserFile())
-	users, err := api.ReadUsersFromDisk(Cloud.Config.GetUserFile())
+	log.Println("Loading users from:", srv.config.GetUserFile())
+	users, err := api.ReadUsersFromDisk(srv.config.GetUserFile())
 	if err != nil {
 		log.Println(err)
 	} else {
-		Cloud.users = users
+		srv.users = users
 	}
 
-	for _, c := range Cloud.clients {
+	for _, c := range srv.clients {
 		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 	}
 
-	port := fmt.Sprintf("%s:%d", Cloud.Config.Address, Cloud.Config.Port)
+	port := fmt.Sprintf("%s:%d", srv.config.Address, srv.config.Port)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
 		log.Println(err)
@@ -539,12 +549,12 @@ func Startup() {
 
 	log.Printf("Listening for gameservers on %s\n", port)
 
-	if Cloud.Config.GetApiEnabled() {
-		creds, err := ReadOAuthCredsFromDisk(Cloud.Config.GetAuthFile())
+	if srv.config.GetApiEnabled() {
+		creds, err := ReadOAuthCredsFromDisk(srv.config.GetAuthFile())
 		if err != nil {
 			log.Println(err)
 		}
-		go RunHTTPServer(Cloud.Config.GetApiAddress(), int(Cloud.Config.GetApiPort()), creds)
+		go RunHTTPServer(srv.config.GetApiAddress(), int(srv.config.GetApiPort()), creds)
 	}
 
 	go startMaintenance()

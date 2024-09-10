@@ -10,7 +10,7 @@ import (
 )
 
 func startManagement() {
-	port := fmt.Sprintf("%s:%d", Cloud.Config.ManagementAddress, Cloud.Config.ManagementPort)
+	port := fmt.Sprintf("%s:%d", srv.config.ManagementAddress, srv.config.ManagementPort)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
 		log.Println(err)

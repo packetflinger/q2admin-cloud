@@ -87,7 +87,7 @@ func ParseFrag(cl *client.Client) {
 
 // Received a ping from a client, send a pong to show we're alive
 func Pong(cl *client.Client) {
-	if Cloud.Config.GetDebugMode() {
+	if srv.config.GetDebugMode() {
 		log.Printf("[%s/PING]\n", cl.Name)
 	}
 	cl.PingCount++

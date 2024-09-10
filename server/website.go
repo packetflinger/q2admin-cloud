@@ -168,8 +168,8 @@ func CreateSession() *pb.Session {
 // 1. Current date is after the session creation date
 // 2. Current date is before the session expiration
 func ValidateSession(sess string) (*pb.User, error) {
-	for i := range Cloud.users {
-		u := Cloud.users[i]
+	for i := range srv.users {
+		u := srv.users[i]
 		if u.GetSession().GetId() == sess {
 			now := util.GetUnixTimestamp()
 			if now >= u.GetSession().GetCreation() && now < u.GetSession().GetExpiration() {
@@ -215,9 +215,9 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Dashboard = "active"
 
 	tmpl, e := template.ParseFiles(
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "home.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "home.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 
 	if e != nil {
@@ -256,9 +256,9 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Servers = "active"
 
 	tmpl, e := template.ParseFiles(
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "server-view.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "server-view.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 
 	if e != nil {
@@ -284,7 +284,7 @@ func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 
 // Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
-	infile := path.Join(Cloud.Config.GetWebRoot(), "templates", "sign-in.tmpl")
+	infile := path.Join(srv.config.GetWebRoot(), "templates", "sign-in.tmpl")
 	tmpl, e := template.ParseFiles(infile)
 	auths := []AuthProvider{}
 	for i := range Website.Creds {
@@ -306,7 +306,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	var activeservers []ActiveServer
-	for _, s := range Cloud.clients {
+	for _, s := range srv.clients {
 		if s.Connected {
 			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
 			activeservers = append(activeservers, srv)
@@ -471,9 +471,9 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Groups = "active"
 
 	tmpl, e := template.ParseFiles(
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "my-groups.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "my-groups.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 	if e != nil {
 		log.Println(e)
@@ -505,10 +505,10 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Servers = "active"
 
 	tmpl, e := template.ParseFiles(
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "my-servers.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "server_templates.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "my-servers.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "server_templates.tmpl"),
 	)
 
 	if e != nil {
@@ -535,9 +535,9 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl, e := template.ParseFiles(
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "privacy-policy.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "privacy-policy.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 
 	if e != nil {
@@ -564,9 +564,9 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl, e := template.ParseFiles(
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "terms-of-use.tmpl"),
-		path.Join(Cloud.Config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "terms-of-use.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 
 	if e != nil {

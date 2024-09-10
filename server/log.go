@@ -14,7 +14,7 @@ import (
 //
 // Open the file and return a logger object for it.
 func NewClientLogger(cl *client.Client) (*log.Logger, error) {
-	logfile := path.Join(Cloud.Config.ClientDirectory, cl.Name, "log")
+	logfile := path.Join(srv.config.ClientDirectory, cl.Name, "log")
 	fp, err := os.OpenFile(logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, err
