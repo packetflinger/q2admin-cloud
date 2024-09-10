@@ -128,8 +128,8 @@ func (s *Server) FindClient(lookup string) (*client.Client, error) {
 }
 
 // Get a pointer to a user based on their email
-func GetUserByEmail(email string) (*pb.User, error) {
-	for _, u := range srv.users {
+func (s *Server) GetUserByEmail(email string) (*pb.User, error) {
+	for _, u := range s.users {
 		if u.GetEmail() == email {
 			return u, nil
 		}
