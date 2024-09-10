@@ -99,38 +99,6 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	return rules, nil
 }
 
-// Read all client names from disk, load their data
-// into memory. Add each to the client list.
-//
-// Called from initialize() at startup
-func LoadClients(filename string) ([]Client, error) {
-	clients := []Client{}
-	clientspb := pb.ClientList{}
-
-	contents, err := os.ReadFile(filename)
-	if err != nil {
-		return clients, err
-	}
-	err = prototext.Unmarshal(contents, &clientspb)
-	if err != nil {
-		return clients, err
-	}
-
-	clientNames := clientspb.GetClient()
-	for _, c := range clientNames {
-		client, err := (&Client{}).LoadSettings(c)
-		if err != nil {
-			continue
-		}
-		client.Rules, err = client.FetchRules()
-		if err != nil {
-			log.Println(err)
-		}
-		clients = append(clients, client)
-	}
-	return clients, nil
-}
-
 // Read settings file for client from disk and make a *Client struct
 // from them.
 func (cl *Client) LoadSettings(name string) (Client, error) {
