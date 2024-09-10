@@ -112,8 +112,6 @@ func ParsePrint(cl *client.Client) {
 
 	switch level {
 	case PRINT_CHAT:
-		//cl.SendToWebsiteFeed(stripped, api.FeedChat)
-		//cl.LogChat(stripped)
 		cl.Log.Printf("PRINT (%d) %s\n", level, stripped)
 	case PRINT_MEDIUM:
 		ParseObituary(cl, stripped)
