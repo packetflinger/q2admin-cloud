@@ -224,12 +224,12 @@ func ParseObituary(cl *client.Client, obit string) {
 		return
 	}
 	cl.Log.Printf(
-		"Obituary: %s[%d] -> %s[%d] (%d)\n",
+		"Obituary: %s[%d] -> %s[%d] (%s)\n",
 		death.Murderer.Name,
 		death.Murderer.ClientID,
 		death.Victim.Name,
 		death.Victim.ClientID,
-		death.Means,
+		death.MeansToString(),
 	)
 }
 
