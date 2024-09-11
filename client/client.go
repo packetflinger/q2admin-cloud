@@ -156,18 +156,21 @@ func LoadSettings(name string, clientsDir string) (Client, error) {
 // through the known players on the map and try to
 func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 	var players []*Player
-	var names []string
+	var name string
 
-	count := strings.Count(txt, ": ")
+	count := strings.Count(txt, ": ") // note the space
 	if count == 0 {
 		return nil, errors.New("no name in print")
 	} else {
-		names = append(names, strings.Split(txt, ": ")...)
-		for _, name := range names[:count-1] {
-			for i, p := range cl.Players {
-				if p.Name == name {
-					players = append(players, &cl.Players[i])
-				}
+		tokens := strings.Split(txt, ": ")
+		if len(tokens) > 1 {
+			name = tokens[0]
+		}
+
+		fmt.Println(name)
+		for i, p := range cl.Players {
+			if p.Name == name {
+				players = append(players, &cl.Players[i])
 			}
 		}
 	}
@@ -233,4 +236,20 @@ func (cl *Client) ToProto() *pb.Client {
 	p.Owner = cl.Owner
 	p.Verified = cl.Verified
 	return &p
+}
+
+// Find all players that match the name provided. Multiple players
+// are allowed to have the same name at the same time, this will
+// return all of them.
+func (cl *Client) PlayersByName(name string) ([]*Player, error) {
+	var players []*Player
+	if name == "" {
+		return players, errors.New("blank name argument")
+	}
+	for i, p := range cl.Players {
+		if p.Name == name {
+			players = append(players, &cl.Players[i])
+		}
+	}
+	return players, nil
 }
