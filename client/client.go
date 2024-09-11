@@ -100,9 +100,9 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 
 // Read settings file for client from disk and make a *Client struct
 // from them.
-func LoadSettings(name string) (Client, error) {
+func LoadSettings(name string, clientsDir string) (Client, error) {
 	var client Client
-	filename := path.Join("clients", name, "settings.pb")
+	filename := path.Join(clientsDir, name, "settings.pb")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return client, err
@@ -121,6 +121,7 @@ func LoadSettings(name string) (Client, error) {
 		client.Owner = c.GetOwner()
 		client.Description = c.GetDescription()
 		client.UUID = c.GetUuid()
+		client.Path = path.Join(clientsDir, client.Name)
 
 		tokens := strings.Split(c.GetAddress(), ":")
 		if len(tokens) == 2 {
