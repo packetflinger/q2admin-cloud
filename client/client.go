@@ -48,8 +48,7 @@ type Client struct {
 	Encrypted   bool                  // are the messages AES encrypted?
 	Trusted     bool                  // signature challenge verified
 	PublicKey   *rsa.PublicKey        // supplied by owner via website
-	AESKey      []byte                // 16 (128bit)
-	AESIV       []byte                // 16 bytes (CBC)
+	CryptoKey   crypto.EncryptionKey  // AES 128 CBC
 	Rules       []*pb.Rule            // bans, mutes, etc
 	PingCount   int                   // how many pings client has seen
 	WebSockets  []*websocket.Conn     // slice of web clients
@@ -184,8 +183,8 @@ func (cl *Client) SendMessages() {
 	// keys have been exchanged, encrypt the message
 	if cl.Trusted && cl.Encrypted {
 		cipher := crypto.SymmetricEncrypt(
-			cl.AESKey,
-			cl.AESIV,
+			cl.CryptoKey.Key,
+			cl.CryptoKey.InitVector,
 			cl.MessageOut.Buffer[:cl.MessageOut.Index])
 		cl.MessageOut = message.NewMessageBuffer(cipher)
 	}

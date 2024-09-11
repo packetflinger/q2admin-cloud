@@ -217,17 +217,18 @@ func RotateKeys(cl *client.Client) {
 		return
 	}
 
-	key := crypto.RandomBytes(crypto.AESBlockLength)
-	iv := crypto.RandomBytes(crypto.AESIVLength)
-	blob := append(key, iv...)
+	keyData := crypto.EncryptionKey{
+		Key:        crypto.RandomBytes(crypto.AESBlockLength),
+		InitVector: crypto.RandomBytes(crypto.AESIVLength),
+	}
+	blob := append(keyData.Key, keyData.InitVector...)
 
 	// Send immediately so old keys used for this message
 	(&cl.MessageOut).WriteByte(SCMDKey)
 	(&cl.MessageOut).WriteData(blob)
 	cl.SendMessages()
 
-	cl.AESKey = key
-	cl.AESIV = iv
+	cl.CryptoKey = keyData
 }
 
 // Read all client names from disk, load their data
@@ -376,10 +377,12 @@ func HandleConnection(c net.Conn) {
 	// If client requests encrypted transit, encrypt the session key/iv
 	// with the client's public key to keep it confidential
 	if cl.Encrypted {
-		cl.AESKey = crypto.RandomBytes(crypto.AESBlockLength)
-		cl.AESIV = crypto.RandomBytes(crypto.AESIVLength)
-		blob = append(blob, cl.AESKey...)
-		blob = append(blob, cl.AESIV...)
+		cl.CryptoKey = crypto.EncryptionKey{
+			Key:        crypto.RandomBytes(crypto.AESBlockLength),
+			InitVector: crypto.RandomBytes(crypto.AESIVLength),
+		}
+		blob = append(blob, cl.CryptoKey.Key...)
+		blob = append(blob, cl.CryptoKey.InitVector...)
 	}
 
 	blobCipher := crypto.PublicEncrypt(cl.PublicKey, blob)
@@ -451,7 +454,7 @@ func HandleConnection(c net.Conn) {
 		}
 
 		if cl.Encrypted && cl.Trusted {
-			input, inputSize = crypto.SymmetricDecrypt(cl.AESKey, cl.AESIV, input[:size])
+			input, inputSize = crypto.SymmetricDecrypt(cl.CryptoKey.Key, cl.CryptoKey.InitVector, input[:size])
 			if inputSize == 0 {
 				cl.Log.Println("decryption error, dropping client")
 				break

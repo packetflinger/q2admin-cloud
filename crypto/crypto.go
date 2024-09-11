@@ -30,6 +30,11 @@ const (
 	DigestLength   = 32  // 256 bits
 )
 
+type EncryptionKey struct {
+	Key        []byte // 16 bytes (128 bit)
+	InitVector []byte // 16 bytes
+}
+
 // Get a hash of an input byte slice
 // Currently using SHA256, if that changes, update the DigestLength constant above!
 func MessageDigest(input []byte) ([]byte, error) {
