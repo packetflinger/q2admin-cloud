@@ -252,3 +252,84 @@ func (cl *Client) CalculateDeath(obit string) (*Death, error) {
 
 	return death, errors.New("obituary not recognised")
 }
+
+// MeansToString will return a string representation of the means of death.
+func (d *Death) MeansToString() string {
+	var means string
+
+	switch d.Means {
+	case ModBlaster:
+		means = "blaster"
+	case ModShotgun:
+		means = "shotgun"
+	case ModSShotgun:
+		means = "super shotgun"
+	case ModMachinegun:
+		means = "machinegun"
+	case ModChaingun:
+		means = "chaingun"
+	case ModGrenade:
+		fallthrough
+	case ModGSplash:
+		means = "grenade"
+	case ModHGSplash:
+		fallthrough
+	case ModHeldGrenade:
+		fallthrough
+	case ModHandgrenade:
+		means = "hand grenade"
+	case ModRSplash:
+		fallthrough
+	case ModRocket:
+		means = "rocket launcher"
+	case ModHyperblaster:
+		means = "hyperblaster"
+	case ModRailgun:
+		means = "railgun"
+	case ModBFGBlast:
+		fallthrough
+	case ModBFGLaser:
+		fallthrough
+	case ModBFGEffect:
+		means = "bfg"
+	case ModBarrel:
+		means = "barrel"
+	case ModBomb:
+		means = "bomb"
+	case ModCrush:
+		means = "crush"
+	case ModExit:
+		means = "exit"
+	case ModExplosive:
+		means = "explosion"
+	case ModFalling:
+		means = "fall"
+	case ModFriendlyFire:
+		means = "friendly fire"
+	case ModHit:
+		means = "hit"
+	case ModLava:
+		means = "lava"
+	case ModSlime:
+		means = "slime"
+	case ModSplash:
+		means = "spash"
+	case ModSuicide:
+		means = "suicide"
+	case ModTargetBlaster:
+		means = "target blaster"
+	case ModTargetLaser:
+		means = "target laser"
+	case ModTelefrag:
+		means = "telefrag"
+	case ModTriggerHurt:
+		means = "trigger hurt"
+	case ModWater:
+		means = "water"
+	case ModUnknown:
+		fallthrough
+	default:
+		means = "unknown"
+	}
+	return means
+}
