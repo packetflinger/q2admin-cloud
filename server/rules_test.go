@@ -427,3 +427,58 @@ func TestCheckRule(t *testing.T) {
 		})
 	}
 }
+
+func TestDurationToSeconds(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  int
+	}{
+		{
+			name:  "test 1",
+			input: "5.5m",
+			want:  300 + 30,
+		},
+		{
+			name:  "test 2",
+			input: "1.5h",
+			want:  3600 + 1800,
+		},
+		{
+			name:  "test 3",
+			input: "5:00",
+			want:  300,
+		},
+		{
+			name:  "test 4",
+			input: "01:05:30",
+			want:  3600 + 300 + 30,
+		},
+		{
+			name:  "test 5",
+			input: "600s",
+			want:  600,
+		},
+		{
+			name:  "test 6",
+			input: "3m",
+			want:  60 + 60 + 60,
+		},
+		{
+			name:  "test 7",
+			input: "930",
+			want:  930,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := durationToSeconds(tc.input)
+			if err != nil {
+				t.Error(err)
+			}
+			if got != tc.want {
+				t.Error("got:", got, "want:", tc.want)
+			}
+		})
+	}
+}

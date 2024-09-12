@@ -1,9 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/packetflinger/q2admind/client"
@@ -264,4 +267,79 @@ func RuleExceptionMatch(ex *pb.Exception, p *client.Player) bool {
 		}
 	}
 	return false
+}
+
+// durationToSeconds converts a string representation of a duration of time into
+// the appropriate number of seconds.
+//
+// Used in parsing TimeSpec proto messages for rules.
+func durationToSeconds(ts string) (int, error) {
+	multiplier := map[string]int{
+		"s": 1,
+		"m": 60,
+		"h": 3600,
+		"d": 86400,
+		"w": 86400 * 7,
+		"M": 86400 * 30, // yeah, I know
+		"y": 86400 * 7 * 52,
+	}
+	units := "s"
+	trimmed := strings.Trim(ts, " \t\n")
+
+	for u := range multiplier {
+		if strings.HasSuffix(trimmed, u) {
+			units = u
+			trimmed = trimmed[:len(trimmed)-1]
+		}
+	}
+	// it's a decimal
+	if strings.Contains(trimmed, ".") {
+		value, err := strconv.ParseFloat(trimmed, 64)
+		if err != nil {
+			return 0, err
+		}
+		return int(value * float64(multiplier[units])), nil
+	}
+
+	// time (clock) notation
+	if strings.Contains(trimmed, ":") {
+		value := int64(0)
+		tokens := strings.Split(trimmed, ":")
+		switch len(tokens) {
+		case 2: // just minutes and seconds
+			tmp, err := strconv.ParseInt(tokens[1], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("can't convert %q to an integer", tokens[1])
+			}
+			value += tmp
+			tmp, err = strconv.ParseInt(tokens[0], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("can't convert %q to an integer", tokens[1])
+			}
+			value += tmp * int64(multiplier["m"])
+			return int(value), nil
+		case 3: // hours:minutes:seconds
+			tmp, err := strconv.ParseInt(tokens[2], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("can't convert %q to an integer", tokens[1])
+			}
+			value += tmp
+			tmp, err = strconv.ParseInt(tokens[1], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("can't convert %q to an integer", tokens[1])
+			}
+			value += tmp * int64(multiplier["m"])
+			tmp, err = strconv.ParseInt(tokens[0], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("can't convert %q to an integer", tokens[1])
+			}
+			value += tmp * int64(multiplier["h"])
+			return int(value), nil
+		}
+	}
+	value, err := strconv.ParseInt(trimmed, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("can't convert %q to an integer", trimmed)
+	}
+	return int(value * int64(multiplier[units])), nil
 }
