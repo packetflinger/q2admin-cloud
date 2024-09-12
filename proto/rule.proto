@@ -19,6 +19,48 @@ message UserInfo {
     string value = 2;
 }
 
+// For crafting rules based around specific times/timing.
+//
+// If a TimeSpec message is included in a rule, that rule only applies when
+// the TimeSpec is true. The opposite is true if a TimeSpec is used in an
+// exception.
+// 
+// Times are relative to "midnight" [00:00] in the timezone the cloudadmin
+// server is running, unless a timezone is included in the DATETIME_SPEC. So
+// an "after 8am" equivelent rule on an America/Eastern [GMT-5] based admin 
+// server applied to a gameserver in the America/Pacific [GMT-8] zone will
+// effectively result in a "after 5am" local rule.
+//
+// Daylight savings is not taken into account at all, that's up to the host
+// machine.
+//
+// Don't use bad dates like February 29th when not in a leap year, bad shit 
+// will probably happen.
+//
+// DATETIME_SPEC examples
+//   []
+//
+// INTERVAL_SPEC 
+//   It's a string representation of an amount of time. If no units are
+//   included, the value will be assumed as seconds. Recognized units:
+//     - "s" seconds
+//     - "m" minutes
+//     - "h" hours
+//     - "d" days
+//     - "w" weeks
+//     - "M" months (note capital)
+//     - "y" years
+//   Examples
+//     ["5m", "300s", "300", "0.083h", "5:00", "00:05:00"] = 5 minutes
+//     ["3600", "3600s", "1h", "1:00:00", "01:00:00", "0.083d"] = 1 hour
+//     ["21d", "3w", "0.057y", "0.7M"] = 3 weeks
+message TimeSpec {
+    string before = 1;  // DATETIME_SPEC
+    string after = 2;   // DATETIME_SPEC
+    string every = 3;   // INTERVAL_SPEC
+
+}
+
 // If an exception matches as part of a rule that matches, the rule will
 // be considered to have not matched.
 //
@@ -33,6 +75,7 @@ message Exception {
     repeated string client = 3;      // game client name/version (case-sensitive regex)
     repeated UserInfo user_info = 4; // UI key/value pair
     int64 expiration_time = 5;       // unix timestamp when exception no long valid
+    TimeSpec timespec = 8;           // time-related stuff
 }
 
 // An player ACL. When a player connects to a cloudadmin-enabled gameserver, the
@@ -52,7 +95,8 @@ message Rule {
     uint32 delay = 11;                 // wait this man millisecs before action
     int32 stifle_length = 20;          // seconds 
     repeated string description = 14;  // details on why this rule was created
-    repeated Exception exception = 17; // prevent a rule match 
+    repeated Exception exception = 17; // prevent a rule match
+    TimeSpec timespec = 21;            // time-related stuff
 }
 
 // A collection of rules
