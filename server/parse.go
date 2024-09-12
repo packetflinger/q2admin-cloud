@@ -120,9 +120,18 @@ func ParsePrint(cl *client.Client) {
 	}
 
 	// re-stifle if needed
-	//   1. find the name of the player who said something
-	//   2. find all players matching that name
-	//   3. loop through rules affecting that player, if stifled, re-mute
+	if level == PRINT_CHAT {
+		players, err := cl.GetPlayerFromPrint(stripped)
+		if err != nil {
+			cl.Log.Println(err)
+			return
+		}
+		for _, p := range players {
+			if p.Stifled {
+				MutePlayer(cl, p, p.StifleLength)
+			}
+		}
+	}
 }
 
 // A player connected to the a q2 client.
@@ -166,23 +175,26 @@ func ParseConnect(cl *client.Client) {
 			}
 			for _, rule := range rules {
 				if rule.GetType() == pb.RuleType_BAN {
-					SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
+					SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
 					KickPlayer(cl, p, "")
 					break
 				}
 				if rule.GetType() == pb.RuleType_MUTE {
 					p.Muted = true
-					SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
-					MutePlayer(cl, p, -1) // rule mutes are not temporary (but the rule can be)
+					SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
+					MutePlayer(cl, p, -1)
 				}
 				if rule.GetType() == pb.RuleType_STIFLE {
+					if p.Muted {
+						continue // no point stifling an already muted player
+					}
 					p.Stifled = true
 					p.StifleLength = int(rule.GetStifleLength())
 					SayPlayer(cl, p, PRINT_CHAT, "You're stifled")
 					MutePlayer(cl, p, p.StifleLength)
 				}
 				if rule.GetType() == pb.RuleType_MESSAGE {
-					SayPlayer(cl, p, PRINT_HIGH, strings.Join(rule.GetMessage(), " "))
+					SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
 				}
 			}
 		}
@@ -280,7 +292,7 @@ func ParsePlayer(cl *client.Client) *client.Player {
 
 	cl.Players[newplayer.ClientID] = newplayer
 	cl.PlayerCount++
-	return &newplayer
+	return &cl.Players[newplayer.ClientID]
 }
 
 // A command was issued from a player on a client

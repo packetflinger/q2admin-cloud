@@ -25,7 +25,7 @@ func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 		}
 	}
 
-	return len(rules) > 0, rules
+	return len(rules) > 0, SortRules(rules)
 }
 
 // Check if a player matches a particular rule.
@@ -121,7 +121,19 @@ func CheckRule(p *client.Player, r *pb.Rule) bool {
 		}
 	}
 
-	return match && (need <= have) && !exception
+	applies := match && (need <= have) && !exception
+
+	// set any perisistent data on the user pointer if rule matched
+	if match {
+		if r.Type == pb.RuleType_STIFLE {
+			p.Stifled = true
+			p.StifleLength = int(r.GetStifleLength())
+		}
+		if r.Type == pb.RuleType_MUTE {
+			p.Muted = true
+		}
+	}
+	return applies
 }
 
 // Read rules from disk
@@ -136,7 +148,7 @@ func FetchRules(filename string) ([]*pb.Rule, error) {
 	if err != nil {
 		return r, err
 	}
-	return rules.GetRule(), nil
+	return SortRules(rules.GetRule()), nil
 }
 
 // Put ban rules first for fast failing.
@@ -146,7 +158,7 @@ func FetchRules(filename string) ([]*pb.Rule, error) {
 // 3. Stifles
 // 4. Messages
 //
-// Called from ReadGlobalRules() and LoadClients() on startup.
+// Called from FetchRules() on startup.
 // Also called as new rules are added while running
 func SortRules(rules []*pb.Rule) []*pb.Rule {
 	newruleset := []*pb.Rule{}

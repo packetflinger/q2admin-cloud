@@ -184,9 +184,7 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 
-	//player := cl.FindPlayer(p.ClientID)
-	//txt := fmt.Sprintf("[%s/MUTE] %d|%s was muted", cl.Name, p.ClientID, player.Name)
-	//LogEventToDatabase(cl.ID, LogTypeCommand, txt)
+	cl.Log.Printf("MUTE[%d] %s\\%d\n", p.StifleLength, p.Name, p.ClientID)
 }
 
 // Tell the client to disconnect a specific player
