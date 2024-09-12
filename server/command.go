@@ -173,18 +173,19 @@ func StuffPlayer(cl *client.Client, p client.Player, cmd string) {
 	(&cl.MessageOut).WriteString(stuffcmd)
 }
 
-// Temporarily prevent the player from talking.
-// Using a negative number of seconds makes it permanent.
+// Prevent the player from talking.
+// Using a negative number of seconds makes it permanent (mute vs stifle).
 func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
-	cmd := fmt.Sprintf("sv !mute CL %d %d", p.ClientID, seconds)
+	var cmd string
 	if seconds < 0 {
 		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)
+		cl.Log.Printf("MUTE %s\\%d\n", p.Name, p.ClientID)
+	} else {
+		cmd = fmt.Sprintf("sv !mute CL %d %d", p.ClientID, seconds)
+		cl.Log.Printf("STIFLE[%d] %s\\%d\n", p.StifleLength, p.Name, p.ClientID)
 	}
-
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
-
-	cl.Log.Printf("MUTE[%d] %s\\%d\n", p.StifleLength, p.Name, p.ClientID)
 }
 
 // Tell the client to disconnect a specific player
