@@ -166,8 +166,6 @@ func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 		if len(tokens) > 1 {
 			name = tokens[0]
 		}
-
-		fmt.Println(name)
 		for i, p := range cl.Players {
 			if p.Name == name {
 				players = append(players, &cl.Players[i])
