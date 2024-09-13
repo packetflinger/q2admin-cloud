@@ -2,6 +2,7 @@ package server
 
 import (
 	"testing"
+	"time"
 
 	"github.com/packetflinger/q2admind/client"
 	pb "github.com/packetflinger/q2admind/proto"
@@ -473,6 +474,46 @@ func TestDurationToSeconds(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := durationToSeconds(tc.input)
+			if err != nil {
+				t.Error(err)
+			}
+			if got != tc.want {
+				t.Error("got:", got, "want:", tc.want)
+			}
+		})
+	}
+}
+
+func TestStringToTime(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  time.Time
+	}{
+		{
+			name:  "test 1",
+			input: "2024-10-05 15:04:05",
+			want:  time.Date(2024, time.October, 5, 15, 4, 5, 0, time.UTC),
+		},
+		{
+			name:  "test 2",
+			input: "23:20:00",
+			want:  time.Date(0, time.January, 1, 23, 20, 0, 0, time.UTC),
+		},
+		{
+			name:  "test 3",
+			input: "4:30PM",
+			want:  time.Date(0, time.January, 1, 16, 30, 0, 0, time.UTC),
+		},
+		{
+			name:  "test 4",
+			input: "2024-10-05",
+			want:  time.Date(2024, time.October, 5, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := stringToTime(tc.input)
 			if err != nil {
 				t.Error(err)
 			}

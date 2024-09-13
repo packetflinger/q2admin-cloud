@@ -343,3 +343,35 @@ func durationToSeconds(ts string) (int, error) {
 	}
 	return int(value * int64(multiplier[units])), nil
 }
+
+// stringToTime will convert a string representation of a date/time to a time
+// struct for use when matching rules to clients.
+//
+// Supported formats:
+//
+//	"16:30:00" (hour:minute:second)
+//	"4:30PM"
+//	"2024-10-05" (year-month-day)
+//	"2024-10-05 16:30:00" (year-month-day hour:minute:second)
+//
+// For formats that don't include a date, that time on any day will match. For
+// the date-only format, midnight on that day will match.
+func stringToTime(t string) (time.Time, error) {
+	ts, err := time.Parse(time.TimeOnly, t)
+	if err != nil {
+		ts, err = time.Parse(time.Kitchen, t)
+		if err != nil {
+			ts, err = time.Parse(time.DateOnly, t)
+			if err != nil {
+				ts, err = time.Parse(time.DateTime, t)
+				if err != nil {
+					return time.Time{}, err
+				}
+				return ts, nil
+			}
+			return ts, nil
+		}
+		return ts, nil
+	}
+	return ts, nil
+}
