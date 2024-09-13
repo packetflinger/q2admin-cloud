@@ -58,7 +58,6 @@ message TimeSpec {
     string before = 1;  // DATETIME_SPEC
     string after = 2;   // DATETIME_SPEC
     string every = 3;   // INTERVAL_SPEC
-
 }
 
 // If an exception matches as part of a rule that matches, the rule will
@@ -97,6 +96,7 @@ message Rule {
     repeated string description = 14;  // details on why this rule was created
     repeated Exception exception = 17; // prevent a rule match
     TimeSpec timespec = 21;            // time-related stuff
+    bool disabled = 22;                // ignore this rule?
 }
 
 // A collection of rules

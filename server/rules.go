@@ -50,6 +50,10 @@ func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
 	need := 0
 	have := 0
 
+	if r.GetDisabled() {
+		return false
+	}
+
 	// expired rule, ignore it
 	if r.GetExpirationTime() > 0 && now > r.GetExpirationTime() {
 		return false

@@ -477,6 +477,15 @@ func TestCheckRule(t *testing.T) {
 			when: time.Date(2024, time.October, 5, 23, 30, 0, 0, time.UTC),
 			want: false,
 		},
+		{
+			desc: "test10_disabled",
+			rule: &pb.Rule{
+				Disabled: true,
+			},
+			player: &client.Player{},
+			when:   time.Now(),
+			want:   false,
+		},
 	}
 
 	for _, tc := range tests {
