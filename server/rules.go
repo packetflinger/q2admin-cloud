@@ -27,7 +27,6 @@ func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 			rules = append(rules, r)
 		}
 	}
-
 	return len(rules) > 0, SortRules(rules)
 }
 
