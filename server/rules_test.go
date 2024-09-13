@@ -260,6 +260,7 @@ func TestCheckRule(t *testing.T) {
 		desc   string
 		rule   *pb.Rule
 		player *client.Player
+		when   time.Time
 		want   bool
 	}{
 		{
@@ -268,6 +269,7 @@ func TestCheckRule(t *testing.T) {
 				ExpirationTime: 12345,
 			},
 			player: &client.Player{},
+			when:   time.Now(),
 			want:   false,
 		},
 		{
@@ -281,6 +283,7 @@ func TestCheckRule(t *testing.T) {
 			player: &client.Player{
 				IP: "100.64.3.16",
 			},
+			when: time.Now(),
 			want: true,
 		},
 		{
@@ -298,6 +301,7 @@ func TestCheckRule(t *testing.T) {
 				IP:   "100.64.3.16",
 				Name: "claire",
 			},
+			when: time.Now(),
 			want: false,
 		},
 		{
@@ -316,6 +320,7 @@ func TestCheckRule(t *testing.T) {
 				IP:   "100.64.3.16",
 				Name: "snoodersmith",
 			},
+			when: time.Now(),
 			want: true,
 		},
 		{
@@ -347,6 +352,7 @@ func TestCheckRule(t *testing.T) {
 					"pw": "to3b34ns",
 				},
 			},
+			when: time.Now(),
 			want: false,
 		},
 		{
@@ -363,6 +369,7 @@ func TestCheckRule(t *testing.T) {
 					"pw": "to3b34ns",
 				},
 			},
+			when: time.Now(),
 			want: true,
 		},
 		{
@@ -379,6 +386,7 @@ func TestCheckRule(t *testing.T) {
 					"pw": "to3b34ns",
 				},
 			},
+			when: time.Now(),
 			want: true,
 		},
 		{
@@ -390,6 +398,7 @@ func TestCheckRule(t *testing.T) {
 				Name: "snoodersmith",
 				VPN:  true,
 			},
+			when: time.Now(),
 			want: true,
 		},
 		{
@@ -415,13 +424,64 @@ func TestCheckRule(t *testing.T) {
 					"rate": "8000",
 				},
 			},
+			when: time.Now(),
 			want: true,
+		},
+		{
+			desc: "test9_time_after",
+			rule: &pb.Rule{
+				Timespec: &pb.TimeSpec{
+					After: "2:00PM",
+				},
+			},
+			player: &client.Player{},
+			// 4:30pm on 10/5/2024
+			when: time.Date(2024, time.October, 5, 16, 30, 0, 0, time.UTC),
+			want: true,
+		},
+		{
+			desc: "test9_time_before",
+			rule: &pb.Rule{
+				Timespec: &pb.TimeSpec{
+					Before: "9:30PM",
+				},
+			},
+			player: &client.Player{},
+			// 4:30pm on 10/5/2024
+			when: time.Date(2024, time.October, 5, 16, 30, 0, 0, time.UTC),
+			want: true,
+		},
+		{
+			desc: "test9_time_range_yes",
+			rule: &pb.Rule{
+				Timespec: &pb.TimeSpec{
+					After:  "8:00AM",
+					Before: "10:30PM",
+				},
+			},
+			player: &client.Player{},
+			// 4:30pm on 10/5/2024
+			when: time.Date(2024, time.October, 5, 16, 30, 0, 0, time.UTC),
+			want: true,
+		},
+		{
+			desc: "test9_time_range_no",
+			rule: &pb.Rule{
+				Timespec: &pb.TimeSpec{
+					After:  "8:00AM",
+					Before: "10:30PM",
+				},
+			},
+			player: &client.Player{},
+			// 11:30pm on 10/5/2024
+			when: time.Date(2024, time.October, 5, 23, 30, 0, 0, time.UTC),
+			want: false,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			got := CheckRule(tc.player, tc.rule)
+			got := CheckRule(tc.player, tc.rule, tc.when)
 			if got != tc.want {
 				t.Error("Got:", got, "Want:", tc.want)
 			}

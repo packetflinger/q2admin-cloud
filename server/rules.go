@@ -17,13 +17,13 @@ import (
 
 // Check a client against the rules, returns whether there were
 // any matches and what specific rules matched, for processing
-// later
+// later.
 //
-// Called every time a player connects from ApplyRules() in ParseConnect()
+// Called every time a player connects from ParseConnect()
 func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 	rules := []*pb.Rule{} // which ones match
 	for _, r := range ruleset {
-		if CheckRule(p, r) {
+		if CheckRule(p, r, time.Now()) {
 			rules = append(rules, r)
 		}
 	}
@@ -35,9 +35,18 @@ func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 //
 // Rule matching is GREEDY, so if multiple critera are specified in the rule,
 // all of them have to match, not just any single one.
-func CheckRule(p *client.Player, r *pb.Rule) bool {
+//
+// Needs and Haves
+//
+//	Each criteria that is found increases the needs by one. If the player
+//	matches that criteria, the haves increase by one. At the end, if the
+//	needs and haves are equal (and more than 0), the rule matched the
+//	player.
+//
+// Called from CheckRules()
+func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
 	match := false
-	now := time.Now().Unix()
+	now := t.Unix()
 	need := 0
 	have := 0
 
@@ -113,6 +122,49 @@ func CheckRule(p *client.Player, r *pb.Rule) bool {
 		if p.VPN {
 			have++
 			match = true
+		}
+	}
+
+	// timing
+	if len(r.GetTimespec().GetBefore()) > 0 {
+		need++
+		when, err := stringToTime(r.GetTimespec().GetBefore())
+		if err != nil {
+			p.Client.Log.Printf("error in rule %q, invalid timespec %q\n", r.GetUuid(), r.GetTimespec().GetBefore())
+			return false
+		}
+		// time-only
+		if when.Year() == 0 {
+			if t.Hour() <= when.Hour() && t.Minute() <= when.Minute() {
+				have++
+				match = true
+			}
+		} else {
+			if t.Before(when) {
+				have++
+				match = true
+			}
+		}
+	}
+
+	if len(r.GetTimespec().GetAfter()) > 0 {
+		need++
+		when, err := stringToTime(r.GetTimespec().GetAfter())
+		if err != nil {
+			p.Client.Log.Printf("error in rule %q, invalid timespec %q\n", r.GetUuid(), r.GetTimespec().GetAfter())
+			return false
+		}
+		// time-only
+		if when.Year() == 0 {
+			if t.Hour() >= when.Hour() && t.Minute() >= when.Minute() {
+				have++
+				match = true
+			}
+		} else {
+			if t.After(when) {
+				have++
+				match = true
+			}
 		}
 	}
 
