@@ -486,6 +486,32 @@ func TestCheckRule(t *testing.T) {
 			when:   time.Now(),
 			want:   false,
 		},
+		{
+			desc: "test11_playtime_no",
+			rule: &pb.Rule{
+				Timespec: &pb.TimeSpec{
+					PlayTime: "4h",
+				},
+			},
+			player: &client.Player{
+				ConnectTime: time.Date(2024, time.October, 5, 8, 0, 0, 0, time.UTC).Unix(),
+			},
+			when: time.Date(2024, time.October, 5, 10, 0, 0, 0, time.UTC),
+			want: false,
+		},
+		{
+			desc: "test11_playtime_yes",
+			rule: &pb.Rule{
+				Timespec: &pb.TimeSpec{
+					PlayTime: "4h",
+				},
+			},
+			player: &client.Player{
+				ConnectTime: time.Date(2024, time.October, 5, 8, 0, 0, 0, time.UTC).Unix(),
+			},
+			when: time.Date(2024, time.October, 5, 16, 0, 0, 0, time.UTC),
+			want: true,
+		},
 	}
 
 	for _, tc := range tests {

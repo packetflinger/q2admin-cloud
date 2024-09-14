@@ -171,6 +171,20 @@ func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
 		}
 	}
 
+	if len(r.GetTimespec().GetPlayTime()) > 0 {
+		need++
+		playtime := t.Unix() - p.ConnectTime
+		limit, err := durationToSeconds(r.Timespec.GetPlayTime())
+		if err != nil {
+			p.Client.Log.Printf("error in rule %q, invalid timespec %q\n", r.GetUuid(), r.GetTimespec().GetPlayTime())
+			return false
+		}
+		if playtime >= int64(limit) {
+			have++
+			match = true
+		}
+	}
+
 	exception := false
 	for _, ex := range r.GetException() {
 		if RuleExceptionMatch(ex, p) {
@@ -429,4 +443,39 @@ func stringToTime(t string) (time.Time, error) {
 		return ts, nil
 	}
 	return ts, nil
+}
+
+func ApplyMatchedRules(p *client.Player, rules []*pb.Rule) {
+	if len(rules) == 0 {
+		return
+	}
+	cl := p.Client
+	cl.Log.Printf("%s|%d matched the following rules:\n", p.Name, p.ClientID)
+	for _, rule := range rules {
+		cl.Log.Printf("  - %s (%s)\n", strings.Join(rule.GetDescription(), " "), rule.GetType())
+	}
+	for _, rule := range rules {
+		if rule.GetType() == pb.RuleType_BAN {
+			SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
+			KickPlayer(cl, p, "")
+			break
+		}
+		if rule.GetType() == pb.RuleType_MUTE {
+			p.Muted = true
+			SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
+			MutePlayer(cl, p, -1)
+		}
+		if rule.GetType() == pb.RuleType_STIFLE {
+			if p.Muted {
+				continue // no point stifling an already muted player
+			}
+			p.Stifled = true
+			p.StifleLength = int(rule.GetStifleLength())
+			SayPlayer(cl, p, PRINT_CHAT, "You're stifled")
+			MutePlayer(cl, p, p.StifleLength)
+		}
+		if rule.GetType() == pb.RuleType_MESSAGE {
+			SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
+		}
+	}
 }

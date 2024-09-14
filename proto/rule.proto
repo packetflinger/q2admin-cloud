@@ -38,7 +38,11 @@ message UserInfo {
 // will probably happen.
 //
 // DATETIME_SPEC examples
-//   []
+//   A string representation of a date/time. Only a few formats are accepted:
+//     - "16:30:00" (hour:minute:second)
+//     - "4:30PM"
+//     - "2024-10-05" (year-month-day)
+//     - "2024-10-05 16:30:00" (year-month-day hour:minute:second)
 //
 // INTERVAL_SPEC 
 //   It's a string representation of an amount of time. If no units are
@@ -54,10 +58,17 @@ message UserInfo {
 //     ["5m", "300s", "300", "0.083h", "5:00", "00:05:00"] = 5 minutes
 //     ["3600", "3600s", "1h", "1:00:00", "01:00:00", "0.083d"] = 1 hour
 //     ["21d", "3w", "0.057y", "0.7M"] = 3 weeks
+//
+// Before and after will be processeed when a player connects. After, every
+// and play_time will also be checked during maintenance intervals, which runs
+// on a schedule, so it's less granular. An "after 10:02AM" rule will match the
+// next time maintenance runs, which is most likely every 5 minutes, so it rule
+// won't be applied until 10:05. 
 message TimeSpec {
-    string before = 1;  // DATETIME_SPEC
-    string after = 2;   // DATETIME_SPEC
-    string every = 3;   // INTERVAL_SPEC
+    string before = 1;      // DATETIME_SPEC
+    string after = 2;       // DATETIME_SPEC
+    string every = 3;       // INTERVAL_SPEC
+    string play_time = 4;   // INTERVAL_SPEC
 }
 
 // If an exception matches as part of a rule that matches, the rule will

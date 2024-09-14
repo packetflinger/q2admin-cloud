@@ -5,14 +5,10 @@ import (
 	"log"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
-	"github.com/packetflinger/q2admind/util"
-
-	pb "github.com/packetflinger/q2admind/proto"
 )
 
 // Loop through all the data from the client
@@ -154,14 +150,7 @@ func ParseConnect(cl *client.Client) {
 	}
 
 	info := p.UserinfoMap
-
 	cl.Log.Printf("CONNECT %d|%s|%s\n", p.ClientID, info["name"], info["ip"])
-
-	//LogPlayer(cl, p, )
-
-	//wstxt := fmt.Sprintf("[CONNECT] %s [%s]", info["name"], info["ip"])
-	//cl.SendToWebsiteFeed(wstxt, api.FeedJoinPart)
-
 	match, rules := CheckRules(p, cl.Rules)
 
 	// add a slight delay when processing rules
@@ -169,34 +158,7 @@ func ParseConnect(cl *client.Client) {
 		time.Sleep(1 * time.Second)
 		if match {
 			p.Rules = rules
-			cl.Log.Printf("%s|%d matched the following rules:\n", p.Name, p.ClientID)
-			for _, rule := range rules {
-				cl.Log.Printf("  - %s (%s)\n", strings.Join(rule.GetDescription(), " "), rule.GetType())
-			}
-			for _, rule := range rules {
-				if rule.GetType() == pb.RuleType_BAN {
-					SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
-					KickPlayer(cl, p, "")
-					break
-				}
-				if rule.GetType() == pb.RuleType_MUTE {
-					p.Muted = true
-					SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
-					MutePlayer(cl, p, -1)
-				}
-				if rule.GetType() == pb.RuleType_STIFLE {
-					if p.Muted {
-						continue // no point stifling an already muted player
-					}
-					p.Stifled = true
-					p.StifleLength = int(rule.GetStifleLength())
-					SayPlayer(cl, p, PRINT_CHAT, "You're stifled")
-					MutePlayer(cl, p, p.StifleLength)
-				}
-				if rule.GetType() == pb.RuleType_MESSAGE {
-					SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
-				}
-			}
+			ApplyMatchedRules(p, rules)
 		}
 	}()
 }
@@ -283,7 +245,7 @@ func ParsePlayer(cl *client.Client) *client.Player {
 		IP:           info["ip"],
 		Port:         port,
 		FOV:          fov,
-		ConnectTime:  util.GetUnixTimestamp(),
+		ConnectTime:  time.Now().Unix(),
 		Cookie:       info["cl_cookie"],
 		Client:       cl,
 	}

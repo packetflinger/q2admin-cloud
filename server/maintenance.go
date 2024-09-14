@@ -2,6 +2,8 @@ package server
 
 import (
 	"time"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 // Maintenance is run concurrently to the rest
@@ -24,6 +26,36 @@ func startMaintenance() {
 				}
 			}
 		*/
+
+		// check time-based player rules
+		for _, cl := range srv.clients {
+			if !cl.Connected && !cl.Trusted {
+				continue
+			}
+			for _, p := range cl.Players {
+				if p.ConnectTime == 0 {
+					continue
+				}
+
+				var matches []*pb.Rule
+				for _, r := range cl.Rules {
+					ts := r.GetTimespec()
+					if len(ts.GetPlayTime()) > 0 {
+						match := CheckRule(&p, r, time.Now())
+						if match {
+							matches = append(matches, r)
+						}
+					}
+					if len(ts.GetAfter()) > 0 {
+						match := CheckRule(&p, r, time.Now())
+						if match {
+							matches = append(matches, r)
+						}
+					}
+				}
+				ApplyMatchedRules(&p, SortRules(matches))
+			}
+		}
 		srv.maintCount++
 	}
 }
