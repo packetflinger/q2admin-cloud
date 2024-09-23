@@ -198,8 +198,6 @@ func ParseDisconnect(cl *client.Client) {
 		return
 	}
 
-	//wstxt := fmt.Sprintf("[DISCONNECT] %s [%s]", pl.Name, pl.IP)
-	//cl.SendToWebsiteFeed(wstxt, api.FeedJoinPart)
 	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "DISCONNECT:", pl.ClientID, pl.Name, pl.IP)
 	cl.Log.Printf(msg)
 	cl.SSHPrintln(msg)

@@ -14,10 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/websocket"
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/crypto"
-	"github.com/packetflinger/q2admind/util"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -51,36 +49,12 @@ type Client struct {
 	CryptoKey   crypto.EncryptionKey  // AES 128 CBC
 	Rules       []*pb.Rule            // bans, mutes, etc
 	PingCount   int                   // how many pings client has seen
-	WebSockets  []*websocket.Conn     // slice of web clients
 	Log         *log.Logger           // log stuff here
 	LogFile     *os.File              // pointer to file so we can close when client disconnects
 	APIKeys     *pb.ApiKeys           // keys generated for accessing this client
 	Path        string                // the fs path for this client
 	TermLog     chan string           // output stuff to terminal
 	TermCount   int                   // how many terminals are linked?
-}
-
-// Each client keeps track of the websocket for people "looking at it".
-// When they close the browser or logout, remove the pointer
-// to that socket
-func (cl *Client) DeleteWebSocket(sock *websocket.Conn) {
-	location := -1
-	// find it's index first
-	for i := range cl.WebSockets {
-		if cl.WebSockets[i] == sock {
-			location = i
-			break
-		}
-	}
-
-	// wasn't found, forget it
-	if location == -1 {
-		return
-	}
-
-	tempws := cl.WebSockets[0:location]
-	tempws = append(tempws, cl.WebSockets[location+1:]...)
-	cl.WebSockets = tempws
 }
 
 // Read rules from disk and return a slice of them
@@ -176,32 +150,6 @@ func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 	}
 
 	return players, nil
-}
-
-// Send the txt string to all the websockets listening
-func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
-	now := util.GetTimeNow()
-
-	colored := ""
-	switch decoration {
-	/*
-		case api.FeedChat:
-			colored = now + " \\\\e[32m" + txt + "\\\\e[0m"
-		case api.FeedJoinPart:
-			colored = now + " \\\\e[33m\\\\e[42m" + txt + "\\\\e[0m"
-	*/
-	default:
-		colored = now + " " + txt
-	}
-
-	sockets := cl.WebSockets
-	for i := range sockets {
-		err := sockets[i].WriteMessage(1, []byte(colored))
-		if err != nil {
-			log.Println(err)
-			cl.DeleteWebSocket(cl.WebSockets[i])
-		}
-	}
 }
 
 // convert to

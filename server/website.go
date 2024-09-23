@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,14 +24,6 @@ const (
 
 var (
 	Website = WebInterface{}
-)
-
-const (
-	FeedChat = iota
-	FeedFrag
-	FeedJoinPart
-	FeedBan
-	FeedMute
 )
 
 // a
@@ -396,64 +387,6 @@ func AuthLogout(w http.ResponseWriter, r *http.Request) {
 func WebSignout(w http.ResponseWriter, r *http.Request) {
 	AuthLogout(w, r)
 	http.Redirect(w, r, Routes.Index, http.StatusFound)
-}
-
-// Websocket handler for sending chat message to web clients
-func WebFeed(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["ServerUUID"]
-	page := ServerPage{}
-	usr, err := GetSessionUser(r)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	page.WebUser = usr
-	srv, err := srv.FindClient(uuid)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	WSUpgrader.CheckOrigin = func(r *http.Request) bool {
-		// check for auth here
-		return true // everyone can connect
-	}
-
-	ws, err := WSUpgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		err = nil
-	}
-
-	srv.WebSockets = append(srv.WebSockets, ws)
-
-	log.Println("Chat Websocket connected")
-}
-
-func WebFeedInput(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["ServerUUID"]
-	user, _ := GetSessionUser(r)
-	srv, err := srv.FindClient(uuid)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	// make sure user is allowed to give commands to srv
-	// change this
-
-	//input64 := r.PostForm["input"]
-	input64 := r.URL.Query().Get("input")
-	input, err := base64.StdEncoding.DecodeString(input64)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	preamble := "[" + user.Email + "] "
-	srv.SendToWebsiteFeed(preamble+string(input), FeedChat)
 }
 
 func GroupsHandler(w http.ResponseWriter, r *http.Request) {
