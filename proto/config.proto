@@ -28,4 +28,6 @@ message Config {
     bool foreground = 17;
     string management_address = 18;
     uint32 management_port = 19;
+    string ssh_address = 22;
+    uint32 ssh_port = 23;
 }

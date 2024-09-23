@@ -25,7 +25,12 @@ func Teleport(cl *client.Client) {
 	msg := &cl.Message
 	pl := msg.ReadByte()
 	dest := msg.ReadString()
-	p := cl.FindPlayer(int(pl))
+
+	p, err := cl.FindPlayer(int(pl))
+	if err != nil {
+		cl.Log.Println("teleport problem:", err)
+		cl.SSHPrintln("* teleport problem: " + err.Error())
+	}
 
 	now := time.Now().Unix()
 	log.Printf("[%s/TELEPORT/%s] %s\n", p.Name, p.Name, dest)
@@ -121,7 +126,12 @@ func TeleportAvailableReply() string {
 func Invite(cl *client.Client) {
 	client := (&cl.Message).ReadByte()
 	text := (&cl.Message).ReadString()
-	p := cl.FindPlayer(int(client))
+
+	p, err := cl.FindPlayer(int(client))
+	if err != nil {
+		cl.Log.Println("invite problem:", err)
+		cl.SSHPrintln("invite problem: " + err.Error())
+	}
 	log.Printf("[%s/INVITE/%s] %s\n", cl.Name, p.Name, text)
 
 	now := time.Now().Unix()

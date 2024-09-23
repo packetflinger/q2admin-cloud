@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/hex"
+	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -58,18 +59,25 @@ func ParseMessage(cl *client.Client) {
 // by parsing the obituary print. For self and environmental
 // frags, the attacker and victim will be the same.
 func ParseFrag(cl *client.Client) {
+	var aName string
 	msg := &cl.Message
+	fmt.Println(hex.Dump(msg.Buffer))
 	v := msg.ReadByte()
 	a := msg.ReadByte()
 
-	victim := cl.FindPlayer(int(v))
-	attacker := cl.FindPlayer(int(a))
-
-	if victim == nil {
+	victim, err := cl.FindPlayer(int(v))
+	if err != nil {
+		fmt.Println("ParseFrag():", err)
+		cl.Log.Println("error in ParseFrag():", err)
+		cl.SSHPrintln("error in ParseFrag(): " + err.Error())
 		return
 	}
-
-	cl.Log.Println("FRAG", attacker.Name, ">", victim.Name)
+	attacker, err := cl.FindPlayer(int(a))
+	if err != nil {
+		aName = "World/Self"
+	} else {
+		aName = attacker.Name
+	}
 
 	if attacker == victim || attacker == nil {
 		victim.Suicides++
@@ -78,6 +86,8 @@ func ParseFrag(cl *client.Client) {
 		attacker.Frags++
 	}
 	victim.Deaths++
+	cl.Log.Println("FRAG", aName, ">", victim.Name)
+	cl.SSHPrintln("FRAG " + aName + " > " + victim.Name)
 }
 
 // Received a ping from a client, send a pong to show we're alive
@@ -109,10 +119,18 @@ func ParsePrint(cl *client.Client) {
 	switch level {
 	case PRINT_CHAT:
 		cl.Log.Println("CHAT", stripped)
+		msgColor := ansiCode{foreground: ColorGreen, bold: true}.Render()
+		msg := fmt.Sprintf("%s%s%s", msgColor, stripped, AnsiReset)
+		cl.SSHPrintln(msg)
 	case PRINT_HIGH:
 		cl.Log.Println("PRINT", stripped)
+		msgColor := ansiCode{foreground: ColorBlack, background: ColorLightGray}.Render()
+		cl.SSHPrintln(msgColor + stripped + AnsiReset)
 	case PRINT_MEDIUM:
-		ParseObituary(cl, stripped)
+		//ParseObituary(cl, stripped)
+		cl.Log.Println("PRINT", stripped)
+		msgColor := ansiCode{foreground: ColorDarkGray, background: ColorWhite}.Render()
+		cl.SSHPrintln(msgColor + stripped + AnsiReset)
 	}
 
 	// re-stifle if needed
@@ -149,8 +167,11 @@ func ParseConnect(cl *client.Client) {
 		p.Hostname = ptr[0]
 	}
 
-	info := p.UserinfoMap
-	cl.Log.Printf("CONNECT %d|%s|%s\n", p.ClientID, info["name"], info["ip"])
+	//info := p.UserinfoMap
+	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.ClientID, p.Name, p.IP)
+	//cl.Log.Printf("CONNECT %d|%s|%s\n", p.ClientID, info["name"], info["ip"])
+	cl.Log.Printf(msg)
+	cl.SSHPrintln(msg)
 	match, rules := CheckRules(p, cl.Rules)
 
 	// add a slight delay when processing rules
@@ -172,12 +193,17 @@ func ParseDisconnect(cl *client.Client) {
 		return
 	}
 
-	pl := cl.FindPlayer(clientnum)
+	pl, err := cl.FindPlayer(clientnum)
+	if err != nil {
+		cl.Log.Println("error in ParseDisconnect():", err)
+		return
+	}
 
 	//wstxt := fmt.Sprintf("[DISCONNECT] %s [%s]", pl.Name, pl.IP)
 	//cl.SendToWebsiteFeed(wstxt, api.FeedJoinPart)
-
-	cl.Log.Printf("DISCONNECT %d|%s\n", clientnum, pl.Name)
+	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "DISCONNECT:", pl.ClientID, pl.Name, pl.IP)
+	cl.Log.Printf(msg)
+	cl.SSHPrintln(msg)
 	cl.RemovePlayer(clientnum)
 }
 
@@ -186,7 +212,9 @@ func ParseDisconnect(cl *client.Client) {
 func ParseMap(cl *client.Client) {
 	mapname := (&cl.Message).ReadString()
 	cl.CurrentMap = mapname
-	cl.Log.Println("MAP", cl.CurrentMap)
+	msg := fmt.Sprintf("%-20s%q", "MAP_CHANGE:", cl.CurrentMap)
+	cl.Log.Println(msg)
+	cl.SSHPrintln(msg)
 }
 
 // An obit for every frag is sent from a client.
@@ -276,7 +304,12 @@ func ParsePlayerUpdate(cl *client.Client) {
 	userinfo := msg.ReadString()
 	hash := crypto.MD5Hash(userinfo)
 
-	player := cl.FindPlayer(int(clientnum))
+	player, err := cl.FindPlayer(int(clientnum))
+	if err != nil {
+		cl.Log.Println("error in ParsePlayerUpdate():", err)
+		cl.SSHPrintln("error in ParsePlayerUpdate(): " + err.Error())
+		return
+	}
 
 	// nothing we care about changed
 	if hash == player.UserInfoHash {

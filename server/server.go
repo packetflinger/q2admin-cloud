@@ -127,6 +127,17 @@ func (s *Server) FindClient(lookup string) (*client.Client, error) {
 	return nil, errors.New("unknown client")
 }
 
+// Locate the struct of the server for a particular
+// name, get a pointer to it
+func (s *Server) FindClientByName(name string) (*client.Client, error) {
+	for i := range s.clients {
+		if s.clients[i].Name == name {
+			return &s.clients[i], nil
+		}
+	}
+	return nil, errors.New("unknown client")
+}
+
 // Get a pointer to a user based on their email
 func (s *Server) GetUserByEmail(email string) (*pb.User, error) {
 	for _, u := range s.users {
@@ -226,7 +237,7 @@ func RotateKeys(cl *client.Client) {
 	// Send immediately so old keys used for this message
 	(&cl.MessageOut).WriteByte(SCMDKey)
 	(&cl.MessageOut).WriteData(blob)
-	cl.SendMessages()
+	SendMessages(cl)
 
 	cl.CryptoKey = keyData
 }
@@ -391,7 +402,7 @@ func HandleConnection(c net.Conn) {
 	out.WriteByte(SCMDHelloAck)
 	out.WriteShort(uint16(len(blobCipher)))
 	out.WriteData(blobCipher)
-	cl.SendMessages()
+	SendMessages(cl)
 
 	// read the client signature
 	readlen, err = c.Read(input)
@@ -435,7 +446,7 @@ func HandleConnection(c net.Conn) {
 
 	cl.Log.Println("authenticated")
 	out.WriteByte(SCMDTrusted)
-	cl.SendMessages()
+	SendMessages(cl)
 	cl.Trusted = true
 
 	cl.Players = make([]client.Player, cl.MaxPlayers)
@@ -461,14 +472,40 @@ func HandleConnection(c net.Conn) {
 			}
 		}
 
-		cl.Message = message.NewMessageBuffer(input)
+		cl.Message = message.NewMessageBuffer(input[:size])
 
 		ParseMessage(cl)
-		cl.SendMessages()
+		SendMessages(cl)
 	}
 
 	cl.Connected = false
 	cl.Trusted = false
+}
+
+// Send all messages in the outgoing queue to the client (gameserver)
+func SendMessages(cl *client.Client) {
+	if !cl.Connected {
+		return
+	}
+
+	if len(cl.MessageOut.Buffer) == 0 {
+		return
+	}
+
+	// keys have been exchanged, encrypt the message
+	if cl.Trusted && cl.Encrypted {
+		cipher := crypto.SymmetricEncrypt(
+			cl.CryptoKey.Key,
+			cl.CryptoKey.InitVector,
+			cl.MessageOut.Buffer[:cl.MessageOut.Index])
+		cl.MessageOut = message.NewMessageBuffer(cipher)
+	}
+
+	// only send if there is something to send
+	if len(cl.MessageOut.Buffer) > 0 {
+		(*cl.Connection).Write(cl.MessageOut.Buffer)
+		(&cl.MessageOut).Reset()
+	}
 }
 
 // Gracefully shut everything down
@@ -562,6 +599,7 @@ func Startup(configFile string, foreground bool) {
 
 	go startMaintenance()
 	go startManagement()
+	go startSSHServer()
 
 	for {
 		c, err := listener.Accept()
