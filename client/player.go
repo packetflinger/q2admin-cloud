@@ -44,18 +44,16 @@ type Player struct {
 }
 
 // Get a pointer to a player based on a client number
-func (cl *Client) FindPlayer(client int) *Player {
+func (cl *Client) FindPlayer(client int) (*Player, error) {
 	if !cl.ValidPlayerID(client) {
-		return nil
+		return nil, fmt.Errorf("invalid player id %q", client)
 	}
-
 	for i, p := range cl.Players {
 		if p.ClientID == client && p.ConnectTime > 0 {
-			return &cl.Players[i]
+			return &cl.Players[i], nil
 		}
 	}
-
-	return nil
+	return nil, fmt.Errorf("player %q not found", client)
 }
 
 // A player hash is a way of uniquely identifiying a player.
@@ -168,4 +166,23 @@ func (cl *Client) FindPlayerByName(name string) *Player {
 	}
 
 	return nil
+}
+
+// Dump will return a string containing information about the player
+func (p *Player) Dump() string {
+	var out string
+	out += fmt.Sprintf("%s's information\n", p.Name)
+	out += fmt.Sprintf("  %-20s%s\n", "name:", p.Name)
+	out += fmt.Sprintf("  %-20s%s\n", "ip:", p.IP)
+	out += fmt.Sprintf("  %-20s%s\n", "client:", p.Version)
+	out += fmt.Sprintf("  %-20s%v\n", "vpn:", p.VPN)
+	out += fmt.Sprintf("  %-20s\n", "userinfo:")
+	for k, v := range p.UserinfoMap {
+		out += fmt.Sprintf("%15s = %s\n", k, v)
+	}
+	out += fmt.Sprintf("  %-20s\n", "rules matched:")
+	for _, r := range p.Rules {
+		out += fmt.Sprintf("%25s\n", strings.Join(r.GetDescription(), " "))
+	}
+	return out
 }
