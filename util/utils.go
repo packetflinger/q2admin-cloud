@@ -1,7 +1,9 @@
 package util
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"time"
 
 	uuid "github.com/google/uuid"
@@ -66,4 +68,17 @@ func TimeAgo(ts int64) string {
 		return fmt.Sprintf("%dy ago", elapsed/(86400*30))
 	}
 	return "forever ago"
+}
+
+// SortUserinfoKeys will return a list of all the keys in the userinfo map
+// associated with a player in alphabetical order.
+func SortUserinfoKeys(uiMap map[string]string) []string {
+	var out []string
+	for k := range uiMap {
+		out = append(out, k)
+	}
+	slices.SortFunc(out, func(a, b string) int {
+		return cmp.Compare(a, b)
+	})
+	return out
 }

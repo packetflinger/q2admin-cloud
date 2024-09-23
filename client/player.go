@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	pb "github.com/packetflinger/q2admind/proto"
+	"github.com/packetflinger/q2admind/util"
 )
 
 // Each player on a game server has one of these.
@@ -130,7 +131,10 @@ func (cl *Client) RemovePlayer(client int) {
 }
 
 // Take a back-slash delimited string of userinfo and return
-// a key/value map
+// a key/value map. The map is unordered, consumers will need
+// to sort them manually if necessary.
+//
+// Called form ParsePlayer()
 func UserinfoMap(ui string) map[string]string {
 	info := make(map[string]string)
 	if ui == "" {
@@ -150,7 +154,6 @@ func UserinfoMap(ui string) map[string]string {
 		info["port"] = ipport[1]
 		info["ip"] = ipport[0]
 	}
-
 	return info
 }
 
@@ -177,8 +180,9 @@ func (p *Player) Dump() string {
 	out += fmt.Sprintf("  %-20s%s\n", "client:", p.Version)
 	out += fmt.Sprintf("  %-20s%v\n", "vpn:", p.VPN)
 	out += fmt.Sprintf("  %-20s\n", "userinfo:")
-	for k, v := range p.UserinfoMap {
-		out += fmt.Sprintf("%15s = %s\n", k, v)
+	uiKeys := util.SortUserinfoKeys(p.UserinfoMap)
+	for _, k := range uiKeys {
+		out += fmt.Sprintf("%15s = %s\n", k, p.UserinfoMap[k])
 	}
 	out += fmt.Sprintf("  %-20s\n", "rules matched:")
 	for _, r := range p.Rules {
