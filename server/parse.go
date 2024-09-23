@@ -46,8 +46,8 @@ func ParseMessage(cl *client.Client) {
 		case CMDCommand:
 			ParseCommand(cl)
 
-		case CMDFrag:
-			ParseFrag(cl)
+			// case CMDFrag:
+			// 	ParseFrag(cl)
 		}
 	}
 }
@@ -61,7 +61,6 @@ func ParseMessage(cl *client.Client) {
 func ParseFrag(cl *client.Client) {
 	var aName string
 	msg := &cl.Message
-	fmt.Println(hex.Dump(msg.Buffer))
 	v := msg.ReadByte()
 	a := msg.ReadByte()
 
@@ -127,10 +126,10 @@ func ParsePrint(cl *client.Client) {
 		msgColor := ansiCode{foreground: ColorBlack, background: ColorLightGray}.Render()
 		cl.SSHPrintln(msgColor + stripped + AnsiReset)
 	case PRINT_MEDIUM:
-		//ParseObituary(cl, stripped)
-		cl.Log.Println("PRINT", stripped)
-		msgColor := ansiCode{foreground: ColorDarkGray, background: ColorWhite}.Render()
-		cl.SSHPrintln(msgColor + stripped + AnsiReset)
+		ParseObituary(cl, stripped)
+		//cl.Log.Println("PRINT", stripped)
+		//msgColor := ansiCode{foreground: ColorDarkGray, background: ColorWhite}.Render()
+		//cl.SSHPrintln(msgColor + stripped + AnsiReset)
 	}
 
 	// re-stifle if needed
@@ -225,14 +224,25 @@ func ParseObituary(cl *client.Client, obit string) {
 	if err != nil {
 		return
 	}
-	cl.Log.Printf(
-		"Obituary: %s[%d] -> %s[%d] (%s)\n",
-		death.Murderer.Name,
-		death.Murderer.ClientID,
-		death.Victim.Name,
-		death.Victim.ClientID,
-		death.MeansToString(),
-	)
+	var logObit string
+	// single-sided frag
+	if death.Murderer == nil {
+		logObit = fmt.Sprintf("DEATH: %s[%d] (%s)",
+			death.Victim.Name,
+			death.Victim.ClientID,
+			death.MeansToString(),
+		)
+	} else {
+		logObit = fmt.Sprintf("DEATH: %s[%d] -> %s[%d] (%s)",
+			death.Murderer.Name,
+			death.Murderer.ClientID,
+			death.Victim.Name,
+			death.Victim.ClientID,
+			death.MeansToString(),
+		)
+	}
+	cl.Log.Printf(logObit)
+	cl.TermLog <- logObit
 }
 
 // Client sent a playerlist message.
