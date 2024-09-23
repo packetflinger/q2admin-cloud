@@ -212,6 +212,8 @@ func passwordHandler(ctx ssh.Context, password string) bool {
 	return true
 }
 
+// Render will build an ANSI color code based on the receiver. This is only
+// used when sending strings to an SSH terminal.
 func (c ansiCode) Render() string {
 	b := 22
 	if c.bold {
@@ -228,7 +230,11 @@ func (c ansiCode) Render() string {
 	return fmt.Sprintf("\033[0;%d;%d;%d;%d;%dm", c.foreground, c.background+10, b, u, r)
 }
 
+// Println will send str to the SSH terminal. If the input string is missing
+// a newline, it's added before sending.
 func (t SSHTerminal) Println(str string) {
-	bytes := []byte(str + "\n")
-	t.terminal.Write(bytes)
+	if !strings.HasSuffix(str, "\n") {
+		str += "\n"
+	}
+	t.terminal.Write([]byte(str))
 }
