@@ -174,6 +174,7 @@ func ConsoleSay(cl *client.Client, print string) {
 	txt := fmt.Sprintf("say %s\n", print)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(txt)
+	SendMessages(cl)
 }
 
 // Force a player to do a command
@@ -181,6 +182,7 @@ func StuffPlayer(cl *client.Client, p client.Player, cmd string) {
 	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.ClientID, cmd)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(stuffcmd)
+	SendMessages(cl)
 }
 
 // Prevent the player from talking.
@@ -196,6 +198,7 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
+	SendMessages(cl)
 }
 
 // Tell the client to disconnect a specific player
@@ -203,6 +206,7 @@ func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 	cmd := fmt.Sprintf("kick %d\n", p.ClientID)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
+	SendMessages(cl)
 
 	//txt := fmt.Sprintf("KICK [%d] was kicked", p.ClientID)
 	//LogEventToDatabase(cl.ID, LogTypeCommand, txt)
@@ -214,6 +218,7 @@ func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 func ConsoleCommand(cl *client.Client, cmd string) {
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
+	SendMessages(cl)
 }
 
 // Send a message to every player on the server
@@ -224,6 +229,7 @@ func SayEveryone(cl *client.Client, level int, text string) {
 	(&cl.MessageOut).WriteByte(SCMDSayAll)
 	(&cl.MessageOut).WriteByte(byte(level))
 	(&cl.MessageOut).WriteString(text)
+	SendMessages(cl)
 }
 
 // Send a message to a particular player
@@ -241,6 +247,7 @@ func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
 	msg.WriteByte(byte(p.ClientID))
 	msg.WriteByte(byte(level))
 	msg.WriteString(text)
+	SendMessages(cl)
 }
 
 // Setup a new cookie on a player
