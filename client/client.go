@@ -56,6 +56,8 @@ type Client struct {
 	LogFile     *os.File              // pointer to file so we can close when client disconnects
 	APIKeys     *pb.ApiKeys           // keys generated for accessing this client
 	Path        string                // the fs path for this client
+	TermLog     chan string           // output stuff to terminal
+	TermCount   int                   // how many terminals are linked?
 }
 
 // Each client keeps track of the websocket for people "looking at it".
@@ -176,28 +178,6 @@ func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 	return players, nil
 }
 
-// Send all messages in the outgoing queue to the client (gameserver)
-func (cl *Client) SendMessages() {
-	if !cl.Connected {
-		return
-	}
-
-	// keys have been exchanged, encrypt the message
-	if cl.Trusted && cl.Encrypted {
-		cipher := crypto.SymmetricEncrypt(
-			cl.CryptoKey.Key,
-			cl.CryptoKey.InitVector,
-			cl.MessageOut.Buffer[:cl.MessageOut.Index])
-		cl.MessageOut = message.NewMessageBuffer(cipher)
-	}
-
-	// only send if there is something to send
-	if len(cl.MessageOut.Buffer) > 0 {
-		(*cl.Connection).Write(cl.MessageOut.Buffer)
-		(&cl.MessageOut).Reset()
-	}
-}
-
 // Send the txt string to all the websockets listening
 func (cl *Client) SendToWebsiteFeed(txt string, decoration int) {
 	now := util.GetTimeNow()
@@ -250,4 +230,11 @@ func (cl *Client) PlayersByName(name string) ([]*Player, error) {
 		}
 	}
 	return players, nil
+}
+
+// SSHPrintln will send the value of text to all the SSH-connected clients.
+func (cl *Client) SSHPrintln(text string) {
+	if cl.TermCount > 0 {
+		cl.TermLog <- text
+	}
 }
