@@ -237,11 +237,15 @@ func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
 	if text == "" {
 		return
 	}
-
+	if cl == nil || p == nil {
+		return
+	}
+	if level < 0 || level > PRINT_CHAT {
+		level = PRINT_LOW
+	}
 	if !strings.HasSuffix(text, "\n") {
 		text += "\n"
 	}
-
 	msg := &cl.MessageOut
 	msg.WriteByte(SCMDSayClient)
 	msg.WriteByte(byte(p.ClientID))
