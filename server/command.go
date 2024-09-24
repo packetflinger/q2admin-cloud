@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"sort"
 	"strings"
 
@@ -186,19 +187,72 @@ func StuffPlayer(cl *client.Client, p client.Player, cmd string) {
 }
 
 // Prevent the player from talking.
-// Using a negative number of seconds makes it permanent (mute vs stifle).
+//
+// Specify the length of silence using the seconds arg. Using zero or a
+// negative number of seconds makes it permanent.
 func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 	var cmd string
-	if seconds < 0 {
-		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)
-		cl.Log.Printf("MUTE %s\\%d\n", p.Name, p.ClientID)
-	} else {
-		cmd = fmt.Sprintf("sv !mute CL %d %d", p.ClientID, seconds)
-		cl.Log.Printf("STIFLE[%d] %s\\%d\n", p.StifleLength, p.Name, p.ClientID)
+	var logMsg string
+	if cl == nil {
+		return
 	}
+	if p == nil {
+		return
+	}
+	if seconds > 0 {
+		cmd = fmt.Sprintf("sv !mute CL %d %d\n", p.ClientID, seconds)
+		logMsg = fmt.Sprintf("MUTE[%d] %-20s [%d]\n", seconds, p.Name, p.ClientID)
+	} else {
+		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)
+		logMsg = fmt.Sprintf("MUTE[perm] %-20s [%d]\n", p.Name, p.ClientID)
+	}
+	msg := "You've been muted"
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
+	(&cl.MessageOut).WriteByte(SCMDSayClient)
+	(&cl.MessageOut).WriteByte(byte(p.ClientID))
+	(&cl.MessageOut).WriteByte(PRINT_HIGH)
+	(&cl.MessageOut).WriteString(msg)
 	SendMessages(cl)
+
+	cl.Log.Printf(logMsg)
+	cl.TermLog <- logMsg
+}
+
+// Throttle the player's talking.
+//
+// A stifle is a repeating temporary mute. A stifled player will be able to
+// speak once, then will be muted for seconds amount of time. Then they'll
+// be able to speak again, once followed by another period of silence.
+//
+// Seconds must be greater than 0, maximum length is 300 (5 minutes)
+func StiflePlayer(cl *client.Client, p *client.Player, seconds int) {
+	var cmd string
+	if cl == nil {
+		return
+	}
+	if p == nil {
+		return
+	}
+	if seconds < 0 {
+		seconds = int(math.Abs(float64(seconds)))
+	}
+	if seconds > StifleMax {
+		seconds = StifleMax
+	}
+	msg := "You've been stifled"
+	cmd = fmt.Sprintf("sv !stifle CL %d %d", p.ClientID, seconds)
+	(&cl.MessageOut).WriteByte(SCMDCommand)
+	(&cl.MessageOut).WriteString(cmd)
+	(&cl.MessageOut).WriteByte(SCMDSayClient)
+	(&cl.MessageOut).WriteByte(byte(p.ClientID))
+	(&cl.MessageOut).WriteByte(PRINT_HIGH)
+	(&cl.MessageOut).WriteString(msg)
+	SendMessages(cl)
+
+	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", p.StifleLength, p.Name, p.ClientID)
+	cl.Log.Printf(logMsg)
+	cl.TermLog <- logMsg
 }
 
 // Tell the client to disconnect a specific player

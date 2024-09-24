@@ -55,6 +55,7 @@ const (
 	versionRequired = 420        // git revision number
 	challengeLength = 16         // bytes
 	TeleportWidth   = 80         // max chars per line for teleport replies
+	StifleMax       = 300        // 5 minutes
 )
 
 // Commands sent from the Q2 server to us
