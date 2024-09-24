@@ -168,10 +168,12 @@ func Invite(cl *client.Client) {
 
 // Have client broadcast print from "console"
 func ConsoleSay(cl *client.Client, print string) {
+	if cl == nil {
+		return
+	}
 	if print == "" {
 		return
 	}
-
 	txt := fmt.Sprintf("say %s\n", print)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(txt)
