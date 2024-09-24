@@ -163,7 +163,7 @@ func sessionHandler(s ssh.Session) {
 		if c.cmd == SSHCmdStuff {
 			// todo: input validation
 			pid, _ := strconv.Atoi(c.argv[0])
-			p := activeClient.Players[pid]
+			p := &activeClient.Players[pid]
 			StuffPlayer(cl, p, strings.Join(c.argv[1:], " "))
 		}
 	}

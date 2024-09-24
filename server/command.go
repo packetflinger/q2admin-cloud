@@ -78,7 +78,7 @@ func Teleport(cl *client.Client) {
 		txt := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, s.Name, s.IPAddress, s.Port)
 		SayEveryone(cl, PRINT_HIGH, txt)
 		st := fmt.Sprintf("connect %s:%d\n", s.IPAddress, s.Port)
-		StuffPlayer(cl, *p, st)
+		StuffPlayer(cl, p, st)
 	}
 
 	//txt := fmt.Sprintf("TELEPORT [%d] %s", pl, p.Name)
@@ -179,7 +179,16 @@ func ConsoleSay(cl *client.Client, print string) {
 }
 
 // Force a player to do a command
-func StuffPlayer(cl *client.Client, p client.Player, cmd string) {
+func StuffPlayer(cl *client.Client, p *client.Player, cmd string) {
+	if cl == nil {
+		return
+	}
+	if p == nil {
+		return
+	}
+	if len(cmd) == 0 {
+		return
+	}
 	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.ClientID, cmd)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(stuffcmd)
@@ -365,9 +374,9 @@ func SetupPlayerCookie(cl *client.Client, p *client.Player) {
 	u := "setu cl_cookie $cl_cookie"
 
 	// tell player to write the var to local .cfg file for persistence
-	StuffPlayer(cl, *p, a)
+	StuffPlayer(cl, p, a)
 
 	// tell player to add var to their userinfo string. This will
 	// trigger a ClientUserinfoChanged() call on the game server
-	StuffPlayer(cl, *p, u)
+	StuffPlayer(cl, p, u)
 }
