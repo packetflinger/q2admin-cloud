@@ -125,6 +125,9 @@ func TeleportAvailableReply() string {
  * Broadcast the invite to all connected servers
  */
 func Invite(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	client := (&cl.Message).ReadByte()
 	text := (&cl.Message).ReadString()
 
