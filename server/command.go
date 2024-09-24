@@ -213,9 +213,16 @@ func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 }
 
 // Issue a command as if you were typing it into the console.
-//
-// TODO: Sanitize cmd before use
 func ConsoleCommand(cl *client.Client, cmd string) {
+	if cl == nil {
+		return
+	}
+	if cmd == "" {
+		return
+	}
+	if !strings.HasSuffix(cmd, "\n") {
+		cmd += "\n"
+	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 	SendMessages(cl)
