@@ -262,11 +262,10 @@ func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
 	if !strings.HasSuffix(text, "\n") {
 		text += "\n"
 	}
-	msg := &cl.MessageOut
-	msg.WriteByte(SCMDSayClient)
-	msg.WriteByte(byte(p.ClientID))
-	msg.WriteByte(byte(level))
-	msg.WriteString(text)
+	(&cl.MessageOut).WriteByte(SCMDSayClient)
+	(&cl.MessageOut).WriteByte(byte(p.ClientID))
+	(&cl.MessageOut).WriteByte(byte(level))
+	(&cl.MessageOut).WriteString(text)
 	SendMessages(cl)
 }
 
