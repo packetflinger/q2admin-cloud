@@ -13,6 +13,8 @@ const (
 	SSHCmdEmpty
 	SSHCmdHelp
 	SSHCmdStuff
+	SSHCmdRcon
+	SSHCmdStatus
 )
 
 type SSHCommand struct {
@@ -42,6 +44,8 @@ func parseSSHCmd(input string) (SSHCommand, error) {
 			fallthrough
 		case "logout":
 			return SSHCommand{cmd: SSHCmdQuit}, nil
+		case "status":
+			return SSHCommand{cmd: SSHCmdStatus}, nil
 		}
 	}
 	if len(tokens) > 1 {
@@ -62,6 +66,9 @@ func parseSSHCmd(input string) (SSHCommand, error) {
 			return command, nil
 		case "stuff":
 			command.cmd = SSHCmdStuff
+			return command, nil
+		case "rcon":
+			command.cmd = SSHCmdRcon
 			return command, nil
 		}
 	}

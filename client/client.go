@@ -186,3 +186,16 @@ func (cl *Client) SSHPrintln(text string) {
 		cl.TermLog <- text
 	}
 }
+
+// Create a status-esque string for this client
+func (cl *Client) StatusString() string {
+	var out string
+	out = fmt.Sprintf("Current map: %20s\n\n", cl.CurrentMap)
+	out += fmt.Sprintf("%-20s %s %5s %-130s\n", "player", "id", "rtt", "address")
+	for _, p := range cl.Players {
+		if len(p.IP) > 0 {
+			out += fmt.Sprintf("%-20s %d %3sms %-130s\n", p.Name, p.ClientID, "0", p.IP)
+		}
+	}
+	return out
+}

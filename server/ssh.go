@@ -142,6 +142,7 @@ func sessionHandler(s ssh.Session) {
 			msg := "Available commands:\n"
 			msg += "  help               - show this message\n"
 			msg += "  quit               - close the ssh connection\n"
+			msg += "  rcon <cmd>         - execute <cmd> on the remote server\n"
 			msg += "  say <text>         - broadcasts <text> to all players\n"
 			msg += "  server [name]      - switch management servers\n"
 			msg += "                       omitting [name] will list possible servers\n"
@@ -165,6 +166,19 @@ func sessionHandler(s ssh.Session) {
 			pid, _ := strconv.Atoi(c.argv[0])
 			p := &activeClient.Players[pid]
 			StuffPlayer(cl, p, strings.Join(c.argv[1:], " "))
+		}
+		if c.cmd == SSHCmdRcon {
+			// this is not a real rcon command (out-of-band over UDP), just
+			// simulated over existing TCP connection
+			if len(c.args) == 0 {
+				activeClient.SSHPrintln("Usage: rcon <command>")
+				return
+			}
+			ConsoleCommand(activeClient, c.args)
+		}
+		if c.cmd == SSHCmdStatus {
+			str := activeClient.StatusString()
+			activeClient.SSHPrintln(str)
 		}
 	}
 }
