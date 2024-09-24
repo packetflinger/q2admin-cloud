@@ -230,7 +230,7 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 	SendMessages(cl)
 
 	cl.Log.Printf(logMsg)
-	cl.TermLog <- logMsg
+	cl.SSHPrintln(logMsg)
 }
 
 // Throttle the player's talking.
@@ -266,7 +266,7 @@ func StiflePlayer(cl *client.Client, p *client.Player, seconds int) {
 
 	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", p.StifleLength, p.Name, p.ClientID)
 	cl.Log.Printf(logMsg)
-	cl.TermLog <- logMsg
+	cl.SSHPrintln(logMsg)
 }
 
 // Tell the client to disconnect a specific player
@@ -291,7 +291,7 @@ func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 
 	logMsg := fmt.Sprintf("KICK %-20s [%d] %q\n", p.Name, p.ClientID, msg)
 	cl.Log.Println(logMsg)
-	cl.TermLog <- logMsg
+	cl.SSHPrintln(logMsg)
 }
 
 // Issue a command as if you were typing it into the console.
