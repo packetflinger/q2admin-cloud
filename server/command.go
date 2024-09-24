@@ -226,6 +226,15 @@ func SayEveryone(cl *client.Client, level int, text string) {
 	if text == "" {
 		return
 	}
+	if cl == nil {
+		return
+	}
+	if level < 0 || level > PRINT_CHAT {
+		level = PRINT_LOW
+	}
+	if !strings.HasSuffix(text, "\n") {
+		text += "\n"
+	}
 	(&cl.MessageOut).WriteByte(SCMDSayAll)
 	(&cl.MessageOut).WriteByte(byte(level))
 	(&cl.MessageOut).WriteString(text)
