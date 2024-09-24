@@ -8,8 +8,6 @@ import (
 	"math"
 	"sort"
 	"strings"
-
-	//"strings"
 	"time"
 
 	"github.com/packetflinger/q2admind/client"
