@@ -145,7 +145,7 @@ func sessionHandler(s ssh.Session) {
 			msg += "  say <text>         - broadcasts <text> to all players\n"
 			msg += "  server [name]      - switch management servers\n"
 			msg += "                       omitting [name] will list possible servers\n"
-			msg += "  stuff <#> <cmd>    - force client # to do a command"
+			msg += "  stuff <#> <cmd>    - force client # to do a command\n"
 			msg += "  whois <#>          - show player info for client #\n"
 			sshterm.Println(msg)
 		}
