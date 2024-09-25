@@ -208,8 +208,9 @@ func ParseDisconnect(cl *client.Client) {
 // when the map changes
 func ParseMap(cl *client.Client) {
 	mapname := (&cl.Message).ReadString()
+	cl.PreviousMap = cl.CurrentMap
 	cl.CurrentMap = mapname
-	msg := fmt.Sprintf("%-20s%q", "MAP_CHANGE:", cl.CurrentMap)
+	msg := fmt.Sprintf("%-20s %q (was %q)", "MAP_CHANGE:", cl.CurrentMap, cl.PreviousMap)
 	cl.Log.Println(msg)
 	cl.SSHPrintln(msg)
 }

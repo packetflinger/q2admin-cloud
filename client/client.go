@@ -36,6 +36,7 @@ type Client struct {
 	Connected   bool                  // is it currently connected to us?
 	Verified    bool                  // client owner proved they're the owner
 	CurrentMap  string                // what map is currently running
+	PreviousMap string                // what was the last map?
 	Enabled     bool                  // actually use it
 	Connection  *net.Conn             // the tcp connection
 	Players     []Player              // all the connected players
@@ -190,7 +191,7 @@ func (cl *Client) SSHPrintln(text string) {
 // Create a status-esque string for this client
 func (cl *Client) StatusString() string {
 	var out string
-	out = fmt.Sprintf("Current map: %20s\n\n", cl.CurrentMap)
+	out = fmt.Sprintf("Current map: %20s (previous: %s)\n\n", cl.CurrentMap, cl.PreviousMap)
 	out += fmt.Sprintf("%-20s %s %5s %-130s\n", "player", "id", "rtt", "address")
 	for _, p := range cl.Players {
 		if len(p.IP) > 0 {
