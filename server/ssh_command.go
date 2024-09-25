@@ -15,6 +15,8 @@ const (
 	SSHCmdStuff
 	SSHCmdRcon
 	SSHCmdStatus
+	SSHCmdConsoleSay
+	SSHCmdSayPlayer
 )
 
 type SSHCommand struct {
@@ -69,6 +71,12 @@ func parseSSHCmd(input string) (SSHCommand, error) {
 			return command, nil
 		case "rcon":
 			command.cmd = SSHCmdRcon
+			return command, nil
+		case "consolesay":
+			command.cmd = SSHCmdConsoleSay
+			return command, nil
+		case "sayplayer":
+			command.cmd = SSHCmdSayPlayer
 			return command, nil
 		}
 	}

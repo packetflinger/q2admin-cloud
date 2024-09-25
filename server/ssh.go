@@ -180,6 +180,24 @@ func sessionHandler(s ssh.Session) {
 			str := activeClient.StatusString()
 			activeClient.SSHPrintln(str)
 		}
+		if c.cmd == SSHCmdConsoleSay {
+			ConsoleSay(cl, c.args)
+			cl.Log.Println("console:", c.args)
+			activeClient.SSHPrintln("console: " + c.args)
+		}
+		if c.cmd == SSHCmdSayPlayer {
+			id, err := strconv.Atoi(c.argv[0])
+			if err != nil {
+				msg := fmt.Sprintf("sayplayer: invalid client_id %q", c.argv[0])
+				activeClient.SSHPrintln(msg)
+			}
+			if id < 0 || id > activeClient.MaxPlayers {
+				msg := fmt.Sprintf("sayplayer: invalid client_id %q", c.argv[0])
+				activeClient.SSHPrintln(msg)
+			}
+			p := &activeClient.Players[id]
+			SayPlayer(cl, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
+		}
 	}
 }
 
