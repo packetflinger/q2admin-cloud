@@ -1,0 +1,33 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative role.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+// What this role allows the user to do
+enum Access {
+    Full = 0;   // Everything
+    Read = 1;   // Only see things
+    Write = 2;  // Can see things and change things (includes chat)
+    Chat = 3;   // Can see things and chat, not change anything
+}
+
+// Where the role allows the user to it
+enum Context {
+    Web = 0;
+    SSH = 1;
+}
+
+// The role associated with a user to client relationship
+message Role {
+    string name = 1;
+    Access access = 2;
+    Context context = 3;
+    bool disabled = 4;
+}
+
+message Roles {
+    repeated Role roles = 1;
+}
