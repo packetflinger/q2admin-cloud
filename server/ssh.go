@@ -11,6 +11,8 @@ import (
 	"github.com/gliderlabs/ssh"
 	"github.com/packetflinger/q2admind/client"
 	"golang.org/x/term"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 const (
@@ -198,6 +200,19 @@ func sessionHandler(s ssh.Session) {
 			p := &activeClient.Players[id]
 			SayPlayer(cl, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
 		}
+		if c.cmd == SSHCmdKick {
+			id, err := strconv.Atoi(c.argv[0])
+			if err != nil {
+				msg := fmt.Sprintf("kick: invalid client_id %q", c.argv[0])
+				activeClient.SSHPrintln(msg)
+			}
+			if id < 0 || id > activeClient.MaxPlayers {
+				msg := fmt.Sprintf("kick: invalid client_id %q", c.argv[0])
+				activeClient.SSHPrintln(msg)
+			}
+			p := &activeClient.Players[id]
+			KickPlayer(cl, p, strings.Join(c.argv[1:], " "))
+		}
 	}
 }
 
@@ -269,4 +284,18 @@ func (t SSHTerminal) Println(str string) {
 		str += "\n"
 	}
 	t.terminal.Write([]byte(str))
+}
+
+// ClientsByUser will get a list of clients this particular user has access to.
+func ClientsByUser(user *pb.User) []*client.Client {
+	cls := []*client.Client{}
+	for i := range srv.clients {
+		c := &srv.clients[i]
+		for k := range c.Users {
+			if user.Email == k.Email {
+				cls = append(cls, c)
+			}
+		}
+	}
+	return cls
 }
