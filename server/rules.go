@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -478,4 +479,35 @@ func ApplyMatchedRules(p *client.Player, rules []*pb.Rule) {
 			SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
 		}
 	}
+}
+
+// RuleDetail will return a detailed string containing the criteria of the
+// rule. It will be in multi-line, indented, text-proto format.
+func RuleDetail(rule *pb.Rule) (string, error) {
+	if rule == nil {
+		return "", errors.New("RuleDetail(): empty input")
+	}
+	out, err := prototext.MarshalOptions{
+		Multiline: true,
+		Indent:    "  ",
+	}.Marshal(rule)
+	if err != nil {
+		return "", fmt.Errorf("RuleDetail() error: %v", err)
+	}
+	return string(out), nil
+}
+
+// RuleDetail will return a condensed string explaining the criteria of
+// rule in a single line of text. Depending on the size of the rule
+// (the amount of critera and/or exceptions) this could be a long line of
+// text.
+func RuleDetailLine(rule *pb.Rule) (string, error) {
+	if rule == nil {
+		return "", errors.New("RuleDetailLine(): empty input")
+	}
+	out, err := prototext.Marshal(rule)
+	if err != nil {
+		return "", fmt.Errorf("RuleDetailLine() error: %v", err)
+	}
+	return string(out), nil
 }

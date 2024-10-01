@@ -275,7 +275,7 @@ func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 	if p == nil {
 		return
 	}
-	if len(msg) > 0 {
+	if len(msg) == 0 {
 		msg = "You were kicked for reasons\n"
 	}
 	cmd := fmt.Sprintf("kick %d\n", p.ClientID)

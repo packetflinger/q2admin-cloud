@@ -2,6 +2,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -50,6 +51,13 @@ type ansiCode struct {
 	inversed   bool
 }
 
+type CmdArgs struct {
+	command string
+	argc    int
+	argv    []string
+	args    string
+}
+
 // SSHTerminal is a basic wrapper to enable making it easier to write data
 // to the *term.Terminal pointer for this SSH session
 type SSHTerminal struct {
@@ -91,29 +99,32 @@ func startSSHServer() {
 // terminal by using the "server" command. With no argument, all accessible
 // servers will be listed.
 func sessionHandler(s ssh.Session) {
+	var cl *client.Client
 	var activeClient *client.Client
 	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "> ")}
-	cl, err := srv.FindClientByName("local-test")
-	if err != nil {
-		sshterm.Println(fmt.Sprintf("error: unable to locate %q", "local-test"))
-		return
-	}
-	activeClient = cl
-	sshterm.terminal.SetPrompt(cl.Name + "> ")
+	/*
+		cl, err := srv.FindClientByName("local-test")
+		if err != nil {
+			sshterm.Println(fmt.Sprintf("error: unable to locate %q", "local-test"))
+			return
+		}
+		activeClient = cl
+		sshterm.terminal.SetPrompt(cl.Name + "> ")
+	*/
 
-	go linkClientToTerminal(activeClient, sshterm)
+	// go linkClientToTerminal(activeClient, sshterm)
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
 		if err != nil {
 			break
 		}
-		c, err := parseSSHCmd(line)
+		c, err := ParseCmdArgs(line)
 		if err != nil {
 			sshterm.Println(err.Error())
-			continue
 		}
-		if c.cmd == SSHCmdServer {
+
+		if c.command == "server" {
 			msg := ""
 			if c.argc == 0 {
 				msg = "Available Q2 Servers:\n"
@@ -126,10 +137,12 @@ func sessionHandler(s ssh.Session) {
 			} else {
 				cl, err = srv.FindClientByName(c.argv[0])
 				if err != nil {
-					sshterm.Println(fmt.Sprintf("error: unable to locate %q", c.argv[0]))
+					sshterm.Println(fmt.Sprintf("server: unable to locate %q", c.argv[0]))
 					continue
 				}
-				cl.TermCount--
+				if cl.TermCount > 0 {
+					cl.TermCount--
+				}
 				closeClientTerminalChannel(cl)
 				activeClient = cl
 				go linkClientToTerminal(activeClient, sshterm)
@@ -137,12 +150,20 @@ func sessionHandler(s ssh.Session) {
 			}
 			sshterm.Println(msg)
 		}
-		if c.cmd == SSHCmdSay {
+		if activeClient == nil {
+			continue
+		}
+		if c.command == "say" {
+			if c.argc == 0 {
+				sshterm.Println("Usage: say <something_to_say>")
+				continue
+			}
 			SayEveryone(cl, PRINT_CHAT, c.args)
 		}
-		if c.cmd == SSHCmdHelp {
+		if c.command == "help" {
 			msg := "Available commands:\n"
 			msg += "  help               - show this message\n"
+			msg += "  mute <#> <secs>    - mute player # for secs seconds\n"
 			msg += "  quit               - close the ssh connection\n"
 			msg += "  rcon <cmd>         - execute <cmd> on the remote server\n"
 			msg += "  say <text>         - broadcasts <text> to all players\n"
@@ -152,66 +173,170 @@ func sessionHandler(s ssh.Session) {
 			msg += "  whois <#>          - show player info for client #\n"
 			sshterm.Println(msg)
 		}
-		if c.cmd == SSHCmdQuit {
+		if c.command == "quit" || c.command == "exit" || c.command == "q" {
 			closeClientTerminalChannel(cl)
 			break
 		}
-		if c.cmd == SSHCmdWhois {
-			// todo: input validation
-			pid, _ := strconv.Atoi(c.argv[0])
+		if c.command == "whois" {
+			if len(c.args) == 0 {
+				activeClient.SSHPrintln("Usage: whois <id>")
+				continue
+			}
+			pid, err := strconv.Atoi(c.argv[0])
+			if err != nil {
+				sshterm.Println("whois error: " + err.Error())
+				continue
+			}
+			if pid < 0 || pid > activeClient.MaxPlayers {
+				msg := fmt.Sprintf("whois error: invalid player ID: %d", pid)
+				sshterm.Println(msg)
+				continue
+			}
 			p := activeClient.Players[pid]
+			if p.ConnectTime == 0 {
+				msg := fmt.Sprintf("whois: client_id %q not in use", c.argv[0])
+				activeClient.SSHPrintln(msg)
+				continue
+			}
 			msg := p.Dump()
 			sshterm.Println(msg)
 		}
-		if c.cmd == SSHCmdStuff {
-			// todo: input validation
-			pid, _ := strconv.Atoi(c.argv[0])
+		if c.command == "stuff" {
+			if len(c.args) == 0 {
+				activeClient.SSHPrintln("Usage: stuff <id> <command>")
+				continue
+			}
+			pid, err := strconv.Atoi(c.argv[0])
+			if err != nil {
+				sshterm.Println("stuff error: " + err.Error())
+				continue
+			}
+			if pid < 0 || pid > activeClient.MaxPlayers {
+				msg := fmt.Sprintf("stuff error: invalid player ID: %d", pid)
+				sshterm.Println(msg)
+				continue
+			}
 			p := &activeClient.Players[pid]
+			if p.ConnectTime == 0 {
+				msg := fmt.Sprintf("stuff: client_id %q not in use", c.argv[0])
+				activeClient.SSHPrintln(msg)
+				continue
+			}
 			StuffPlayer(cl, p, strings.Join(c.argv[1:], " "))
 		}
-		if c.cmd == SSHCmdRcon {
+		if c.command == "rcon" {
 			// this is not a real rcon command (out-of-band over UDP), just
 			// simulated over existing TCP connection
 			if len(c.args) == 0 {
 				activeClient.SSHPrintln("Usage: rcon <command>")
-				return
+				continue
 			}
 			ConsoleCommand(activeClient, c.args)
 		}
-		if c.cmd == SSHCmdStatus {
+		if c.command == "status" {
 			str := activeClient.StatusString()
 			activeClient.SSHPrintln(str)
 		}
-		if c.cmd == SSHCmdConsoleSay {
+		if c.command == "consolesay" {
+			if len(c.args) == 0 {
+				sshterm.Println("Usage: consolesay <message>")
+				continue
+			}
 			ConsoleSay(cl, c.args)
 			cl.Log.Println("console:", c.args)
 			activeClient.SSHPrintln("console: " + c.args)
 		}
-		if c.cmd == SSHCmdSayPlayer {
+		if c.command == "sayperson" {
+			if len(c.args) == 0 {
+				sshterm.Println("Usage: sayplayer <id> [message]")
+				continue
+			}
 			id, err := strconv.Atoi(c.argv[0])
 			if err != nil {
 				msg := fmt.Sprintf("sayplayer: invalid client_id %q", c.argv[0])
 				activeClient.SSHPrintln(msg)
+				continue
 			}
 			if id < 0 || id > activeClient.MaxPlayers {
 				msg := fmt.Sprintf("sayplayer: invalid client_id %q", c.argv[0])
 				activeClient.SSHPrintln(msg)
+				continue
 			}
 			p := &activeClient.Players[id]
+			if p.ConnectTime == 0 {
+				msg := fmt.Sprintf("sayperson: client_id %q not in use", c.argv[0])
+				activeClient.SSHPrintln(msg)
+				continue
+			}
 			SayPlayer(cl, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
 		}
-		if c.cmd == SSHCmdKick {
+		if c.command == "kick" {
+			if len(c.args) == 0 {
+				sshterm.Println("Usage: kick <id> [message]")
+				continue
+			}
 			id, err := strconv.Atoi(c.argv[0])
 			if err != nil {
 				msg := fmt.Sprintf("kick: invalid client_id %q", c.argv[0])
 				activeClient.SSHPrintln(msg)
+				continue
 			}
 			if id < 0 || id > activeClient.MaxPlayers {
 				msg := fmt.Sprintf("kick: invalid client_id %q", c.argv[0])
 				activeClient.SSHPrintln(msg)
+				continue
 			}
 			p := &activeClient.Players[id]
+			if p.ConnectTime == 0 {
+				msg := fmt.Sprintf("kick: client_id %q not in use", c.argv[0])
+				activeClient.SSHPrintln(msg)
+				continue
+			}
 			KickPlayer(cl, p, strings.Join(c.argv[1:], " "))
+		}
+		if c.command == "mute" {
+			if len(c.args) == 0 { // list all mutes
+				activeClient.SSHPrintln("Active mutes:")
+				details := ""
+				for _, m := range activeClient.Rules {
+					if m.Type != pb.RuleType_MUTE {
+						continue
+					}
+					mtxt, err := RuleDetailLine(m)
+					if err != nil {
+						msg := fmt.Sprintf("mute list error: %v", err)
+						activeClient.SSHPrintln("  " + msg)
+						continue
+					}
+					details += mtxt + "\n"
+				}
+				sshterm.Println(details + "\nUsage: mute <player_id> <seconds>")
+				continue
+			}
+			id, err := strconv.Atoi(c.argv[0])
+			if err != nil {
+				msg := fmt.Sprintf("mute: invalid client_id %q", c.argv[0])
+				activeClient.SSHPrintln(msg)
+				continue
+			}
+			if id < 0 || id > activeClient.MaxPlayers {
+				msg := fmt.Sprintf("mute: invalid client_id %q", c.argv[0])
+				activeClient.SSHPrintln(msg)
+				continue
+			}
+			secs, err := strconv.Atoi(c.argv[1])
+			if err != nil {
+				msg := fmt.Sprintf("mute: invalid seconds %q", c.argv[1])
+				activeClient.SSHPrintln(msg)
+				continue
+			}
+			p := &activeClient.Players[id]
+			if p.ConnectTime == 0 {
+				msg := fmt.Sprintf("mute: client_id %q not in use", c.argv[0])
+				activeClient.SSHPrintln(msg)
+				continue
+			}
+			MutePlayer(cl, p, secs)
 		}
 	}
 }
@@ -241,7 +366,7 @@ func linkClientToTerminal(cl *client.Client, t SSHTerminal) {
 }
 
 func closeClientTerminalChannel(cl *client.Client) {
-	if cl.TermCount == 0 {
+	if cl.TermCount == 0 && cl.TermLog != nil {
 		close(cl.TermLog)
 	}
 }
@@ -275,6 +400,22 @@ func (c ansiCode) Render() string {
 		r = 7
 	}
 	return fmt.Sprintf("\033[0;%d;%d;%d;%d;%dm", c.foreground, c.background+10, b, u, r)
+}
+
+func ParseCmdArgs(input string) (CmdArgs, error) {
+	if len(input) == 0 {
+		return CmdArgs{}, errors.New("empty input")
+	}
+	tokens := strings.Split(strings.Trim(input, " \n\t"), " ")
+	if len(tokens) == 0 {
+		return CmdArgs{}, fmt.Errorf("ParseCmdArgs(%q) - can't parse command", input)
+	}
+	return CmdArgs{
+		command: strings.ToLower(tokens[0]),
+		argc:    len(tokens) - 1,
+		argv:    tokens[1:],
+		args:    strings.Join(tokens[1:], " "),
+	}, nil
 }
 
 // Println will send str to the SSH terminal. If the input string is missing
