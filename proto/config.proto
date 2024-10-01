@@ -30,4 +30,5 @@ message Config {
     uint32 management_port = 19;
     string ssh_address = 22;
     uint32 ssh_port = 23;
+    string ssh_hostkey = 24;
 }

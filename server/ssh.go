@@ -77,10 +77,9 @@ type TerminalMessage struct {
 
 // Start listening for SSH connections
 func startSSHServer() {
-	hostkey, err := CreateHostKeySigner("config/host.key")
+	hostkey, err := CreateHostKeySigner(srv.config.GetSshHostkey())
 	if err != nil {
 		log.Printf("Error loading host key for SSH server: %v", err)
-		return
 	}
 	s := &ssh.Server{
 		Addr: fmt.Sprintf("%s:%d",
@@ -90,8 +89,10 @@ func startSSHServer() {
 		Handler:          sessionHandler,
 		PublicKeyHandler: publicKeyHandler,
 	}
-	s.AddHostKey(hostkey) // has to be set outside server config creation
-	log.Printf("Listening for SSH connections on %s [hostkey: %s]\n", s.Addr, hostkey.PublicKey().Type())
+	if hostkey != nil {
+		s.AddHostKey(hostkey) // has to be set outside server config creation
+	}
+	log.Printf("Listening for SSH connections on %s", s.Addr)
 	log.Fatal(s.ListenAndServe())
 }
 
@@ -172,7 +173,6 @@ func sessionHandler(s ssh.Session) {
 			sshterm.Println(msg)
 		}
 		if c.command == "quit" || c.command == "exit" || c.command == "logout" || c.command == "q" {
-			closeClientTerminalChannel(cl)
 			break
 		}
 		if (c.command == "help" || c.command == "?") && activeClient == nil {
