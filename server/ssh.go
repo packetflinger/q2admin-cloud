@@ -395,6 +395,8 @@ func linkClientToTerminal(cl *client.Client, t SSHTerminal) {
 	t.Println("* unlinking " + cl.Name)
 }
 
+// closeClientTerminalChannel will close terminal receive channel if there
+// no active terminal connections.
 func closeClientTerminalChannel(cl *client.Client) {
 	if cl.TermCount == 0 && cl.TermLog != nil {
 		close(cl.TermLog)
@@ -432,6 +434,7 @@ func (c ansiCode) Render() string {
 	return fmt.Sprintf("\033[0;%d;%d;%d;%d;%dm", c.foreground, c.background+10, b, u, r)
 }
 
+// ParseCmdArgs breaks up the current SSH command and args
 func ParseCmdArgs(input string) (CmdArgs, error) {
 	if len(input) == 0 {
 		return CmdArgs{}, errors.New("empty input")
