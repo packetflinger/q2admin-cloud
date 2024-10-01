@@ -145,7 +145,7 @@ func sessionHandler(s ssh.Session) {
 			sshterm.Println(err.Error())
 		}
 
-		if c.command == "server" {
+		if c.command == "server" || c.command == "servers" {
 			msg := ""
 			if c.argc == 0 {
 				msg = "Available Q2 Servers:\n"
@@ -171,6 +171,19 @@ func sessionHandler(s ssh.Session) {
 			}
 			sshterm.Println(msg)
 		}
+		if c.command == "quit" || c.command == "exit" || c.command == "logout" || c.command == "q" {
+			closeClientTerminalChannel(cl)
+			break
+		}
+		if (c.command == "help" || c.command == "?") && activeClient == nil {
+			msg := "Available commands:\n"
+			msg += "  help               - show this message\n"
+			msg += "  quit               - close the ssh connection\n"
+			msg += "  server [name]      - switch management servers\n"
+			msg += "                       omitting [name] will list possible servers\n"
+			msg += "\nYou need to use the server command to connect to a management server"
+			sshterm.Println(msg)
+		}
 		if activeClient == nil {
 			continue
 		}
@@ -181,7 +194,7 @@ func sessionHandler(s ssh.Session) {
 			}
 			SayEveryone(cl, PRINT_CHAT, c.args)
 		}
-		if c.command == "help" {
+		if c.command == "help" || c.command == "?" {
 			msg := "Available commands:\n"
 			msg += "  help               - show this message\n"
 			msg += "  mute <#> <secs>    - mute player # for secs seconds\n"
@@ -193,10 +206,6 @@ func sessionHandler(s ssh.Session) {
 			msg += "  stuff <#> <cmd>    - force client # to do a command\n"
 			msg += "  whois <#>          - show player info for client #\n"
 			sshterm.Println(msg)
-		}
-		if c.command == "quit" || c.command == "exit" || c.command == "q" {
-			closeClientTerminalChannel(cl)
-			break
 		}
 		if c.command == "whois" {
 			if len(c.args) == 0 {
