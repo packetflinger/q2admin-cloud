@@ -338,6 +338,16 @@ func sessionHandler(s ssh.Session) {
 			}
 			MutePlayer(cl, p, secs)
 		}
+		if c.command == "pause" {
+			activeClient.TermPaused = true
+		}
+		if c.command == "unpause" {
+			activeClient.TermPaused = false
+			for _, line := range activeClient.TermBuf {
+				sshterm.Println(line)
+			}
+			activeClient.TermBuf = []string{}
+		}
 	}
 }
 
@@ -349,6 +359,7 @@ func sessionHandler(s ssh.Session) {
 // and is stopped when the user switches clients
 func linkClientToTerminal(cl *client.Client, t SSHTerminal) {
 	var now string
+	var msg string
 	t.Println("* linking terminal to " + cl.Name)
 	if cl.TermCount == 0 {
 		cl.TermLog = make(chan string)
@@ -360,7 +371,12 @@ func linkClientToTerminal(cl *client.Client, t SSHTerminal) {
 			break
 		}
 		now = time.Now().Format("15:04:05")
-		t.Println(now + " " + logmsg + "\n")
+		msg = fmt.Sprintf("%s %s\n", now, logmsg)
+		if cl.TermPaused {
+			cl.TermBuf = append(cl.TermBuf, msg)
+		} else {
+			t.Println(msg)
+		}
 	}
 	t.Println("* unlinking " + cl.Name)
 }

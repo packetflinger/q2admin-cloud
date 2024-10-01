@@ -55,6 +55,8 @@ type Client struct {
 	APIKeys     *pb.ApiKeys             // keys generated for accessing this client
 	Path        string                  // the fs path for this client
 	TermLog     chan string             // output stuff to terminal
+	TermBuf     []string                // paused terminal output buffer
+	TermPaused  bool                    // Is the terminal ouptut paused?
 	TermCount   int                     // how many terminals are linked?
 	Users       map[*pb.User][]*pb.Role // users who have access via ssh/web
 }
