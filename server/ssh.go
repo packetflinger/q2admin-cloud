@@ -102,17 +102,6 @@ func sessionHandler(s ssh.Session) {
 	var cl *client.Client
 	var activeClient *client.Client
 	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "> ")}
-	/*
-		cl, err := srv.FindClientByName("local-test")
-		if err != nil {
-			sshterm.Println(fmt.Sprintf("error: unable to locate %q", "local-test"))
-			return
-		}
-		activeClient = cl
-		sshterm.terminal.SetPrompt(cl.Name + "> ")
-	*/
-
-	// go linkClientToTerminal(activeClient, sshterm)
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
