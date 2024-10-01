@@ -339,13 +339,27 @@ func sessionHandler(s ssh.Session) {
 			MutePlayer(cl, p, secs)
 		}
 		if c.command == "pause" {
+			if activeClient.TermPaused {
+				continue
+			}
 			activeClient.TermPaused = true
+			prompt := fmt.Sprintf("%s%s%s>",
+				ansiCode{foreground: ColorBrightRed}.Render(),
+				activeClient.Name,
+				AnsiReset,
+			)
+			sshterm.terminal.SetPrompt(prompt)
 		}
 		if c.command == "unpause" {
+			if !activeClient.TermPaused {
+				continue
+			}
 			activeClient.TermPaused = false
 			for _, line := range activeClient.TermBuf {
 				sshterm.Println(line)
 			}
+			prompt := fmt.Sprintf("%s>", activeClient.Name)
+			sshterm.terminal.SetPrompt(prompt)
 			activeClient.TermBuf = []string{}
 		}
 	}
