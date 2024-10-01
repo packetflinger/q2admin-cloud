@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"golang.org/x/term"
 
 	pb "github.com/packetflinger/q2admind/proto"
+	gossh "golang.org/x/crypto/ssh"
 )
 
 const (
@@ -75,16 +77,46 @@ type TerminalMessage struct {
 
 // Start listening for SSH connections
 func startSSHServer() {
+	hostkey, err := CreateHostKeySigner("config/host.key")
+	if err != nil {
+		log.Printf("Error loading host key for SSH server: %v", err)
+		return
+	}
 	s := &ssh.Server{
 		Addr: fmt.Sprintf("%s:%d",
 			srv.config.GetSshAddress(),
 			srv.config.GetSshPort(),
 		),
-		Handler:         sessionHandler,
-		PasswordHandler: passwordHandler,
+		Handler:          sessionHandler,
+		PublicKeyHandler: publicKeyHandler,
 	}
-	log.Println("Listening for SSH connections on", s.Addr)
+	s.AddHostKey(hostkey) // has to be set outside server config creation
+	log.Printf("Listening for SSH connections on %s [hostkey: %s]\n", s.Addr, hostkey.PublicKey().Type())
 	log.Fatal(s.ListenAndServe())
+}
+
+// CreateHostKeySigner will return a Signer struct based on a private key used
+// as the host key.
+//
+// If you don't specify a host key to identify the server at
+// startup, the server will generate a new one every time. This will result in
+// those super annoying "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!"
+// errors when reconnecting to the same server.
+//
+// You can generate a keypair using commands like:
+//
+//	ssh-keygen -t rsa -b 1024  # usually go with a high bit length
+//	ssh-keygen -t ecdsa -b 521
+func CreateHostKeySigner(keyfile string) (ssh.Signer, error) {
+	data, err := os.ReadFile(keyfile)
+	if err != nil {
+		return nil, fmt.Errorf("CreateHostkeySigner(%q): %v", keyfile, err)
+	}
+	s, err := gossh.ParsePrivateKey(data)
+	if err != nil {
+		return nil, fmt.Errorf("ParsePrivateKey() in CreateHostkeySigner(%q): %v", keyfile, err)
+	}
+	return s, nil
 }
 
 // sessionHandler is the "main" function for an SSH session. Once a user is
@@ -392,17 +424,30 @@ func closeClientTerminalChannel(cl *client.Client) {
 	}
 }
 
-// passwordHandler provides user/password-based authentication. Terminal access
-// should normally be through the cloud admin website, so usernames/passwords
-// should pass through from their website login. Username will be their email
-// address, and the password is randomly generated at website login time.
+// publicKeyHandler provides key-based authentication for the internal SSH
+// server. Keys are generated as users are created via the website. The user
+// can login and download their private key to use for SSH access. Transfering
+// the private key is not the best idea, but there really isn't a way of
+// getting around that if the keys are generated on the server.
 //
-// Since it's technically possible to expose this SSH server externally, having
-// some kind of authentication method is necessary.
+// key argument is derived from the private key on the SSH client's side. The
+// username is passed in via the context.
 //
-// Return true == allow connection, false == deny
-func passwordHandler(ctx ssh.Context, password string) bool {
-	return true
+// Return true to allow the connection, false to deny.
+func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
+	for _, u := range srv.users {
+		if u.GetEmail() == ctx.User() {
+			pub, _, _, _, err := ssh.ParseAuthorizedKey([]byte(u.GetPublicKey()))
+			if err != nil {
+				fmt.Printf("publicKeyHandler error: %v\n", err)
+				return false
+			}
+			if ssh.KeysEqual(key, pub) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Render will build an ANSI color code based on the receiver. This is only

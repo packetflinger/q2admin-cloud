@@ -14,6 +14,7 @@ message User {
     bool disabled = 5;
     int64 access = 6; // bitmask
     Session session = 7;
+    string public_key = 8;
 }
 
 message Users {
