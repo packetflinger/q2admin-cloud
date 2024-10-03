@@ -149,17 +149,19 @@ func sessionHandler(s ssh.Session) {
 		if c.command == "server" || c.command == "servers" {
 			msg := ""
 			if c.argc == 0 {
-				msg = "Available Q2 Servers:\n"
-				for _, c := range srv.clients {
-					if !(c.Connected && c.Trusted) {
-						continue
-					}
-					msg += fmt.Sprintf("  %s\n", c.Name)
+				msg, err = MyServersResponse(s)
+				if err != nil {
+					sshterm.Println(err.Error())
+					continue
 				}
 			} else {
 				cl, err = srv.FindClientByName(c.argv[0])
 				if err != nil {
 					sshterm.Println(fmt.Sprintf("server: unable to locate %q", c.argv[0]))
+					continue
+				}
+				if !(cl.Connected && cl.Trusted) {
+					sshterm.Println(fmt.Sprintf("%q is offline, it can't be managed currently", c.argv[0]))
 					continue
 				}
 				if cl.TermCount > 0 {
@@ -515,4 +517,95 @@ func ClientsByUser(user *pb.User) []*client.Client {
 		}
 	}
 	return cls
+}
+
+// Get the clients owned by this user
+func MyClients(u *pb.User) []*client.Client {
+	cls := []*client.Client{}
+	for i := range srv.clients {
+		c := &srv.clients[i]
+		if c.Owner == u.Email {
+			cls = append(cls, &srv.clients[i])
+		}
+	}
+	return cls
+}
+
+// Get the clients who have access delegated to me
+func MyDelegates(u *pb.User) []*client.Client {
+	cls := []*client.Client{}
+	for i := range srv.clients {
+		c := &srv.clients[i]
+		roles, ok := c.Users[u]
+		if !ok {
+			continue
+		}
+		for _, r := range roles {
+			if r.Context == pb.Context_SSH {
+				cls = append(cls, &srv.clients[i])
+			}
+		}
+	}
+	return cls
+}
+
+// User returns a user proto for the given email address
+func User(email string) (*pb.User, error) {
+	for i := range srv.users {
+		if srv.users[i].Email == email {
+			return srv.users[i], nil
+		}
+	}
+	return nil, fmt.Errorf("User(%q): unable to locate user", email)
+}
+
+// Make a string red
+func red(s string) string {
+	return ansiCode{foreground: ColorRed}.Render() + s + AnsiReset
+}
+
+// make it green!
+func green(s string) string {
+	return ansiCode{foreground: ColorGreen}.Render() + s + AnsiReset
+}
+
+// MyServersResponse will format a string containing all the gameservers and
+// states related to the logged in user. It shows servers they own first and
+// then servers that have had access delegated to them.
+func MyServersResponse(s ssh.Session) (string, error) {
+	output := ""
+	u, err := User(s.User())
+	if err != nil {
+		return "", err
+	}
+	mycls := MyClients(u)
+	if len(mycls) > 0 {
+		var status string
+		output = "Your Servers:\n"
+		for _, c := range mycls {
+			status = ""
+			if c.Connected && c.Trusted {
+				status = fmt.Sprintf(" [%s]", green("connected"))
+			} else {
+				status = fmt.Sprintf(" [%s]", red("offline"))
+			}
+			output += fmt.Sprintf("  %-20s%s\n", c.Name, status)
+		}
+	}
+
+	mydels := MyDelegates(u)
+	if len(mydels) > 0 {
+		var status string
+		output = "Delegated Servers:\n"
+		for _, c := range mydels {
+			status = ""
+			if c.Connected && c.Trusted {
+				status = fmt.Sprintf(" [%s]", green("connected"))
+			} else {
+				status = fmt.Sprintf(" [%s]", red("offline"))
+			}
+			output += fmt.Sprintf("  %-20s%s\n", c.Name, status)
+		}
+	}
+	return output, nil
 }
