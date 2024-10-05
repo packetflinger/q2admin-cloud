@@ -1,0 +1,15 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative health.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto/cmd";
+
+package cmd;
+
+message HealthRequest {
+    string message = 1;
+}
+
+message HealthResponse {
+    string message = 1;
+}
