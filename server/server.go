@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	"fmt"
@@ -520,7 +521,7 @@ func Shutdown() {
 
 // Start the cloud admin server
 func Startup(configFile string, foreground bool) {
-	log.Println("Loading config:", configFile)
+	log.Printf("%-21s %s\n", "Loading config:", configFile)
 	textpb, err := os.ReadFile(configFile)
 	if err != nil {
 		log.Fatal(err)
@@ -538,7 +539,7 @@ func Startup(configFile string, foreground bool) {
 		defer f.Close()
 		log.SetOutput(f)
 	}
-	log.Println("Loading private key:", srv.config.GetPrivateKey())
+	log.Printf("%-21s %s\n", "Loading private key:", srv.config.GetPrivateKey())
 	privkey, err := crypto.LoadPrivateKey(srv.config.GetPrivateKey())
 	if err != nil {
 		log.Fatalf("Problems loading private key: %s\n", err.Error())
@@ -550,7 +551,7 @@ func Startup(configFile string, foreground bool) {
 
 	DB = database.DatabaseConnect(srv.config.Database)
 
-	log.Println("Loading global rules from:", srv.config.GetRuleFile())
+	log.Printf("%-21s %s\n", "Loading global rules:", srv.config.GetRuleFile())
 	rules, err := FetchRules(srv.config.GetRuleFile())
 	if err != nil {
 		log.Println(err)
@@ -558,16 +559,8 @@ func Startup(configFile string, foreground bool) {
 		srv.rules = rules
 	}
 
-	log.Println("Loading clients from:", srv.config.GetClientFile())
-	clients, err := LoadClients(srv.config.GetClientFile())
-	if err != nil {
-		log.Println(err)
-	} else {
-		srv.clients = clients
-	}
-
 	// Read users
-	log.Println("Loading users from:", srv.config.GetUserFile())
+	log.Printf("%-21s %s\n", "Loading users:", srv.config.GetUserFile())
 	users, err := api.ReadUsersFromDisk(srv.config.GetUserFile())
 	if err != nil {
 		log.Println(err)
@@ -575,8 +568,21 @@ func Startup(configFile string, foreground bool) {
 		srv.users = users
 	}
 
-	for _, c := range srv.clients {
-		log.Printf("server: %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
+	log.Printf("%-21s %s\n", "Loading clients:", srv.config.GetClientFile())
+	clients, err := LoadClients(srv.config.GetClientFile())
+	if err != nil {
+		log.Println(err)
+	} else {
+		slices.SortFunc(clients, func(a, b client.Client) int {
+			if a.Name < b.Name {
+				return -1
+			}
+			return 0
+		})
+		srv.clients = clients
+		for _, c := range srv.clients {
+			log.Printf("  %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
+		}
 	}
 
 	port := fmt.Sprintf("%s:%d", srv.config.Address, srv.config.Port)
