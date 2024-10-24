@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"crypto/rsa"
-	"database/sql"
 	"errors"
 	"os"
 	"path"
@@ -48,7 +47,7 @@ type IPInfo struct {
 
 var (
 	srv Server // this server
-	DB  *sql.DB
+	db  database.Database
 )
 
 const (
@@ -166,7 +165,7 @@ func RemoveClient(uuid string) bool {
 	// mark in-ram server object as disabled to prevent reconnects
 	cl.Enabled = false
 
-	tr, err := DB.Begin()
+	tr, err := db.Begin()
 	if err != nil {
 		log.Println(err)
 		return false
@@ -516,7 +515,7 @@ func SendMessages(cl *client.Client) {
 func Shutdown() {
 	fmt.Println("")
 	log.Println("Shutting down...")
-	DB.Close() // not sure if this is necessary
+	db.Handle.Close() // not sure if this is necessary
 }
 
 // Start the cloud admin server
@@ -549,7 +548,12 @@ func Startup(configFile string, foreground bool) {
 	srv.privateKey = privkey
 	srv.publicKey = pubkey
 
-	DB = database.DatabaseConnect(srv.config.Database)
+	log.Printf("%-21s %s\n", "Opening database:", srv.config.Database)
+	db, err = database.Open(srv.config.Database)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
 	log.Printf("%-21s %s\n", "Loading global rules:", srv.config.GetRuleFile())
 	rules, err := FetchRules(srv.config.GetRuleFile())

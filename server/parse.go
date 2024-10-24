@@ -291,6 +291,11 @@ func ParsePlayer(cl *client.Client) *client.Player {
 
 	cl.Players[newplayer.ClientID] = newplayer
 	cl.PlayerCount++
+
+	err := db.Add(&newplayer)
+	if err != nil {
+		log.Println("database.Add():", err)
+	}
 	return &cl.Players[newplayer.ClientID]
 }
 
