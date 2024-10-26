@@ -28,11 +28,28 @@ CREATE TABLE IF NOT EXISTS "player" (
 	insertPlayer = `
 INSERT INTO player (server, name, ip, hostname, vpn, cookie, version, userinfo, time) 
 VALUES (?,?,?,?,?,?,?,?,?)`
+
+	search = `SELECT * FROM player WHERE
+	(name LIKE ? OR ip LIKE ? OR hostname LIKE ? OR userinfo LIKE ?)`
 )
 
 // A struct for holding all our DB stuff
 type Database struct {
 	Handle *sql.DB
+}
+
+// A slice of these is returned for a search. Each represents a player record.
+type SearchResult struct {
+	ID       int
+	Server   string
+	Name     string
+	IP       string
+	Hostname string
+	VPN      bool
+	Cookie   string
+	Version  string
+	Userinfo string
+	Time     int64
 }
 
 func (d Database) Begin() (*sql.Tx, error) {
@@ -80,4 +97,32 @@ func Open(filename string) (Database, error) {
 	}
 	database.Handle = db
 	return database, nil
+}
+
+// Search will fetch the rows that match the input pattern.
+func (d Database) Search(pattern string) ([]SearchResult, error) {
+	var results []SearchResult
+	if len(pattern) < 3 {
+		return nil, fmt.Errorf("error search input needs to be at least 3 characters")
+	}
+	pattern = "%" + pattern + "%"
+	st, err := d.Handle.Prepare(search)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing statement: %v", err)
+	}
+	defer st.Close()
+	res, err := st.Query(pattern, pattern, pattern, pattern)
+	if err != nil {
+		return nil, fmt.Errorf("error querying for %q: %v", pattern, err)
+	}
+	defer res.Close()
+	for res.Next() {
+		var r SearchResult
+		err := res.Scan(&r.ID, &r.Server, &r.Name, &r.IP, &r.Hostname, &r.VPN, &r.Cookie, &r.Version, &r.Userinfo, &r.Time)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning results: %v", err)
+		}
+		results = append(results, r)
+	}
+	return results, nil
 }

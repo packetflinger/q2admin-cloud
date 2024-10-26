@@ -12,6 +12,7 @@ import (
 
 	"github.com/gliderlabs/ssh"
 	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/util"
 	"golang.org/x/term"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -203,6 +204,7 @@ func sessionHandler(s ssh.Session) {
 			msg += "  quit               - close the ssh connection\n"
 			msg += "  rcon <cmd>         - execute <cmd> on the remote server\n"
 			msg += "  say <text>         - broadcasts <text> to all players\n"
+			msg += "  search <string>    - search player records (names, hosts, userinfo, etc)\n"
 			msg += "  server [name]      - switch management servers\n"
 			msg += "                       omitting [name] will list possible servers\n"
 			msg += "  stuff <#> <cmd>    - force client # to do a command\n"
@@ -393,6 +395,28 @@ func sessionHandler(s ssh.Session) {
 			prompt := fmt.Sprintf("%s>", activeClient.Name)
 			sshterm.terminal.SetPrompt(prompt)
 			activeClient.TermBuf = []string{}
+		}
+		if c.command == "search" {
+			if c.argc == 0 {
+				sshterm.Println("Usage: search <partial_name_ip_host_userinfo>")
+				continue
+			}
+			res, err := db.Search(c.args)
+			if err != nil {
+				errstr := fmt.Sprintf("database.Search(%q): %v", c.args, err)
+				sshterm.Println(errstr)
+				continue
+			}
+			var out string
+			for _, r := range res {
+				out += fmt.Sprintf("%-6d %-15s %-15s %-15s %s\n", r.ID, r.Server, r.Name, r.IP, util.TimeAgo(r.Time))
+			}
+			if len(out) > 0 {
+				out = fmt.Sprintf("------ --------------- --------------- --------------- ---------\n%s", out)
+				out = fmt.Sprintf("%-6s %-15s %-15s %-15s %s%s", "ID", "Server", "Name", "IP", "Last Seen\n", out)
+			}
+			sshterm.Println(out)
+			continue
 		}
 	}
 }
