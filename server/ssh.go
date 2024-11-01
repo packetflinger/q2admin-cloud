@@ -135,7 +135,7 @@ func CreateHostKeySigner(keyfile string) (ssh.Signer, error) {
 func sessionHandler(s ssh.Session) {
 	var cl *client.Client
 	var activeClient *client.Client
-	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "> ")}
+	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "q2a> ")}
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
@@ -171,7 +171,7 @@ func sessionHandler(s ssh.Session) {
 				closeClientTerminalChannel(cl)
 				activeClient = cl
 				go linkClientToTerminal(activeClient, sshterm)
-				sshterm.terminal.SetPrompt(cl.Name + "> ")
+				sshterm.terminal.SetPrompt("q2a/" + cl.Name + "> ")
 			}
 			sshterm.Println(msg)
 		}
