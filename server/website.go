@@ -26,6 +26,23 @@ var (
 	Website = WebInterface{}
 )
 
+// PageResponse holds all the possible data to render the pages fort he site.
+// This structure is used for every page
+type PageResponse struct {
+	Title           string
+	HeaderTitle     string
+	SessionUser     *pb.User
+	Gameservers     []client.Client
+	GameserverCount int
+	Client          *client.Client
+	NavHighlight    struct {
+		Dashboard string
+		Servers   string
+		Groups    string
+	}
+	AuthProviders []AuthProvider
+}
+
 // a
 type SessionUser struct {
 }
@@ -44,15 +61,17 @@ type WebpageNotification struct {
 	Timing  string
 }
 type WebpageData struct {
-	Title           string
-	HeaderTitle     string
-	Notification    []WebpageNotification
-	Message         []WebpageMessage
-	SessionUser     *pb.User
-	Gameservers     []client.Client
-	GameserverCount int
-	Client          *client.Client
-	NavHighlight    struct {
+	Title             string
+	HeaderTitle       string
+	Notification      []WebpageNotification
+	NotificationCount int
+	Message           []WebpageMessage
+	MessageCount      int
+	SessionUser       *pb.User
+	Gameservers       []client.Client
+	GameserverCount   int
+	Client            *client.Client
+	NavHighlight      struct {
 		Dashboard string
 		Servers   string
 		Groups    string
@@ -116,11 +135,9 @@ func GetSessionUser(r *http.Request) (*pb.User, error) {
 	if cookie, e = r.Cookie(SessionName); e != nil {
 		return nil, e
 	}
-
 	if user, e = ValidateSession(cookie.Value); e != nil {
 		return nil, e
 	}
-
 	return user, nil
 }
 
@@ -275,23 +292,22 @@ func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 
 // Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
-	infile := path.Join(srv.config.GetWebRoot(), "templates", "sign-in.tmpl")
+	infile := path.Join(srv.config.GetWebRoot(), "templates", "new", "sign-in.tmpl")
 	tmpl, e := template.ParseFiles(infile)
-	auths := []AuthProvider{}
+
+	var page PageResponse
 	for i := range Website.Creds {
-		a := AuthProvider{
+		page.AuthProviders = append(page.AuthProviders, AuthProvider{
 			URL:     BuildAuthURL(Website.Creds[i], i),
 			Icon:    Website.Creds[i].GetImagePath(),
 			Alt:     Website.Creds[i].GetAlternateText(),
 			Enabled: !Website.Creds[i].GetDisabled(),
-		}
-		auths = append(auths, a)
+		})
 	}
-
 	if e != nil {
 		log.Println(e)
 	} else {
-		tmpl.Execute(w, auths)
+		tmpl.Execute(w, page)
 	}
 }
 
