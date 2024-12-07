@@ -505,19 +505,16 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-
-	data := WebpageData{
+	data := PageResponse{
 		Title:       "Terms of Use | Q2Admin CloudAdmin",
 		HeaderTitle: "Terms of Use",
 		SessionUser: user,
 	}
-
 	tmpl, e := template.ParseFiles(
-		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "terms-of-use.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "new", "terms-of-use.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
 	)
-
 	if e != nil {
 		log.Println(e)
 	} else {
