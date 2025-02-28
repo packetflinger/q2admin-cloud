@@ -142,6 +142,13 @@ func sessionHandler(s ssh.Session) {
 		if err != nil {
 			break
 		}
+		if activeClient != nil && !activeClient.Connected { // server dropped
+			sshterm.Printf("** server connection to %s dropped **\n", activeClient.Name)
+			closeClientTerminalChannel(cl)
+			sshterm.terminal.SetPrompt("q2a> ")
+			activeClient = nil
+			continue
+		}
 		c, err := ParseCmdArgs(line)
 		if err != nil {
 			sshterm.Println(err.Error())
@@ -526,6 +533,13 @@ func (t SSHTerminal) Println(str string) {
 	if !strings.HasSuffix(str, "\n") {
 		str += "\n"
 	}
+	t.terminal.Write([]byte(str))
+}
+
+// Printf is a wrapper to emulate the functionality of fmt.Printf and output
+// to the SSH terminal.
+func (t SSHTerminal) Printf(format string, a ...any) {
+	str := fmt.Sprintf(format, a...)
 	t.terminal.Write([]byte(str))
 }
 
