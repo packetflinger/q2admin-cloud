@@ -29,6 +29,12 @@ var (
 // PageResponse holds all the possible data to render the pages fort he site.
 // This structure is used for every page
 type PageResponse struct {
+	Head struct {
+		Author      string
+		Description string
+		Keywords    string
+		Title       string
+	}
 	Title           string
 	HeaderTitle     string
 	SessionUser     *pb.User
@@ -215,23 +221,22 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := WebpageData{
-		Title:       "My Servers | Q2Admin CloudAdmin",
-		HeaderTitle: "My Servers",
-		SessionUser: u,
-	}
-	data.NavHighlight.Dashboard = "active"
+	data := PageResponse{}
+	data.Head.Title = "Dashboard | Q2Admin CloudAdmin"
+	data.Head.Keywords = ""
+	data.Title = ""
+	data.SessionUser = u
 
 	tmpl, e := template.ParseFiles(
-		path.Join(srv.config.GetWebRoot(), "templates", "home.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "new", "dashboard.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
 	)
 
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "home", data)
+		err = tmpl.ExecuteTemplate(w, "dashboard", data)
 		if err != nil {
 			log.Println(err)
 		}
@@ -443,21 +448,21 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cls := ClientsByIdentity(user.Email)
-	data := WebpageData{
-		Title:           "My Servers | Q2Admin CloudAdmin",
-		HeaderTitle:     "My Servers",
-		SessionUser:     user,
-		Gameservers:     cls,
-		GameserverCount: len(cls),
-	}
+
+	data := PageResponse{}
+	data.Head.Title = "My Servers | Q2Admin CloudAdmin"
+	data.Head.Keywords = ""
+	data.Title = "My Servers"
+	data.SessionUser = user
+	data.Gameservers = cls
+	data.GameserverCount = len(cls)
 
 	data.NavHighlight.Servers = "active"
 
 	tmpl, e := template.ParseFiles(
-		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "my-servers.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "server_templates.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "new", "servers.tmpl"),
+		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
 	)
 
 	if e != nil {
@@ -505,11 +510,12 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	data := PageResponse{
-		Title:       "Terms of Use | Q2Admin CloudAdmin",
-		HeaderTitle: "Terms of Use",
-		SessionUser: user,
-	}
+	data := PageResponse{}
+	data.Head.Title = "Terms of Use | Q2Admin CloudAdmin"
+	data.Head.Keywords = "terms"
+	data.Title = "Terms of Use"
+	data.SessionUser = user
+
 	tmpl, e := template.ParseFiles(
 		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
 		path.Join(srv.config.GetWebRoot(), "templates", "new", "terms-of-use.tmpl"),

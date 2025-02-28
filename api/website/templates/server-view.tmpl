@@ -4,13 +4,24 @@
 				<div class="container-fluid p-0">
 					<h1 class="h3 mb-3">{{.HeaderTitle}} <a href="#"><i class="align-middle me-1" data-feather="edit"></i></a></h1>
 					<div class="row">
+{{if .Client.Connected}}
 						<div class="col-12 col-md-6 col-xxl-3 d-flex">
 							<div class="card">
 								<div class="card-header">
-                                    Players Connected
+                                    <h3>Server Info</h3>
 								</div>
 								<div class="card-body">
-                                    Player Connected
+                                    <p>Address: {{.Client.IPAddress}}:{{.Client.Port}}</p>
+  {{if .Client.Encrypted}}
+									<p>Encrypted: YES</p>
+  {{else}}
+									<p>Encrypted: NO</p>
+  {{end}}
+  {{if .Client.Trusted}}
+									<p>Trusted: YES</p>
+  {{else}}
+									<p>Trusted: NO</p>
+  {{end}}
 								</div>
 							</div>
 						</div>
@@ -22,7 +33,16 @@
 
 								</div>
 							</div>
-                        </div>
+						</div>
+{{else}}
+						<div class="col-12 col-md-6 col-xxl-3 d-flex">
+							<div class="card">
+								<div class="card-header">
+									Quake 2 server not connected
+								</div>
+							</div>
+						</div>
+{{end}}
 					</div>
 				</div>
 			</main>
