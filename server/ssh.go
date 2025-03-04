@@ -2,6 +2,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -135,6 +136,8 @@ func CreateHostKeySigner(keyfile string) (ssh.Signer, error) {
 func sessionHandler(s ssh.Session) {
 	var cl *client.Client
 	var activeClient *client.Client
+	var ctx context.Context
+	var cancel context.CancelFunc
 	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "q2a> ")}
 
 	for {
@@ -144,6 +147,7 @@ func sessionHandler(s ssh.Session) {
 		}
 		if activeClient != nil && !activeClient.Connected { // server dropped
 			sshterm.Printf("** server connection to %s dropped **\n", activeClient.Name)
+			cancel()
 			closeClientTerminalChannel(cl)
 			sshterm.terminal.SetPrompt("q2a> ")
 			activeClient = nil
@@ -165,19 +169,24 @@ func sessionHandler(s ssh.Session) {
 			} else {
 				cl, err = srv.FindClientByName(c.argv[0])
 				if err != nil {
-					sshterm.Println(fmt.Sprintf("server: unable to locate %q", c.argv[0]))
+					sshterm.Printf("server: unable to locate %q\n", c.argv[0])
 					continue
 				}
 				if !(cl.Connected && cl.Trusted) {
-					sshterm.Println(fmt.Sprintf("%q is offline, it can't be managed currently", c.argv[0]))
+					sshterm.Printf("%q is offline, it can't be managed currently\n", c.argv[0])
 					continue
 				}
 				if cl.TermCount > 0 {
 					cl.TermCount--
 				}
+				if cancel != nil {
+					cancel()
+				}
 				closeClientTerminalChannel(cl)
 				activeClient = cl
-				go linkClientToTerminal(activeClient, sshterm)
+				ctx, cancel = context.WithCancel(context.Background())
+				go linkClientToTerminal(ctx, activeClient, sshterm)
+				defer cancel()
 				sshterm.terminal.SetPrompt("q2a/" + cl.Name + "> ")
 			}
 			sshterm.Println(msg)
@@ -202,6 +211,7 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println("Usage: say <something_to_say>")
 				continue
 			}
+			sshterm.Println(magenta(c.args))
 			SayEveryone(cl, PRINT_CHAT, c.args)
 		}
 		if c.command == "help" || c.command == "?" {
@@ -229,14 +239,12 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			if pid < 0 || pid > activeClient.MaxPlayers {
-				msg := fmt.Sprintf("whois error: invalid player ID: %d", pid)
-				sshterm.Println(msg)
+				sshterm.Printf("whois error: invalid player ID: %d\n", pid)
 				continue
 			}
 			p := activeClient.Players[pid]
 			if p.ConnectTime == 0 {
-				msg := fmt.Sprintf("whois: client_id %q not in use", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("whois: client_id %q not in use\n", c.argv[0])
 				continue
 			}
 			msg := p.Dump()
@@ -244,7 +252,7 @@ func sessionHandler(s ssh.Session) {
 		}
 		if c.command == "stuff" {
 			if len(c.args) == 0 {
-				activeClient.SSHPrintln("Usage: stuff <id> <command>")
+				sshterm.Println("Usage: stuff <id> <command>")
 				continue
 			}
 			pid, err := strconv.Atoi(c.argv[0])
@@ -253,14 +261,12 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			if pid < 0 || pid > activeClient.MaxPlayers {
-				msg := fmt.Sprintf("stuff error: invalid player ID: %d", pid)
-				sshterm.Println(msg)
+				sshterm.Printf("stuff error: invalid player ID: %d\n", pid)
 				continue
 			}
 			p := &activeClient.Players[pid]
 			if p.ConnectTime == 0 {
-				msg := fmt.Sprintf("stuff: client_id %q not in use", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("stuff: client_id %q not in use\n", c.argv[0])
 				continue
 			}
 			StuffPlayer(cl, p, strings.Join(c.argv[1:], " "))
@@ -269,14 +275,13 @@ func sessionHandler(s ssh.Session) {
 			// this is not a real rcon command (out-of-band over UDP), just
 			// simulated over existing TCP connection
 			if len(c.args) == 0 {
-				activeClient.SSHPrintln("Usage: rcon <command>")
+				sshterm.Println("Usage: rcon <command>")
 				continue
 			}
 			ConsoleCommand(activeClient, c.args)
 		}
 		if c.command == "status" {
-			str := activeClient.StatusString()
-			activeClient.SSHPrintln(str)
+			sshterm.Println(activeClient.StatusString())
 		}
 		if c.command == "consolesay" {
 			if len(c.args) == 0 {
@@ -285,7 +290,7 @@ func sessionHandler(s ssh.Session) {
 			}
 			ConsoleSay(cl, c.args)
 			cl.Log.Println("console:", c.args)
-			activeClient.SSHPrintln("console: " + c.args)
+			sshterm.Println("console: " + c.args)
 		}
 		if c.command == "sayperson" {
 			if len(c.args) == 0 {
@@ -294,19 +299,16 @@ func sessionHandler(s ssh.Session) {
 			}
 			id, err := strconv.Atoi(c.argv[0])
 			if err != nil {
-				msg := fmt.Sprintf("sayplayer: invalid client_id %q", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("sayplayer: invalid client_id %q\n", c.argv[0])
 				continue
 			}
 			if id < 0 || id > activeClient.MaxPlayers {
-				msg := fmt.Sprintf("sayplayer: invalid client_id %q", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("sayplayer: invalid client_id %q\n", c.argv[0])
 				continue
 			}
 			p := &activeClient.Players[id]
 			if p.ConnectTime == 0 {
-				msg := fmt.Sprintf("sayperson: client_id %q not in use", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("sayperson: client_id %q not in use\n", c.argv[0])
 				continue
 			}
 			SayPlayer(cl, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
@@ -318,26 +320,23 @@ func sessionHandler(s ssh.Session) {
 			}
 			id, err := strconv.Atoi(c.argv[0])
 			if err != nil {
-				msg := fmt.Sprintf("kick: invalid client_id %q", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("kick: invalid client_id %q\n", c.argv[0])
 				continue
 			}
 			if id < 0 || id > activeClient.MaxPlayers {
-				msg := fmt.Sprintf("kick: invalid client_id %q", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("kick: invalid client_id %q\n", c.argv[0])
 				continue
 			}
 			p := &activeClient.Players[id]
 			if p.ConnectTime == 0 {
-				msg := fmt.Sprintf("kick: client_id %q not in use", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("kick: client_id %q not in use\n", c.argv[0])
 				continue
 			}
 			KickPlayer(cl, p, strings.Join(c.argv[1:], " "))
 		}
 		if c.command == "mute" {
 			if len(c.args) == 0 { // list all mutes
-				activeClient.SSHPrintln("Active mutes:")
+				sshterm.Println("Active mutes:")
 				details := ""
 				for _, m := range activeClient.Rules {
 					if m.Type != pb.RuleType_MUTE {
@@ -345,8 +344,7 @@ func sessionHandler(s ssh.Session) {
 					}
 					mtxt, err := RuleDetailLine(m)
 					if err != nil {
-						msg := fmt.Sprintf("mute list error: %v", err)
-						activeClient.SSHPrintln("  " + msg)
+						sshterm.Printf(" mute list error: %v\n", err)
 						continue
 					}
 					details += mtxt + "\n"
@@ -356,25 +354,21 @@ func sessionHandler(s ssh.Session) {
 			}
 			id, err := strconv.Atoi(c.argv[0])
 			if err != nil {
-				msg := fmt.Sprintf("mute: invalid client_id %q", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("mute: invalid client_id %q\n", c.argv[0])
 				continue
 			}
 			if id < 0 || id > activeClient.MaxPlayers {
-				msg := fmt.Sprintf("mute: invalid client_id %q", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("mute: invalid client_id %q\n", c.argv[0])
 				continue
 			}
 			secs, err := strconv.Atoi(c.argv[1])
 			if err != nil {
-				msg := fmt.Sprintf("mute: invalid seconds %q", c.argv[1])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("mute: invalid seconds %q\n", c.argv[1])
 				continue
 			}
 			p := &activeClient.Players[id]
 			if p.ConnectTime == 0 {
-				msg := fmt.Sprintf("mute: client_id %q not in use", c.argv[0])
-				activeClient.SSHPrintln(msg)
+				sshterm.Printf("mute: client_id %q not in use\n", c.argv[0])
 				continue
 			}
 			MutePlayer(cl, p, secs)
@@ -410,8 +404,7 @@ func sessionHandler(s ssh.Session) {
 			}
 			res, err := db.Search(c.args)
 			if err != nil {
-				errstr := fmt.Sprintf("database.Search(%q): %v", c.args, err)
-				sshterm.Println(errstr)
+				sshterm.Printf("database.Search(%q): %v\n", c.args, err)
 				continue
 			}
 			var out string
@@ -433,29 +426,36 @@ func sessionHandler(s ssh.Session) {
 // show things like connects, disconnects, chats, and internal q2admin stuff.
 //
 // The ssh user can select which client to watch. This is run concurrently
-// and is stopped when the user switches clients
-func linkClientToTerminal(cl *client.Client, t SSHTerminal) {
+// and is stopped when the user switches clients.
+//
+// The context arg is a "withCancel" context, so the calling func can terminate
+// this go routine even when it's blocking waiting for input if needed.
+func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal) {
 	var now string
 	var msg string
-	t.Println("* linking terminal to " + cl.Name)
+	var logmsg string
+	msg = fmt.Sprintf("* linking terminal to %s *", cl.Name)
+	t.Println(yellow(msg))
 	if cl.TermCount == 0 {
 		cl.TermLog = make(chan string)
 	}
 	cl.TermCount++
 	for {
-		logmsg, ok := <-cl.TermLog
-		if !ok {
-			break
-		}
-		now = time.Now().Format("15:04:05")
-		msg = fmt.Sprintf("%s %s\n", now, logmsg)
-		if cl.TermPaused {
-			cl.TermBuf = append(cl.TermBuf, msg)
-		} else {
+		select {
+		case logmsg = <-cl.TermLog:
+			now = time.Now().Format("15:04:05")
+			msg = fmt.Sprintf("%s %s\n", now, logmsg)
+			if cl.TermPaused {
+				cl.TermBuf = append(cl.TermBuf, msg)
+			} else {
+				t.Println(msg)
+			}
+		case <-ctx.Done():
+			msg = fmt.Sprintf("* unlinking %s *", cl.Name)
 			t.Println(msg)
+			return
 		}
 	}
-	t.Println("* unlinking " + cl.Name)
 }
 
 // closeClientTerminalChannel will close terminal receive channel if there
@@ -605,6 +605,15 @@ func red(s string) string {
 // make it green!
 func green(s string) string {
 	return ansiCode{foreground: ColorGreen}.Render() + s + AnsiReset
+}
+
+// make it yellow
+func yellow(s string) string {
+	return ansiCode{foreground: ColorYellow}.Render() + s + AnsiReset
+}
+
+func magenta(s string) string {
+	return ansiCode{foreground: ColorMagenta}.Render() + s + AnsiReset
 }
 
 // MyServersResponse will format a string containing all the gameservers and
