@@ -45,9 +45,6 @@ func ParseMessage(cl *client.Client) {
 
 		case CMDCommand:
 			ParseCommand(cl)
-
-			// case CMDFrag:
-			// 	ParseFrag(cl)
 		}
 	}
 }
