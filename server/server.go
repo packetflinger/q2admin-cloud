@@ -366,6 +366,8 @@ func HandleConnection(c net.Conn) {
 		return
 	}
 
+	cl.TermLog = make(chan string)
+
 	cl.Port = int(port)
 	cl.Encrypted = int(enc) == 1
 	cl.Connection = &c
@@ -578,10 +580,7 @@ func Startup(configFile string, foreground bool) {
 		log.Println(err)
 	} else {
 		slices.SortFunc(clients, func(a, b client.Client) int {
-			if a.Name < b.Name {
-				return -1
-			}
-			return 0
+			return strings.Compare(a.Name, b.Name)
 		})
 		srv.clients = clients
 		for _, c := range srv.clients {
