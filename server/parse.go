@@ -146,33 +146,36 @@ func ParsePrint(cl *client.Client) {
 
 // A player connected to the a q2 client.
 //
-// 1. look up their PTR record
-// 2. Parse their userinfo
-// 3. Log the connection
-// 4. Apply any rules that match them
+// - look up their PTR record
+// - Log the connection
+// - Apply any rules that match them
 func ParseConnect(cl *client.Client) {
 	p := ParsePlayer(cl)
-
 	if p == nil {
 		return
 	}
 
-	// DNS PTR lookup, take the first one
-	ptr, _ := net.LookupAddr(p.IP)
-	if len(ptr) > 0 {
-		p.Hostname = ptr[0]
-	}
-
-	//info := p.UserinfoMap
-	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.ClientID, p.Name, p.IP)
-	//cl.Log.Printf("CONNECT %d|%s|%s\n", p.ClientID, info["name"], info["ip"])
-	cl.Log.Printf(msg)
-	cl.SSHPrintln(msg)
-	match, rules := CheckRules(p, cl.Rules)
-
-	// add a slight delay when processing rules
+	// DNS resolution can take time (up to seconds) to get a response, so
+	// logging a connect should be done concurrently to prevent blocking. Rules
+	// can depend on DNS names (*.isp.com) so we need to wait for a PTR before
+	// processing rules.
 	go func() {
+		ptr, err := net.LookupAddr(p.IP)
+		if err != nil {
+			log.Printf("error looking up dns for %s[%s]: %v\n", p.Name, p.IP, err)
+		}
+		if len(ptr) > 0 {
+			p.Hostname = ptr[0] // just take the first address
+		}
+
+		msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.ClientID, p.Name, p.IP)
+		cl.Log.Printf(msg)
+		cl.SSHPrintln(msg)
+
+		// add a slight delay when processing rules
 		time.Sleep(1 * time.Second)
+
+		match, rules := CheckRules(p, cl.Rules)
 		if match {
 			p.Rules = rules
 			ApplyMatchedRules(p, rules)
