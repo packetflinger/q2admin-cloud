@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"errors"
+	"fmt"
+	"log"
+	"net"
 	"os"
 	"path"
 	"slices"
 	"strings"
-
-	"fmt"
-	"log"
-	"net"
 
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/api"
