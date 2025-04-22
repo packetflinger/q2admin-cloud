@@ -264,6 +264,7 @@ func ParsePlayer(cl *client.Client) *client.Player {
 	msg := &cl.Message
 	clientnum := msg.ReadByte()
 	userinfo := msg.ReadString()
+	clientVersion := msg.ReadString()
 
 	if int(clientnum) > cl.MaxPlayers {
 		cl.Log.Println("WARN: invalid client number:", clientnum)
@@ -285,6 +286,7 @@ func ParsePlayer(cl *client.Client) *client.Player {
 		ConnectTime:  time.Now().Unix(),
 		Cookie:       info["cl_cookie"],
 		Client:       cl,
+		Version:      clientVersion,
 	}
 
 	cl.Log.Printf("PLAYER %d|%s|%s\n", clientnum, newplayer.UserInfoHash, userinfo)
