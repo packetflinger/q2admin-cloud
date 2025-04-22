@@ -3,10 +3,11 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"time"
+
+	"github.com/packetflinger/q2admind/client"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/packetflinger/q2admind/client"
-	"github.com/packetflinger/q2admind/util"
 )
 
 const (
@@ -56,16 +57,14 @@ func (d Database) Begin() (*sql.Tx, error) {
 	return d.Handle.Begin()
 }
 
-// Add will insert the player into the database
-func (d Database) Add(pl *client.Player) error {
-	st, err := d.Handle.Prepare(insertPlayer)
+// AddPlayer will insert the player into the database
+func (d Database) AddPlayer(pl *client.Player) error {
+	_, err := d.Handle.Exec(
+		insertPlayer, pl.Client.Name, pl.Name, pl.IP, pl.Hostname, pl.VPN,
+		pl.Cookie, pl.Version, pl.Userinfo, time.Now().Unix(),
+	)
 	if err != nil {
-		return fmt.Errorf("error preparing player insert: %v", err)
-	}
-	defer st.Close()
-	_, err = st.Exec(pl.Client.Name, pl.Name, pl.IP, pl.Hostname, pl.VPN, pl.Cookie, pl.Version, pl.Userinfo, util.GetUnixTimestamp())
-	if err != nil {
-		return fmt.Errorf("error inserting player data: %v", err)
+		return fmt.Errorf("error inserting player %s[%s]: %v", pl.Name, pl.IP, err)
 	}
 	return nil
 }

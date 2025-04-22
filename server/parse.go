@@ -294,9 +294,9 @@ func ParsePlayer(cl *client.Client) *client.Player {
 	cl.Players[newplayer.ClientID] = newplayer
 	cl.PlayerCount++
 
-	err := db.Add(&newplayer)
+	err := db.AddPlayer(&newplayer)
 	if err != nil {
-		log.Println("database.Add():", err)
+		log.Println(err)
 	}
 	return &cl.Players[newplayer.ClientID]
 }
