@@ -358,13 +358,12 @@ func (s *Server) HandleConnection(c net.Conn) {
 	challenge := msg.ReadData(crypto.RSAKeyLength)
 	clNonce, err := crypto.PrivateDecrypt(srv.privateKey, challenge)
 	if err != nil {
-		log.Println(err)
-		log.Println("key mismatch?")
+		srv.Logf(LogLevelNormal, "%v\n", err)
 		return
 	}
 	hash, err := crypto.MessageDigest(clNonce)
 	if err != nil {
-		log.Println(err)
+		srv.Logf(LogLevelNormal, "%v\n", err)
 		return
 	}
 

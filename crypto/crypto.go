@@ -41,7 +41,7 @@ func MessageDigest(input []byte) ([]byte, error) {
 	hash := sha256.New()
 	_, err := hash.Write(input)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, fmt.Errorf("error calculating sha256 hash: %v", err)
 	}
 	checksum := hash.Sum(nil)
 	return checksum, nil
