@@ -167,18 +167,18 @@ func PKCS5Padding(input []byte, blockSize int) []byte {
 	return append(input, padtext...)
 }
 
-func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) []byte {
-	plaintext, err := key.Decrypt(
-		nil,
-		ciphertext,
-		//&rsa.OAEPOptions{Hash: 5}) // sha256 (https://pkg.go.dev/crypto#DecrypterOpts)
-		nil)
+// Decrypt a block of ciphertext using our private key.
+//
+// This is used as part of authenticating clients. During the connection
+// handshake, the client will generate a random block of data and encrypt it
+// using the server's public key. The decrypted data is sent back to the client
+// to prove the server has the matching private key, authenticating the server.
+func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
+	plaintext, err := key.Decrypt(nil, ciphertext, nil)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return nil, fmt.Errorf("asymmetric decrypt failed: %v", err)
 	}
-
-	return plaintext
+	return plaintext, nil
 }
 
 func PublicEncrypt(key *rsa.PublicKey, plaintext []byte) []byte {

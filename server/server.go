@@ -339,7 +339,12 @@ func HandleConnection(c net.Conn) {
 	maxplayers := msg.ReadByte()
 	enc := msg.ReadByte()
 	challenge := msg.ReadData(crypto.RSAKeyLength)
-	clNonce := crypto.PrivateDecrypt(srv.privateKey, challenge)
+	clNonce, err := crypto.PrivateDecrypt(srv.privateKey, challenge)
+	if err != nil {
+		log.Println(err)
+		log.Println("key mismatch?")
+		return
+	}
 	hash, err := crypto.MessageDigest(clNonce)
 	if err != nil {
 		log.Println(err)
@@ -429,7 +434,11 @@ func HandleConnection(c net.Conn) {
 
 	authLen := msg.ReadShort()
 	authCipher := msg.ReadData(int(authLen))
-	authMD := crypto.PrivateDecrypt(srv.privateKey, authCipher)
+	authMD, err := crypto.PrivateDecrypt(srv.privateKey, authCipher)
+	if err != nil {
+		msg := fmt.Sprintf("private key issues: %v", err)
+		log.Println(msg)
+	}
 	authHash, err := crypto.MessageDigest(svNonce)
 	if err != nil {
 		log.Println(err)
