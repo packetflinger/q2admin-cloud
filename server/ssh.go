@@ -78,12 +78,12 @@ type TerminalMessage struct {
 }
 
 // Start listening for SSH connections
-func startSSHServer() {
+func (s *Server) startSSHServer() {
 	hostkey, err := CreateHostKeySigner(srv.config.GetSshHostkey())
 	if err != nil {
-		log.Printf("Error loading host key for SSH server: %v", err)
+		s.Logf(LogLevelNormal, "SSH host key error: %v", err)
 	}
-	s := &ssh.Server{
+	sv := &ssh.Server{
 		Addr: fmt.Sprintf("%s:%d",
 			srv.config.GetSshAddress(),
 			srv.config.GetSshPort(),
@@ -92,10 +92,10 @@ func startSSHServer() {
 		PublicKeyHandler: publicKeyHandler,
 	}
 	if hostkey != nil {
-		s.AddHostKey(hostkey) // has to be set outside server config creation
+		sv.AddHostKey(hostkey) // has to be set outside server config creation
 	}
-	log.Printf("Listening for SSH connections on %s", s.Addr)
-	log.Fatal(s.ListenAndServe())
+	s.Logf(LogLevelNormal, "listening for SSH connections on %s", sv.Addr)
+	log.Fatal(sv.ListenAndServe())
 }
 
 // CreateHostKeySigner will return a Signer struct based on a private key used

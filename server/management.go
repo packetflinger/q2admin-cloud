@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
-func startManagement() {
+func (s *Server) startManagement() {
 	port := fmt.Sprintf("%s:%d", srv.config.ManagementAddress, srv.config.ManagementPort)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
@@ -18,7 +18,7 @@ func startManagement() {
 	}
 	defer listener.Close()
 
-	log.Printf("Listening for management clients on %s\n", port)
+	s.Logf(LogLevelNormal, "listening for management clients on %s\n", port)
 
 	for {
 		c, err := listener.Accept()

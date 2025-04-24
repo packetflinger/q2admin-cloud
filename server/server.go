@@ -649,12 +649,12 @@ func Startup(configFile string, foreground bool) {
 		if err != nil {
 			log.Println(err)
 		}
-		go RunHTTPServer(srv.config.GetApiAddress(), int(srv.config.GetApiPort()), creds)
+		go srv.RunHTTPServer(srv.config.GetApiAddress(), int(srv.config.GetApiPort()), creds)
 	}
 
-	go startMaintenance()
-	go startManagement()
-	go startSSHServer()
+	go srv.startMaintenance()
+	go srv.startManagement()
+	go srv.startSSHServer()
 
 	for {
 		c, err := listener.Accept()

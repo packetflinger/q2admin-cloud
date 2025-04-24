@@ -11,22 +11,12 @@ import (
 // It periodically collects stats and cleans things
 // up.
 //
-// Called from Main() in a goroutine
-func startMaintenance() {
-	//s := os.PathSeparator
+// Called from Startup() in a goroutine
+func (s *Server) startMaintenance() {
 	for {
 		time.Sleep(time.Duration(srv.config.MaintenanceTime) * time.Second)
 
-		// every so often write all the client states to disk
-		/*
-			if q2a.maintcount&63 == 0 {
-				for _, cl := range q2a.clients {
-					filename := fmt.Sprintf("client-configs%c%s.json.tests", s, cl.Name)
-					cl.WriteToDisk(filename)
-				}
-			}
-		*/
-
+		s.Logf(LogLevelInfo, "running maintenance")
 		// check time-based player rules
 		for _, cl := range srv.clients {
 			if !cl.Connected && !cl.Trusted {

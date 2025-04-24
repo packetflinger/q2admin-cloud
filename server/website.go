@@ -195,7 +195,7 @@ func ValidateSession(sess string) (*pb.User, error) {
 }
 
 // Load everything needed to start the web interface
-func RunHTTPServer(ip string, port int, creds []*pb.OAuth) {
+func (s *Server) RunHTTPServer(ip string, port int, creds []*pb.OAuth) {
 	Website.Creds = creds
 
 	listen := fmt.Sprintf("%s:%d", ip, port)
@@ -207,7 +207,7 @@ func RunHTTPServer(ip string, port int, creds []*pb.OAuth) {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	log.Printf("Listening for web requests on http://%s\n", listen)
+	s.Logf(LogLevelNormal, "Listening for web requests on http://%s\n", listen)
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
