@@ -420,7 +420,11 @@ func (s *Server) HandleConnection(c net.Conn) {
 		blob = append(blob, cl.CryptoKey.InitVector...)
 	}
 
-	blobCipher := crypto.PublicEncrypt(cl.PublicKey, blob)
+	blobCipher, err := crypto.PublicEncrypt(cl.PublicKey, blob)
+	if err != nil {
+		srv.Logf(LogLevelNormal, "[%s] auth failed: %v\n", cl.Name, err)
+		return
+	}
 
 	out := &cl.MessageOut
 	out.WriteByte(SCMDHelloAck)

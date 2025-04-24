@@ -181,14 +181,20 @@ func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-func PublicEncrypt(key *rsa.PublicKey, plaintext []byte) []byte {
+// Encrypt a block of plaintext using the client's public key.
+//
+// This is used as part of authentication. In order to authenticate the client,
+// the server will generate a random block of data, asymmetrically encrypt it
+// using the client's public key and send it over. Only the client's private
+// key will be able to decrypt it, so the client will decrypt and send back a
+// hash of the data. If the hashes match, the client is successfully
+// authenticated.
+func PublicEncrypt(key *rsa.PublicKey, plaintext []byte) ([]byte, error) {
 	encryptedBytes, err := rsa.EncryptPKCS1v15(rand.Reader, key, plaintext)
-
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("asymmetric encrypt failed: %v", err)
 	}
-
-	return encryptedBytes
+	return encryptedBytes, nil
 }
 
 // Get a byte slice of random data (for generating keys)
