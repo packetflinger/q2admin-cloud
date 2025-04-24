@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"crypto/rsa"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -134,7 +133,7 @@ func (s *Server) FindClient(lookup string) (*client.Client, error) {
 			return &s.clients[i], nil
 		}
 	}
-	return nil, errors.New("unknown client")
+	return nil, fmt.Errorf("unknown client: %q", lookup)
 }
 
 // Locate the struct of the server for a particular
@@ -145,7 +144,7 @@ func (s *Server) FindClientByName(name string) (*client.Client, error) {
 			return &s.clients[i], nil
 		}
 	}
-	return nil, errors.New("unknown client")
+	return nil, fmt.Errorf("unknown client: %q", name)
 }
 
 // Get a pointer to a user based on their email
@@ -155,7 +154,7 @@ func (s *Server) GetUserByEmail(email string) (*pb.User, error) {
 			return u, nil
 		}
 	}
-	return &pb.User{}, errors.New("user not found")
+	return &pb.User{}, fmt.Errorf("user not found: %q", email)
 }
 
 // Someone deleted a managed server via the web interface.
