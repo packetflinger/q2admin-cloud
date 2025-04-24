@@ -1,0 +1,9 @@
+*.pem
+*.pb
+*.old
+*.db
+*.sqlite
+*.pub
+*.key
+.DS_Store
+
