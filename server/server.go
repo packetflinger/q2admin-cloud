@@ -9,8 +9,10 @@ import (
 	"net"
 	"os"
 	"path"
+	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/api"
@@ -104,6 +106,14 @@ const (
 	PRINT_MEDIUM        // obituaries (white/grey, no sound)
 	PRINT_HIGH          // important stuff
 	PRINT_CHAT          // highlighted, sound
+)
+
+const (
+	LogLevelNormal    = iota // operational stuff
+	LogLevelInfo             // more detail
+	LogLevelDebug            // a lot of detail
+	LogLevelDeveloper        // meaningless to all but devs
+	LogLevelAll              // everything
 )
 
 // Log types, used in the database
@@ -308,29 +318,36 @@ func WriteClients(outfile string, clients []client.Client) error {
 // persists in a goroutine from this function.
 //
 // Called from main loop when a new connection is made
-func HandleConnection(c net.Conn) {
+func (s *Server) HandleConnection(c net.Conn) {
 	defer c.Close()
-	log.Printf("Serving %s\n", c.RemoteAddr().String())
+
+	err := c.SetReadDeadline(time.Now().Add(5 * time.Second))
+	if err != nil {
+		s.Logf(LogLevelNormal, "error setting read deadline: %v\n", err)
+		return
+	}
+
+	srv.Logf(LogLevelNormal, "serving %s\n", c.RemoteAddr().String())
 
 	input := make([]byte, 5000)
 	readlen, err := c.Read(input)
 	if err != nil {
-		log.Println("Client read error:", err)
+		srv.Logf(LogLevelNormal, "Client read error: %v\n", err)
 		return
 	}
 	if readlen != 50+crypto.RSAKeyLength {
-		log.Printf("Invalid hello length - got %d, want %d\n", readlen, 50+crypto.RSAKeyLength)
+		srv.Logf(LogLevelDeveloper, "Invalid hello length - got %d, want %d\n", readlen, 50+crypto.RSAKeyLength)
 		return
 	}
 	msg := message.NewMessageBuffer(input)
 
 	if msg.ReadLong() != ProtocolMagic {
-		log.Println("Bad magic value in new connection, not a valid client")
+		srv.Logf(LogLevelNormal, "invalid client\n")
 		return
 	}
 
 	if msg.ReadByte() != CMDHello {
-		log.Println("Protocol error: expecting CMDHello, closing connection")
+		srv.Logf(LogLevelNormal, "bad message type, closing connection")
 		return
 	}
 	uuid := msg.ReadString()
@@ -360,12 +377,12 @@ func HandleConnection(c net.Conn) {
 
 	cl.Log, err = NewClientLogger(cl)
 	if err != nil {
-		log.Printf("[%s] error creating logger: %v\n", cl.Name, err)
+		srv.Logf(LogLevelNormal, "[%s] error creating logger: %v\n", cl.Name, err)
 	}
 	cl.Log.Printf("[%s] connecting...\n", cl.IPAddress)
 
 	if ver < versionRequired {
-		log.Printf("Old client - got version %d, want at least %d\n", ver, versionRequired)
+		srv.Logf(LogLevelNormal, "Old client - got version %d, want at least %d\n", ver, versionRequired)
 		cl.Log.Printf("q2admin library too old - found version %d, need at least %d\n", ver, versionRequired)
 		return
 	}
@@ -381,10 +398,10 @@ func HandleConnection(c net.Conn) {
 
 	keyFile := path.Join(srv.config.ClientDirectory, cl.Name, "key")
 
-	log.Printf("[%s] Loading public key: %s\n", cl.Name, keyFile)
+	srv.Logf(LogLevelInfo, "[%s] Loading public key: %s\n", cl.Name, keyFile)
 	pubkey, err := crypto.LoadPublicKey(keyFile)
 	if err != nil {
-		log.Printf("Public key error: %s\n", err.Error())
+		srv.Logf(LogLevelNormal, "error loading public key: %v\n", err)
 		return
 	}
 	cl.PublicKey = pubkey
@@ -414,21 +431,21 @@ func HandleConnection(c net.Conn) {
 	// read the client signature
 	readlen, err = c.Read(input)
 	if err != nil {
-		log.Println("Error reading client auth response:", err)
+		srv.Logf(LogLevelNormal, "error reading client auth response: %v\n", err)
 		return
 	}
 
 	// We're using a 256bit hashing algo for signing, so we should read
 	// at least 32 + 3 (command bit + length) bytes
 	if readlen < 35 {
-		log.Printf("Invalid client auth length read - got %d, want at least 35\n", readlen)
+		srv.Logf(LogLevelDebug, "invalid client auth length read - got %d, want at least 35\n", readlen)
 		return
 	}
 	msg = message.NewMessageBuffer(input)
 
 	op := msg.ReadByte() // should be CMDAuth (0x0d)
 	if op != CMDAuth {
-		log.Printf("Protocol auth error - got %d, want %d\n", op, CMDAuth)
+		srv.Logf(LogLevelDebug, "Protocol auth error - got %d, want %d\n", op, CMDAuth)
 		return
 	}
 
@@ -436,13 +453,12 @@ func HandleConnection(c net.Conn) {
 	authCipher := msg.ReadData(int(authLen))
 	authMD, err := crypto.PrivateDecrypt(srv.privateKey, authCipher)
 	if err != nil {
-		msg := fmt.Sprintf("private key issues: %v", err)
-		log.Println(msg)
+		msg := fmt.Sprintf("private key error: %v", err)
+		srv.Logf(LogLevelNormal, msg)
 	}
 	authHash, err := crypto.MessageDigest(svNonce)
 	if err != nil {
-		log.Println(err)
-		return
+		srv.Logf(LogLevelInfo, "[%s] hashing error: %v\n", cl.Name, err)
 	}
 
 	verified := false
@@ -451,11 +467,14 @@ func HandleConnection(c net.Conn) {
 	}
 
 	if !verified {
+		srv.Logf(LogLevelNormal, "[%s] auth failed\n", cl.Name)
 		cl.Log.Println("authentication failed, disconnecting")
 		return
 	}
 
+	srv.Logf(LogLevelNormal, "[%s] authenticated\n", cl.Name)
 	cl.Log.Println("authenticated")
+
 	out.WriteByte(SCMDTrusted)
 	SendMessages(cl)
 	cl.Trusted = true
@@ -471,6 +490,7 @@ func HandleConnection(c net.Conn) {
 		input := make([]byte, 5000)
 		size, err := c.Read(input)
 		if err != nil {
+			srv.Logf(LogLevelInfo, "[%s] read error: %v\n", cl.Name, err)
 			cl.Log.Println("read error:", err)
 			break
 		}
@@ -478,6 +498,7 @@ func HandleConnection(c net.Conn) {
 		if cl.Encrypted && cl.Trusted {
 			input, inputSize = crypto.SymmetricDecrypt(cl.CryptoKey.Key, cl.CryptoKey.InitVector, input[:size])
 			if inputSize == 0 {
+				srv.Logf(LogLevelNormal, "[%s] symmetric decrypt error\n", cl.Name)
 				cl.Log.Println("decryption error, dropping client")
 				break
 			}
@@ -523,9 +544,24 @@ func SendMessages(cl *client.Client) {
 //
 // Close database connection, write states to disk, etc
 func Shutdown() {
-	fmt.Println("")
-	log.Println("Shutting down...")
+	srv.Logf(LogLevelNormal, "Shutting down...")
 	db.Handle.Close() // not sure if this is necessary
+}
+
+// context logging for server. Will output the date/time, source file name and
+// line number, and a formatted string. Logging is dependant on verbosity level
+// from the config.
+func (s *Server) Logf(level int, format string, args ...any) {
+	if int(s.config.GetVerboseLevel()) < level {
+		return
+	}
+	msg := fmt.Sprintf(format, args...)
+	_, src, line, ok := runtime.Caller(1) // from parent, not here
+	if ok && s.config.GetVerboseLevel() > LogLevelNormal {
+		log.Printf("%s:%d] %s", path.Base(src), line, msg)
+		return
+	}
+	log.Print(msg)
 }
 
 // Start the cloud admin server
@@ -548,24 +584,25 @@ func Startup(configFile string, foreground bool) {
 		defer f.Close()
 		log.SetOutput(f)
 	}
-	log.Printf("%-21s %s\n", "Loading private key:", srv.config.GetPrivateKey())
+
+	srv.Logf(LogLevelInfo, "%-21s %s\n", "loading private key:", srv.config.GetPrivateKey())
 	privkey, err := crypto.LoadPrivateKey(srv.config.GetPrivateKey())
 	if err != nil {
-		log.Fatalf("Problems loading private key: %s\n", err.Error())
+		log.Fatalf("error loading private key: %v\n", err)
 	}
 
 	pubkey := privkey.Public().(*rsa.PublicKey)
 	srv.privateKey = privkey
 	srv.publicKey = pubkey
 
-	log.Printf("%-21s %s\n", "Opening database:", srv.config.Database)
+	srv.Logf(LogLevelInfo, "%-21s %s\n", "opening database:", srv.config.Database)
 	db, err = database.Open(srv.config.Database)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	log.Printf("%-21s %s\n", "Loading global rules:", srv.config.GetRuleFile())
+	srv.Logf(LogLevelInfo, "%-21s %s\n", "loading global rules:", srv.config.GetRuleFile())
 	rules, err := FetchRules(srv.config.GetRuleFile())
 	if err != nil {
 		log.Println(err)
@@ -574,7 +611,7 @@ func Startup(configFile string, foreground bool) {
 	}
 
 	// Read users
-	log.Printf("%-21s %s\n", "Loading users:", srv.config.GetUserFile())
+	srv.Logf(LogLevelInfo, "%-21s %s\n", "loading users:", srv.config.GetUserFile())
 	users, err := api.ReadUsersFromDisk(srv.config.GetUserFile())
 	if err != nil {
 		log.Println(err)
@@ -582,7 +619,7 @@ func Startup(configFile string, foreground bool) {
 		srv.users = users
 	}
 
-	log.Printf("%-21s %s\n", "Loading clients:", srv.config.GetClientFile())
+	srv.Logf(LogLevelNormal, "%-21s %s\n", "loading clients:", srv.config.GetClientFile())
 	clients, err := LoadClients(srv.config.GetClientFile())
 	if err != nil {
 		log.Println(err)
@@ -592,7 +629,7 @@ func Startup(configFile string, foreground bool) {
 		})
 		srv.clients = clients
 		for _, c := range srv.clients {
-			log.Printf("  %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
+			srv.Logf(LogLevelNormal, "  %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 		}
 	}
 
@@ -605,7 +642,7 @@ func Startup(configFile string, foreground bool) {
 
 	defer listener.Close()
 
-	log.Printf("Listening for gameservers on %s\n", port)
+	srv.Logf(LogLevelNormal, "listening for gameservers on %s\n", port)
 
 	if srv.config.GetApiEnabled() {
 		creds, err := ReadOAuthCredsFromDisk(srv.config.GetAuthFile())
@@ -625,6 +662,6 @@ func Startup(configFile string, foreground bool) {
 			log.Println(err)
 			return
 		}
-		go HandleConnection(c)
+		go srv.HandleConnection(c)
 	}
 }

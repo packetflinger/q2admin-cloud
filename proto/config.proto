@@ -31,4 +31,5 @@ message Config {
     string ssh_address = 22;
     uint32 ssh_port = 23;
     string ssh_hostkey = 24;
+    int32 verbose_level = 25;
 }
