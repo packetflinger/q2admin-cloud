@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/api"
@@ -319,12 +318,6 @@ func WriteClients(outfile string, clients []client.Client) error {
 // Called from main loop when a new connection is made
 func (s *Server) HandleConnection(c net.Conn) {
 	defer c.Close()
-
-	err := c.SetReadDeadline(time.Now().Add(5 * time.Second))
-	if err != nil {
-		s.Logf(LogLevelNormal, "error setting read deadline: %v\n", err)
-		return
-	}
 
 	srv.Logf(LogLevelNormal, "serving %s\n", c.RemoteAddr().String())
 
