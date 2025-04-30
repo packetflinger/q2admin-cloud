@@ -258,6 +258,7 @@ func RotateKeys(cl *client.Client) {
 func LoadClients(filename string) ([]client.Client, error) {
 	clients := []client.Client{}
 	clientspb := pb.ClientList{}
+	inuse := make(map[string]bool)
 
 	contents, err := os.ReadFile(filename)
 	if err != nil {
@@ -274,11 +275,16 @@ func LoadClients(filename string) ([]client.Client, error) {
 		if err != nil {
 			continue
 		}
+		if inuse[cl.UUID] { // id already found, don't have duplicates
+			log.Printf("[%s] overlapping ID %s, skipping", cl.Name, cl.UUID)
+			continue
+		}
 		cl.Rules, err = cl.FetchRules()
 		if err != nil {
 			log.Println(err)
 		}
 		clients = append(clients, cl)
+		inuse[cl.UUID] = true
 	}
 	return clients, nil
 }
@@ -359,6 +365,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 	greeting, err := ParseHello(&msg)
 	if err != nil {
 		srv.Logf(LogLevelNormal, "%v\n", err)
+		return
 	}
 
 	clNonce, err := crypto.PrivateDecrypt(srv.privateKey, greeting.challenge)
