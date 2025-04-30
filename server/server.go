@@ -316,6 +316,20 @@ func WriteClients(outfile string, clients []client.Client) error {
 	return nil
 }
 
+// SendError is a way of letting the client know there's a problem.
+func SendError(cl *client.Client, pl *client.Player, severity int, err string) {
+	out := &cl.MessageOut
+	out.WriteByte(SCMDError)
+	if pl == nil {
+		out.WriteByte(-1)
+	} else {
+		out.WriteByte(pl.ClientID)
+	}
+	out.WriteByte(severity)
+	out.WriteString(err)
+	SendMessages(cl)
+}
+
 // Accept (or deny) a new connection.
 // The first message sent should identify the game server (our client) and
 // trigger the authentication process. If auth succeeds, connection persists
@@ -361,7 +375,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 		return
 	}
 
-	greeting, err := ParseHello(&msg)
+	greeting, err := ParseGreeting(&msg)
 	if err != nil {
 		srv.Logf(LogLevelNormal, "%v\n", err)
 		return
@@ -454,6 +468,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 	verified, err := s.AuthenticateClient(&msg, cl)
 	if err != nil {
 		srv.Logf(LogLevelNormal, "%v", err)
+		SendError(cl, nil, 500, err.Error())
 	}
 
 	if !verified {

@@ -60,7 +60,7 @@ func ParseMessage(cl *client.Client) {
 	}
 }
 
-func ParseHello(msg *message.Buffer) (greeting, error) {
+func ParseGreeting(msg *message.Buffer) (greeting, error) {
 	if msg.Length < GreetingLength {
 		return greeting{}, fmt.Errorf("short greeting (%d)", msg.Length)
 	}
