@@ -10,12 +10,12 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/mattn/go-sqlite3 v1.14.12
-	github.com/packetflinger/libq2 v0.0.0-20230930145741-7f485ed60c09
+	github.com/packetflinger/libq2 v1.0.274
 	github.com/ravener/discord-oauth2 v0.0.0-20220615092331-f6a9839c223e
 	golang.org/x/crypto v0.17.0
 	golang.org/x/oauth2 v0.4.0
 	golang.org/x/term v0.24.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.34.2
 )
 
 require (

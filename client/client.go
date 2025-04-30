@@ -42,8 +42,8 @@ type Client struct {
 	Players     []Player                // all the connected players
 	PlayerCount int                     // len(Players)
 	MaxPlayers  int                     // total number
-	Message     message.MessageBuffer   // incoming byte stream
-	MessageOut  message.MessageBuffer   // outgoing byte stream
+	Message     message.Buffer          // incoming byte stream
+	MessageOut  message.Buffer          // outgoing byte stream
 	Encrypted   bool                    // are the messages AES encrypted?
 	Trusted     bool                    // signature challenge verified
 	PublicKey   *rsa.PublicKey          // supplied by owner via website

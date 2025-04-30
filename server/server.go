@@ -55,6 +55,7 @@ const (
 	challengeLength = 16         // bytes
 	TeleportWidth   = 80         // max chars per line for teleport replies
 	StifleMax       = 300        // 5 minutes
+	GreetingLength  = 306
 )
 
 // Commands sent from the Q2 server to us
@@ -310,10 +311,22 @@ func WriteClients(outfile string, clients []client.Client) error {
 	return nil
 }
 
-// Setup the connection
-// The first message sent should identify the game server
-// and trigger the authentication process. Connection
-// persists in a goroutine from this function.
+// Accept (or deny) a new connection.
+// The first message sent should identify the game server (our client) and
+// trigger the authentication process. If auth succeeds, connection persists
+// in a goroutine from this function.
+//
+// Auth process:
+//  1. Client generates a random nonce, encryptes with server's public key,
+//     and sends the challenge over with other info in the greeting.
+//  2. Server will decrypt the nonce, calculate an SHA256 hash of the data
+//     and send it back to the client along with it's own random nonce. The
+//     entire response is encrypted with the client's public key.
+//  3. Client will decrypt and compare to what the server sent back. If the
+//     hashes match, the server has successfully authenticated to the client
+//     and can be trusted. Client will hash the decrypted server nonce and
+//     send it back to the server. The server will compare hashes and if they
+//     match the client will be trusted by the server.
 //
 // Called from main loop when a new connection is made
 func (s *Server) HandleConnection(c net.Conn) {
@@ -322,16 +335,16 @@ func (s *Server) HandleConnection(c net.Conn) {
 	srv.Logf(LogLevelNormal, "serving %s\n", c.RemoteAddr().String())
 
 	input := make([]byte, 5000)
-	readlen, err := c.Read(input)
+	_, err := c.Read(input)
 	if err != nil {
 		srv.Logf(LogLevelNormal, "Client read error: %v\n", err)
 		return
 	}
-	if readlen != 50+crypto.RSAKeyLength {
-		srv.Logf(LogLevelDeveloper, "Invalid hello length - got %d, want %d\n", readlen, 50+crypto.RSAKeyLength)
+	msg := message.NewBuffer(input)
+	if msg.Length < 5 {
+		srv.Logf(LogLevelNormal, "short read before greeting\n")
 		return
 	}
-	msg := message.NewMessageBuffer(input)
 
 	if msg.ReadLong() != ProtocolMagic {
 		srv.Logf(LogLevelNormal, "invalid client\n")
@@ -342,13 +355,13 @@ func (s *Server) HandleConnection(c net.Conn) {
 		srv.Logf(LogLevelNormal, "bad message type, closing connection")
 		return
 	}
-	uuid := msg.ReadString()
-	ver := msg.ReadLong()
-	port := msg.ReadShort()
-	maxplayers := msg.ReadByte()
-	enc := msg.ReadByte()
-	challenge := msg.ReadData(crypto.RSAKeyLength)
-	clNonce, err := crypto.PrivateDecrypt(srv.privateKey, challenge)
+
+	greeting, err := ParseHello(&msg)
+	if err != nil {
+		srv.Logf(LogLevelNormal, "%v\n", err)
+	}
+
+	clNonce, err := crypto.PrivateDecrypt(srv.privateKey, greeting.challenge)
 	if err != nil {
 		srv.Logf(LogLevelNormal, "%v\n", err)
 		return
@@ -359,7 +372,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 		return
 	}
 
-	cl, err := srv.FindClient(uuid)
+	cl, err := srv.FindClient(greeting.uuid)
 	if err != nil {
 		log.Println(err)
 		return
@@ -372,20 +385,20 @@ func (s *Server) HandleConnection(c net.Conn) {
 	}
 	cl.Log.Printf("[%s] connecting...\n", cl.IPAddress)
 
-	if ver < versionRequired {
-		srv.Logf(LogLevelNormal, "Old client - got version %d, want at least %d\n", ver, versionRequired)
-		cl.Log.Printf("q2admin library too old - found version %d, need at least %d\n", ver, versionRequired)
+	if greeting.version < versionRequired {
+		srv.Logf(LogLevelNormal, "Old client - got version %d, want at least %d\n", greeting.port, versionRequired)
+		cl.Log.Printf("q2admin library too old - found version %d, need at least %d\n", greeting.port, versionRequired)
 		return
 	}
 
 	cl.TermLog = make(chan string)
 
-	cl.Port = int(port)
-	cl.Encrypted = int(enc) == 1
+	cl.Port = greeting.port
+	cl.Encrypted = greeting.encrypted
 	cl.Connection = &c
 	cl.Connected = true
-	cl.Version = int(ver)
-	cl.MaxPlayers = int(maxplayers)
+	cl.Version = greeting.version
+	cl.MaxPlayers = greeting.maxPlayers
 
 	keyFile := path.Join(srv.config.ClientDirectory, cl.Name, "key")
 
@@ -397,11 +410,10 @@ func (s *Server) HandleConnection(c net.Conn) {
 	}
 	cl.PublicKey = pubkey
 
-	svNonce := crypto.RandomBytes(16)
+	svNonce := crypto.RandomBytes(challengeLength)
 	blob := append(hash, svNonce...)
 
-	// If client requests encrypted transit, encrypt the session key/iv
-	// with the client's public key to keep it confidential
+	// If client requests encrypted transit, generate session keys and append
 	if cl.Encrypted {
 		cl.CryptoKey = crypto.EncryptionKey{
 			Key:        crypto.RandomBytes(crypto.AESBlockLength),
@@ -411,6 +423,8 @@ func (s *Server) HandleConnection(c net.Conn) {
 		blob = append(blob, cl.CryptoKey.InitVector...)
 	}
 
+	// Encrypt the whole blob with client's public key so only that client can
+	// possibly decrypt it.
 	blobCipher, err := crypto.PublicEncrypt(cl.PublicKey, blob)
 	if err != nil {
 		srv.Logf(LogLevelNormal, "[%s] auth failed: %v\n", cl.Name, err)
@@ -419,24 +433,18 @@ func (s *Server) HandleConnection(c net.Conn) {
 
 	out := &cl.MessageOut
 	out.WriteByte(SCMDHelloAck)
-	out.WriteShort(uint16(len(blobCipher)))
+	out.WriteShort(len(blobCipher))
 	out.WriteData(blobCipher)
 	SendMessages(cl)
 
 	// read the client signature
-	readlen, err = c.Read(input)
+	_, err = c.Read(input)
 	if err != nil {
 		srv.Logf(LogLevelNormal, "error reading client auth response: %v\n", err)
 		return
 	}
 
-	// We're using a 256bit hashing algo for signing, so we should read
-	// at least 32 + 3 (command bit + length) bytes
-	if readlen < 35 {
-		srv.Logf(LogLevelDebug, "invalid client auth length read - got %d, want at least 35\n", readlen)
-		return
-	}
-	msg = message.NewMessageBuffer(input)
+	msg = message.NewBuffer(input)
 
 	op := msg.ReadByte() // should be CMDAuth (0x0d)
 	if op != CMDAuth {
@@ -499,7 +507,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 			}
 		}
 
-		cl.Message = message.NewMessageBuffer(input[:size])
+		cl.Message = message.NewBuffer(input[:size])
 
 		ParseMessage(cl)
 		SendMessages(cl)
@@ -515,7 +523,7 @@ func SendMessages(cl *client.Client) {
 		return
 	}
 
-	if len(cl.MessageOut.Buffer) == 0 {
+	if len(cl.MessageOut.Data) == 0 {
 		return
 	}
 
@@ -524,13 +532,13 @@ func SendMessages(cl *client.Client) {
 		cipher := crypto.SymmetricEncrypt(
 			cl.CryptoKey.Key,
 			cl.CryptoKey.InitVector,
-			cl.MessageOut.Buffer[:cl.MessageOut.Index])
-		cl.MessageOut = message.NewMessageBuffer(cipher)
+			cl.MessageOut.Data[:cl.MessageOut.Index])
+		cl.MessageOut = message.NewBuffer(cipher)
 	}
 
 	// only send if there is something to send
-	if len(cl.MessageOut.Buffer) > 0 {
-		(*cl.Connection).Write(cl.MessageOut.Buffer)
+	if len(cl.MessageOut.Data) > 0 {
+		(*cl.Connection).Write(cl.MessageOut.Data)
 		(&cl.MessageOut).Reset()
 	}
 }

@@ -8,16 +8,26 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
 )
+
+type greeting struct {
+	uuid       string
+	version    int
+	port       int
+	maxPlayers int
+	encrypted  bool
+	challenge  []byte
+}
 
 // Loop through all the data from the client
 // and act accordingly
 func ParseMessage(cl *client.Client) {
 	msg := &cl.Message
 	for {
-		if msg.Index >= len(msg.Buffer) {
+		if msg.Index >= len(msg.Data) {
 			break
 		}
 
@@ -47,6 +57,20 @@ func ParseMessage(cl *client.Client) {
 			ParseCommand(cl)
 		}
 	}
+}
+
+func ParseHello(msg *message.Buffer) (greeting, error) {
+	if msg.Length-msg.Index < GreetingLength {
+		return greeting{}, fmt.Errorf("short greeting")
+	}
+	return greeting{
+		uuid:       msg.ReadString(),
+		version:    int(msg.ReadLong()),
+		port:       int(msg.ReadShort()),
+		maxPlayers: int(msg.ReadByte()),
+		encrypted:  msg.ReadByte() == 1,
+		challenge:  msg.ReadData(crypto.RSAKeyLength),
+	}, nil
 }
 
 // A player was fragged.
@@ -88,7 +112,7 @@ func ParseFrag(cl *client.Client) {
 
 // Received a ping from a client, send a pong to show we're alive
 func Pong(cl *client.Client) {
-	if srv.config.GetDebugMode() {
+	if srv.config.GetVerboseLevel() >= LogLevelDeveloper {
 		log.Printf("[%s/PING]\n", cl.Name)
 	}
 	cl.PingCount++
@@ -188,7 +212,7 @@ func ParseDisconnect(cl *client.Client) {
 	clientnum := int((&cl.Message).ReadByte())
 
 	if clientnum < 0 || clientnum > cl.MaxPlayers {
-		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(cl.Message.Buffer))
+		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(cl.Message.Data))
 		return
 	}
 

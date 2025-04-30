@@ -222,7 +222,7 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(byte(p.ClientID))
+	(&cl.MessageOut).WriteByte(p.ClientID)
 	(&cl.MessageOut).WriteByte(PRINT_HIGH)
 	(&cl.MessageOut).WriteString(msg)
 	SendMessages(cl)
@@ -257,7 +257,7 @@ func StiflePlayer(cl *client.Client, p *client.Player, seconds int) {
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(byte(p.ClientID))
+	(&cl.MessageOut).WriteByte(p.ClientID)
 	(&cl.MessageOut).WriteByte(PRINT_HIGH)
 	(&cl.MessageOut).WriteString(msg)
 	SendMessages(cl)
@@ -282,7 +282,7 @@ func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(byte(p.ClientID))
+	(&cl.MessageOut).WriteByte(p.ClientID)
 	(&cl.MessageOut).WriteByte(PRINT_HIGH)
 	(&cl.MessageOut).WriteString(msg)
 	SendMessages(cl)
@@ -323,7 +323,7 @@ func SayEveryone(cl *client.Client, level int, text string) {
 		text += "\n"
 	}
 	(&cl.MessageOut).WriteByte(SCMDSayAll)
-	(&cl.MessageOut).WriteByte(byte(level))
+	(&cl.MessageOut).WriteByte(level)
 	(&cl.MessageOut).WriteString(text)
 	SendMessages(cl)
 }
@@ -343,8 +343,8 @@ func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
 		text += "\n"
 	}
 	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(byte(p.ClientID))
-	(&cl.MessageOut).WriteByte(byte(level))
+	(&cl.MessageOut).WriteByte(p.ClientID)
+	(&cl.MessageOut).WriteByte(level)
 	(&cl.MessageOut).WriteString(text)
 	SendMessages(cl)
 }
