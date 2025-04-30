@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -60,8 +61,8 @@ func ParseMessage(cl *client.Client) {
 }
 
 func ParseHello(msg *message.Buffer) (greeting, error) {
-	if msg.Length-msg.Index < GreetingLength {
-		return greeting{}, fmt.Errorf("short greeting")
+	if msg.Length < GreetingLength {
+		return greeting{}, fmt.Errorf("short greeting (%d)", msg.Length)
 	}
 	return greeting{
 		uuid:       msg.ReadString(),
@@ -71,6 +72,36 @@ func ParseHello(msg *message.Buffer) (greeting, error) {
 		encrypted:  msg.ReadByte() == 1,
 		challenge:  msg.ReadData(crypto.RSAKeyLength),
 	}, nil
+}
+
+// Parse the client's response to the server's auth challenge and compare the
+// results.
+func (s *Server) AuthenticateClient(msg *message.Buffer, cl *client.Client) (bool, error) {
+	if msg.Length != crypto.RSAKeyLength+3 {
+		return false, fmt.Errorf("[%s] invalid client auth length (%d)", cl.Name, msg.Length)
+	}
+
+	cmd := msg.ReadByte()
+	if cmd != CMDAuth {
+		return false, fmt.Errorf("[%s] not a client auth message", cl.Name)
+	}
+
+	cipher := msg.ReadData(msg.ReadShort())
+	if len(cipher) == 0 {
+		return false, fmt.Errorf("[%s] invalid cipher length", cl.Name)
+	}
+
+	digestFromClient, err := crypto.PrivateDecrypt(s.privateKey, cipher)
+	if err != nil {
+		srv.Logf(LogLevelNormal, "[%s] private key error: %v", cl.Name, err)
+	}
+
+	digestFromServer, err := crypto.MessageDigest(cl.Challenge)
+	if err != nil {
+		srv.Logf(LogLevelInfo, "[%s] hashing error: %v\n", cl.Name, err)
+	}
+
+	return bytes.Equal(digestFromClient, digestFromServer), nil
 }
 
 // A player was fragged.

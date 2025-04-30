@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"crypto/rsa"
 	"fmt"
 	"log"
@@ -341,12 +340,12 @@ func (s *Server) HandleConnection(c net.Conn) {
 	srv.Logf(LogLevelNormal, "serving %s\n", c.RemoteAddr().String())
 
 	input := make([]byte, 5000)
-	_, err := c.Read(input)
+	count, err := c.Read(input)
 	if err != nil {
 		srv.Logf(LogLevelNormal, "Client read error: %v\n", err)
 		return
 	}
-	msg := message.NewBuffer(input)
+	msg := message.NewBuffer(input[:count])
 	if msg.Length < 5 {
 		srv.Logf(LogLevelNormal, "short read before greeting\n")
 		return
@@ -417,8 +416,8 @@ func (s *Server) HandleConnection(c net.Conn) {
 	}
 	cl.PublicKey = pubkey
 
-	svNonce := crypto.RandomBytes(challengeLength)
-	blob := append(hash, svNonce...)
+	cl.Challenge = crypto.RandomBytes(challengeLength)
+	blob := append(hash, cl.Challenge...)
 
 	// If client requests encrypted transit, generate session keys and append
 	if cl.Encrypted {
@@ -445,39 +444,20 @@ func (s *Server) HandleConnection(c net.Conn) {
 	SendMessages(cl)
 
 	// read the client signature
-	_, err = c.Read(input)
+	count, err = c.Read(input)
 	if err != nil {
 		srv.Logf(LogLevelNormal, "error reading client auth response: %v\n", err)
 		return
 	}
 
-	msg = message.NewBuffer(input)
-
-	op := msg.ReadByte() // should be CMDAuth (0x0d)
-	if op != CMDAuth {
-		srv.Logf(LogLevelDebug, "Protocol auth error - got %d, want %d\n", op, CMDAuth)
-		return
-	}
-
-	authLen := msg.ReadShort()
-	authCipher := msg.ReadData(int(authLen))
-	authMD, err := crypto.PrivateDecrypt(srv.privateKey, authCipher)
+	msg = message.NewBuffer(input[:count])
+	verified, err := s.AuthenticateClient(&msg, cl)
 	if err != nil {
-		msg := fmt.Sprintf("private key error: %v", err)
-		srv.Logf(LogLevelNormal, msg)
-	}
-	authHash, err := crypto.MessageDigest(svNonce)
-	if err != nil {
-		srv.Logf(LogLevelInfo, "[%s] hashing error: %v\n", cl.Name, err)
-	}
-
-	verified := false
-	if bytes.Equal(authHash, authMD) {
-		verified = true
+		srv.Logf(LogLevelNormal, "%v", err)
 	}
 
 	if !verified {
-		srv.Logf(LogLevelNormal, "[%s] auth failed\n", cl.Name)
+		srv.Logf(LogLevelNormal, "[%s] authentication failed\n", cl.Name)
 		cl.Log.Println("authentication failed, disconnecting")
 		return
 	}

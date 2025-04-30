@@ -59,6 +59,7 @@ type Client struct {
 	TermPaused  bool                    // Is the terminal ouptut paused?
 	TermCount   int                     // how many terminals are linked?
 	Users       map[*pb.User][]*pb.Role // users who have access via ssh/web
+	Challenge   []byte                  // random data for auth set by server
 }
 
 // Read rules from disk and return a slice of them
