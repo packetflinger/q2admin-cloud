@@ -393,8 +393,8 @@ func (s *Server) HandleConnection(c net.Conn) {
 	cl.Log.Printf("[%s] connecting...\n", cl.IPAddress)
 
 	if greeting.version < versionRequired {
-		srv.Logf(LogLevelNormal, "Old client - got version %d, want at least %d\n", greeting.port, versionRequired)
-		cl.Log.Printf("q2admin library too old - found version %d, need at least %d\n", greeting.port, versionRequired)
+		srv.Logf(LogLevelNormal, "game version < %d required, found %d\n", versionRequired, greeting.version)
+		cl.Log.Printf("game version < %d required, found %d\n", versionRequired, greeting.version)
 		return
 	}
 
