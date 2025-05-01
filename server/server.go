@@ -490,7 +490,6 @@ func (s *Server) HandleConnection(c net.Conn) {
 	// - wait for input
 	// - parse any messages received, react as necessary
 	// - send any responses
-	var inputSize int
 	for {
 		input := make([]byte, 5000)
 		size, err := c.Read(input)
@@ -501,8 +500,8 @@ func (s *Server) HandleConnection(c net.Conn) {
 		}
 
 		if cl.Encrypted && cl.Trusted {
-			input, inputSize = crypto.SymmetricDecrypt(cl.CryptoKey.Key, cl.CryptoKey.InitVector, input[:size])
-			if inputSize == 0 {
+			input, size = crypto.SymmetricDecrypt(cl.CryptoKey.Key, cl.CryptoKey.InitVector, input[:size])
+			if size == 0 {
 				srv.Logf(LogLevelNormal, "[%s] symmetric decrypt error\n", cl.Name)
 				cl.Log.Println("decryption error, dropping client")
 				break
