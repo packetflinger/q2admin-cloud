@@ -411,7 +411,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 		return
 	}
 
-	cl.TermLog = make(chan string)
+	cl.Terminal = make(chan string)
 
 	cl.Port = greeting.port
 	cl.Encrypted = greeting.encrypted

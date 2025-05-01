@@ -445,7 +445,7 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal)
 	cl.TermCount++
 	for {
 		select {
-		case logmsg := <-cl.TermLog:
+		case logmsg := <-cl.Terminal:
 			now = time.Now().Format("15:04:05")
 			msg = fmt.Sprintf("%s %q\n", now, logmsg)
 			if cl.TermPaused {
@@ -464,8 +464,8 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal)
 // closeClientTerminalChannel will close terminal receive channel if there
 // no active terminal connections.
 func closeClientTerminalChannel(cl *client.Client) {
-	if cl.TermCount == 0 && cl.TermLog != nil {
-		close(cl.TermLog)
+	if cl.TermCount == 0 && cl.Terminal != nil {
+		close(cl.Terminal)
 	}
 }
 

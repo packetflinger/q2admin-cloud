@@ -54,7 +54,7 @@ type Client struct {
 	LogFile     *os.File                // pointer to file so we can close when client disconnects
 	APIKeys     *pb.ApiKeys             // keys generated for accessing this client
 	Path        string                  // the fs path for this client
-	TermLog     chan string             // output stuff to terminal
+	Terminal    chan string             // output stuff to terminal
 	TermBuf     []string                // paused terminal output buffer
 	TermPaused  bool                    // Is the terminal ouptut paused?
 	TermCount   int                     // how many terminals are linked?
@@ -188,7 +188,7 @@ func (cl *Client) PlayersByName(name string) ([]*Player, error) {
 // SSHPrintln will send the value of text to all the SSH-connected clients.
 func (cl *Client) SSHPrintln(text string) {
 	if cl.TermCount > 0 {
-		cl.TermLog <- text
+		cl.Terminal <- text
 	}
 }
 

@@ -296,7 +296,7 @@ func ParseObituary(cl *client.Client, obit string) {
 		)
 	}
 	cl.Log.Printf(logObit)
-	cl.TermLog <- logObit
+	cl.Terminal <- logObit
 }
 
 // Client sent a playerlist message.
