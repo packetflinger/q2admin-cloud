@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/rsa"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -351,27 +352,28 @@ func SendError(cl *client.Client, pl *client.Player, severity int, err string) {
 func (s *Server) HandleConnection(c net.Conn) {
 	defer c.Close()
 
-	srv.Logf(LogLevelNormal, "serving %s\n", c.RemoteAddr().String())
-
 	input := make([]byte, 5000)
 	count, err := c.Read(input)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "Client read error: %v\n", err)
+		srv.Logf(LogLevelDebug, "Client read error: %v\n", err)
 		return
 	}
 	msg := message.NewBuffer(input[:count])
 	if msg.Length < 5 {
-		srv.Logf(LogLevelNormal, "short read before greeting\n")
+		srv.Logf(LogLevelDebug, "short read before greeting\n")
 		return
 	}
 
 	if msg.ReadLong() != ProtocolMagic {
-		srv.Logf(LogLevelNormal, "invalid client\n")
+		srv.Logf(LogLevelDebug, "invalid client\n")
+		srv.Logf(LogLevelDeveloper, "\n%s", hex.Dump(msg.Data))
 		return
 	}
 
+	srv.Logf(LogLevelNormal, "serving %s\n", c.RemoteAddr().String())
 	if msg.ReadByte() != CMDHello {
 		srv.Logf(LogLevelNormal, "bad message type, closing connection")
+		srv.Logf(LogLevelDeveloper, "\n%s", hex.Dump(msg.Data))
 		return
 	}
 
@@ -566,6 +568,22 @@ func (s *Server) Logf(level int, format string, args ...any) {
 		return
 	}
 	log.Print(msg)
+}
+
+// context logging for server. Will output the date/time, source file name and
+// line number, and any included args. Logging is dependant on verbosity level
+// from the config. Newline is included.
+func (s *Server) Logln(level int, args ...any) {
+	if int(s.config.GetVerboseLevel()) < level {
+		return
+	}
+	_, src, line, ok := runtime.Caller(1) // from parent, not here
+	if ok && s.config.GetVerboseLevel() > LogLevelNormal {
+		preamble := fmt.Sprintf("%s:%d]", path.Base(src), line)
+		log.Println(preamble, args)
+		return
+	}
+	log.Println(args...)
 }
 
 // Start the cloud admin server
