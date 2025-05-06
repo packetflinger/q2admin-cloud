@@ -159,14 +159,14 @@ func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 
 // convert to
 func (cl *Client) ToProto() *pb.Client {
-	p := pb.Client{}
-	p.Address = fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port)
-	p.Name = cl.Name
-	p.Uuid = cl.UUID
-	p.Description = cl.Description
-	p.Owner = cl.Owner
-	p.Verified = cl.Verified
-	return &p
+	return &pb.Client{
+		Address:     fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port),
+		Name:        cl.Name,
+		Uuid:        cl.UUID,
+		Description: cl.Description,
+		Owner:       cl.Owner,
+		Verified:    cl.Verified,
+	}
 }
 
 // Find all players that match the name provided. Multiple players
