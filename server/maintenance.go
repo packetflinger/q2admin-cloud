@@ -16,7 +16,7 @@ func (s *Server) startMaintenance() {
 	for {
 		time.Sleep(time.Duration(srv.config.MaintenanceTime) * time.Second)
 
-		s.Logf(LogLevelDeveloper, "running maintenance")
+		s.Logf(LogLevelDeveloperPlus, "running maintenance")
 		// check time-based player rules
 		for _, cl := range srv.clients {
 			if !cl.Connected && !cl.Trusted {

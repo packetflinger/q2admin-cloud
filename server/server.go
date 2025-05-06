@@ -108,11 +108,12 @@ const (
 )
 
 const (
-	LogLevelNormal    = iota // operational stuff
-	LogLevelInfo             // more detail
-	LogLevelDebug            // a lot of detail
-	LogLevelDeveloper        // meaningless to all but devs
-	LogLevelAll              // everything
+	LogLevelNormal        = iota // operational stuff
+	LogLevelInfo                 // more detail
+	LogLevelDebug                // a lot of detail
+	LogLevelDeveloper            // meaningless to all but devs
+	LogLevelDeveloperPlus        // even more
+	LogLevelAll                  // everything
 )
 
 // Log types, used in the database

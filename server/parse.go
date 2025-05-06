@@ -143,7 +143,7 @@ func ParseFrag(cl *client.Client) {
 
 // Received a ping from a client, send a pong to show we're alive
 func Pong(cl *client.Client) {
-	if srv.config.GetVerboseLevel() >= LogLevelDeveloper {
+	if srv.config.GetVerboseLevel() >= LogLevelDeveloperPlus {
 		log.Printf("[%s/PING]\n", cl.Name)
 	}
 	cl.PingCount++
