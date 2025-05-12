@@ -433,21 +433,20 @@ func sessionHandler(s ssh.Session) {
 func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal) {
 	var now string
 	var msg string
-	//var logmsg string
+
 	msg = fmt.Sprintf("* linking terminal to %s *", cl.Name)
 	t.Println(yellow(msg))
-	/*
-		if cl.TermCount == 0 {
-			cl.TermLog = make(chan string)
-		}
-	*/
 
 	cl.TermCount++
 	for {
 		select {
-		case logmsg := <-cl.Terminal:
+		case srvmsg, ok := <-cl.Terminal:
+			if !ok {
+				t.Println("channel closed")
+				return
+			}
 			now = time.Now().Format("15:04:05")
-			msg = fmt.Sprintf("%s %q\n", now, logmsg)
+			msg = fmt.Sprintf("%s %q\n", now, srvmsg)
 			if cl.TermPaused {
 				cl.TermBuf = append(cl.TermBuf, msg)
 			} else {

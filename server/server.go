@@ -488,6 +488,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 	cl.Trusted = true
 
 	cl.Players = make([]client.Player, cl.MaxPlayers)
+	cl.Terminal = make(chan string)
 
 	// main connection loop for this client
 	// - wait for input
