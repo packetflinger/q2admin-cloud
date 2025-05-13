@@ -25,39 +25,39 @@ import (
 // on disk during init and the rest is filled in when the game
 // server actually connects
 type Client struct {
-	ID          int                     // this is the database index, remove later
-	UUID        string                  // random identifier
-	Owner       string                  // email addr
-	Version     int                     // q2admin library version
-	Name        string                  // the teleport name
-	Description string                  // used in teleporting
-	IPAddress   string                  // used for teleporting
-	Port        int                     // used for teleporting
-	Connected   bool                    // is it currently connected to us?
-	Verified    bool                    // client owner proved they're the owner
-	CurrentMap  string                  // what map is currently running
-	PreviousMap string                  // what was the last map?
-	Enabled     bool                    // actually use it
-	Connection  *net.Conn               // the tcp connection
-	Players     []Player                // all the connected players
-	PlayerCount int                     // len(Players)
-	MaxPlayers  int                     // total number
-	Message     message.Buffer          // incoming byte stream
-	MessageOut  message.Buffer          // outgoing byte stream
-	Encrypted   bool                    // are the messages AES encrypted?
-	Trusted     bool                    // signature challenge verified
-	PublicKey   *rsa.PublicKey          // supplied by owner via website
-	CryptoKey   crypto.EncryptionKey    // AES 128 CBC
-	Rules       []*pb.Rule              // bans, mutes, etc
-	PingCount   int                     // how many pings client has seen
-	Log         *log.Logger             // log stuff here
-	LogFile     *os.File                // pointer to file so we can close when client disconnects
-	APIKeys     *pb.ApiKeys             // keys generated for accessing this client
-	Path        string                  // the fs path for this client
-	Terminal    chan string             // output stuff to terminal
+	ID          int                  // this is the database index, remove later
+	UUID        string               // random identifier
+	Owner       string               // email addr
+	Version     int                  // q2admin library version
+	Name        string               // the teleport name
+	Description string               // used in teleporting
+	IPAddress   string               // used for teleporting
+	Port        int                  // used for teleporting
+	Connected   bool                 // is it currently connected to us?
+	Verified    bool                 // client owner proved they're the owner
+	CurrentMap  string               // what map is currently running
+	PreviousMap string               // what was the last map?
+	Enabled     bool                 // actually use it
+	Connection  *net.Conn            // the tcp connection
+	Players     []Player             // all the connected players
+	PlayerCount int                  // len(Players)
+	MaxPlayers  int                  // total number
+	Message     message.Buffer       // incoming byte stream
+	MessageOut  message.Buffer       // outgoing byte stream
+	Encrypted   bool                 // are the messages AES encrypted?
+	Trusted     bool                 // signature challenge verified
+	PublicKey   *rsa.PublicKey       // supplied by owner via website
+	CryptoKey   crypto.EncryptionKey // AES 128 CBC
+	Rules       []*pb.Rule           // bans, mutes, etc
+	PingCount   int                  // how many pings client has seen
+	Log         *log.Logger          // log stuff here
+	LogFile     *os.File             // pointer to file so we can close when client disconnects
+	APIKeys     *pb.ApiKeys          // keys generated for accessing this client
+	Path        string               // the fs path for this client
+	Terminal    chan string          // output stuff to terminal
+	Terminals   []*chan string
 	TermBuf     []string                // paused terminal output buffer
 	TermPaused  bool                    // Is the terminal ouptut paused?
-	TermCount   int                     // how many terminals are linked?
 	Users       map[*pb.User][]*pb.Role // users who have access via ssh/web
 	Challenge   []byte                  // random data for auth set by server
 }
@@ -187,8 +187,15 @@ func (cl *Client) PlayersByName(name string) ([]*Player, error) {
 
 // SSHPrintln will send the value of text to all the SSH-connected clients.
 func (cl *Client) SSHPrintln(text string) {
-	if cl.TermCount > 0 {
-		cl.Terminal <- text
+	for i := range cl.Terminals {
+		select {
+		case *cl.Terminals[i] <- text:
+			log.Printf("Sending %q to ssh client %d\n", text, i)
+			// just don't block
+		default:
+			log.Println("doing nothing")
+			// do nothing
+		}
 	}
 }
 
@@ -203,4 +210,18 @@ func (cl *Client) StatusString() string {
 		}
 	}
 	return out
+}
+
+// The terminal goroutine will call this when disconnecting so the client can
+// close the console stream channel.
+func (cl *Client) TerminalDisconnected(t *chan string) []*chan string {
+	var terms []*chan string
+	for i := range cl.Terminals {
+		if cl.Terminals[i] == t {
+			close(*cl.Terminals[i])
+			continue
+		}
+		terms = append(terms, cl.Terminals[i])
+	}
+	return terms
 }

@@ -148,7 +148,6 @@ func sessionHandler(s ssh.Session) {
 		if activeClient != nil && !activeClient.Connected { // server dropped
 			sshterm.Printf("** server connection to %s dropped **\n", activeClient.Name)
 			cancel()
-			closeClientTerminalChannel(cl)
 			sshterm.terminal.SetPrompt("q2a> ")
 			activeClient = nil
 			continue
@@ -176,16 +175,11 @@ func sessionHandler(s ssh.Session) {
 					sshterm.Printf("%q is offline, it can't be managed currently\n", c.argv[0])
 					continue
 				}
-				if cl.TermCount > 0 {
-					cl.TermCount--
-				}
-				if cancel != nil {
-					cancel()
-				}
-				closeClientTerminalChannel(cl)
 				activeClient = cl
 				ctx, cancel = context.WithCancel(context.Background())
-				go linkClientToTerminal(ctx, activeClient, sshterm)
+				newterm := make(chan string)
+				cl.Terminals = append(cl.Terminals, &newterm)
+				go linkClientToTerminal(ctx, activeClient, sshterm, &newterm)
 				defer cancel()
 				sshterm.terminal.SetPrompt("q2a/" + cl.Name + "> ")
 			}
@@ -430,21 +424,16 @@ func sessionHandler(s ssh.Session) {
 //
 // The context arg is a "withCancel" context, so the calling func can terminate
 // this go routine even when it's blocking waiting for input if needed.
-func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal) {
+func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal, stream *chan string) {
 	var now string
 	var msg string
 
 	msg = fmt.Sprintf("* linking terminal to %s *", cl.Name)
 	t.Println(yellow(msg))
 
-	cl.TermCount++
 	for {
 		select {
-		case srvmsg, ok := <-cl.Terminal:
-			if !ok {
-				t.Println("channel closed")
-				return
-			}
+		case srvmsg := <-*stream:
 			now = time.Now().Format("15:04:05")
 			msg = fmt.Sprintf("%s %q\n", now, srvmsg)
 			if cl.TermPaused {
@@ -455,16 +444,9 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal)
 		case <-ctx.Done():
 			msg = fmt.Sprintf("* unlinking %s *", cl.Name)
 			t.Println(msg)
+			cl.Terminals = cl.TerminalDisconnected(stream)
 			return
 		}
-	}
-}
-
-// closeClientTerminalChannel will close terminal receive channel if there
-// no active terminal connections.
-func closeClientTerminalChannel(cl *client.Client) {
-	if cl.TermCount == 0 && cl.Terminal != nil {
-		close(cl.Terminal)
 	}
 }
 
