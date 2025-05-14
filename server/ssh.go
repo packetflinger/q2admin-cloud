@@ -182,9 +182,7 @@ func sessionHandler(s ssh.Session) {
 				ctx, cancel = context.WithCancel(context.Background())
 
 				newterm := make(chan string)
-				//newdisc := make(chan bool)
 				cl.Terminals = append(cl.Terminals, &newterm)
-				//cl.TermKills = append(cl.TermKills, &newdisc)
 
 				go linkClientToTerminal(ctx, activeClient, sshterm, &newterm)
 				defer cancel()
@@ -453,13 +451,6 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal,
 			t.Println(msg)
 			cl.Terminals = cl.TerminalDisconnected(stream)
 			return
-			/*case disconnected := <-*close:
-			if disconnected {
-				t.Printf("server disconnected, closing stream thread\n")
-				cl.Terminals = cl.TerminalDisconnected(stream)
-				t.terminal.SetPrompt(fmt.Sprintf("%s ", TopLevelPrompt))
-				return
-			}*/
 		}
 	}
 }
