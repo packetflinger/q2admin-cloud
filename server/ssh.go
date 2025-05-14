@@ -189,11 +189,11 @@ func sessionHandler(s ssh.Session) {
 				sshterm.terminal.SetPrompt("q2a/" + cl.Name + "> ")
 			}
 			sshterm.Println(msg)
-		}
-		if c.command == "quit" || c.command == "exit" || c.command == "logout" || c.command == "q" {
+
+		} else if c.command == "quit" || c.command == "exit" || c.command == "logout" || c.command == "q" {
 			break
-		}
-		if (c.command == "help" || c.command == "?") && activeClient == nil {
+
+		} else if (c.command == "help" || c.command == "?") && activeClient == nil {
 			msg := "Available commands:\n"
 			msg += "  help               - show this message\n"
 			msg += "  quit               - close the ssh connection\n"
@@ -202,9 +202,11 @@ func sessionHandler(s ssh.Session) {
 			msg += "\nYou need to use the server command to connect to a management server"
 			sshterm.Println(msg)
 		}
+
 		if activeClient == nil {
 			continue
 		}
+
 		if c.command == "say" {
 			if c.argc == 0 {
 				sshterm.Println("Usage: say <something_to_say>")
@@ -212,22 +214,27 @@ func sessionHandler(s ssh.Session) {
 			}
 			sshterm.Println(magenta(c.args))
 			SayEveryone(cl, PRINT_CHAT, c.args)
-		}
-		if c.command == "help" || c.command == "?" {
+
+		} else if c.command == "help" || c.command == "?" {
 			msg := "Available commands:\n"
+			msg += "  consolesay         - send print to server from console\n"
 			msg += "  help               - show this message\n"
+			msg += "  kick <#> [msg]     - kick player # with msg\n"
 			msg += "  mute <#> <secs>    - mute player # for secs seconds\n"
+			msg += "  pause/unpause      - Pause the console stream\n"
 			msg += "  quit               - close the ssh connection\n"
 			msg += "  rcon <cmd>         - execute <cmd> on the remote server\n"
 			msg += "  say <text>         - broadcasts <text> to all players\n"
+			msg += "  sayplayer <id> <msg>  - say something to player #id\n"
 			msg += "  search <string>    - search player records (names, hosts, userinfo, etc)\n"
-			msg += "  server [name]      - switch management servers\n"
+			msg += "  server [name]      - switch management servers or list\n"
 			msg += "                       omitting [name] will list possible servers\n"
+			msg += "  status             - display basic server status info\n"
 			msg += "  stuff <#> <cmd>    - force client # to do a command\n"
 			msg += "  whois <#>          - show player info for client #\n"
 			sshterm.Println(msg)
-		}
-		if c.command == "whois" {
+
+		} else if c.command == "whois" {
 			if len(c.args) == 0 {
 				activeClient.SSHPrintln("Usage: whois <id>")
 				continue
@@ -248,8 +255,8 @@ func sessionHandler(s ssh.Session) {
 			}
 			msg := p.Dump()
 			sshterm.Println(msg)
-		}
-		if c.command == "stuff" {
+
+		} else if c.command == "stuff" {
 			if len(c.args) == 0 {
 				sshterm.Println("Usage: stuff <id> <command>")
 				continue
@@ -269,8 +276,8 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			StuffPlayer(cl, p, strings.Join(c.argv[1:], " "))
-		}
-		if c.command == "rcon" {
+
+		} else if c.command == "rcon" {
 			// this is not a real rcon command (out-of-band over UDP), just
 			// simulated over existing TCP connection
 			if len(c.args) == 0 {
@@ -278,11 +285,11 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			ConsoleCommand(activeClient, c.args)
-		}
-		if c.command == "status" {
+
+		} else if c.command == "status" {
 			sshterm.Println(activeClient.StatusString())
-		}
-		if c.command == "consolesay" {
+
+		} else if c.command == "consolesay" {
 			if len(c.args) == 0 {
 				sshterm.Println("Usage: consolesay <message>")
 				continue
@@ -290,8 +297,8 @@ func sessionHandler(s ssh.Session) {
 			ConsoleSay(cl, c.args)
 			cl.Log.Println("console:", c.args)
 			sshterm.Println("console: " + c.args)
-		}
-		if c.command == "sayperson" {
+
+		} else if c.command == "sayperson" {
 			if len(c.args) == 0 {
 				sshterm.Println("Usage: sayplayer <id> [message]")
 				continue
@@ -311,8 +318,8 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			SayPlayer(cl, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
-		}
-		if c.command == "kick" {
+
+		} else if c.command == "kick" {
 			if len(c.args) == 0 {
 				sshterm.Println("Usage: kick <id> [message]")
 				continue
@@ -332,8 +339,8 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			KickPlayer(cl, p, strings.Join(c.argv[1:], " "))
-		}
-		if c.command == "mute" {
+
+		} else if c.command == "mute" {
 			if len(c.args) == 0 { // list all mutes
 				sshterm.Println("Active mutes:")
 				details := ""
@@ -371,8 +378,8 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			MutePlayer(cl, p, secs)
-		}
-		if c.command == "pause" {
+
+		} else if c.command == "pause" {
 			if activeClient.TermPaused {
 				continue
 			}
@@ -383,8 +390,8 @@ func sessionHandler(s ssh.Session) {
 				AnsiReset,
 			)
 			sshterm.terminal.SetPrompt(prompt)
-		}
-		if c.command == "unpause" {
+
+		} else if c.command == "unpause" {
 			if !activeClient.TermPaused {
 				continue
 			}
@@ -395,8 +402,8 @@ func sessionHandler(s ssh.Session) {
 			prompt := fmt.Sprintf("%s>", activeClient.Name)
 			sshterm.terminal.SetPrompt(prompt)
 			activeClient.TermBuf = []string{}
-		}
-		if c.command == "search" {
+
+		} else if c.command == "search" {
 			if c.argc == 0 {
 				sshterm.Println("Usage: search <partial_name_ip_host_userinfo>")
 				continue
