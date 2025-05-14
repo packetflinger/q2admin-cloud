@@ -296,7 +296,7 @@ func ParseObituary(cl *client.Client, obit string) {
 		)
 	}
 	cl.Log.Printf(logObit)
-	cl.Terminal <- logObit
+	cl.SSHPrintln(logObit)
 }
 
 // Client sent a playerlist message.
@@ -377,8 +377,10 @@ func ParsePlayerUpdate(cl *client.Client) {
 
 	player, err := cl.FindPlayer(int(clientnum))
 	if err != nil {
-		cl.Log.Println("error in ParsePlayerUpdate():", err)
-		cl.SSHPrintln("error in ParsePlayerUpdate(): " + err.Error())
+		// sometimes player updates are sent before the actual player join
+		// message because the join message is waiting on things like the
+		// client version and VPN checks. It's a (usually losing) race
+		// condition, just swallow the error.
 		return
 	}
 

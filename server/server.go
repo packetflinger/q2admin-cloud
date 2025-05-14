@@ -400,6 +400,8 @@ func (s *Server) HandleConnection(c net.Conn) {
 		log.Println(err)
 		return
 	}
+	// defer cl.KillStreams()
+
 	cl.Path = path.Join(srv.config.GetClientDirectory(), cl.Name)
 
 	cl.Log, err = NewClientLogger(cl)
@@ -413,8 +415,6 @@ func (s *Server) HandleConnection(c net.Conn) {
 		cl.Log.Printf("game version < %d required, found %d\n", versionRequired, greeting.version)
 		return
 	}
-
-	cl.Terminal = make(chan string)
 
 	cl.Port = greeting.port
 	cl.Encrypted = greeting.encrypted
@@ -488,7 +488,6 @@ func (s *Server) HandleConnection(c net.Conn) {
 	cl.Trusted = true
 
 	cl.Players = make([]client.Player, cl.MaxPlayers)
-	cl.Terminal = make(chan string)
 
 	// main connection loop for this client
 	// - wait for input

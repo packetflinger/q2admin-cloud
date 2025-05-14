@@ -39,6 +39,7 @@ const (
 	ColorBrightCyan    = 96
 	ColorWhite         = 97
 	AnsiReset          = "\033[m"
+	TopLevelPrompt     = "q2a>"
 )
 const (
 	TermMsgTypeGeneral = iota
@@ -147,7 +148,9 @@ func sessionHandler(s ssh.Session) {
 		}
 		if activeClient != nil && !activeClient.Connected { // server dropped
 			sshterm.Printf("** server connection to %s dropped **\n", activeClient.Name)
-			cancel()
+			if cancel != nil {
+				cancel()
+			}
 			sshterm.terminal.SetPrompt("q2a> ")
 			activeClient = nil
 			continue
@@ -177,8 +180,12 @@ func sessionHandler(s ssh.Session) {
 				}
 				activeClient = cl
 				ctx, cancel = context.WithCancel(context.Background())
+
 				newterm := make(chan string)
+				//newdisc := make(chan bool)
 				cl.Terminals = append(cl.Terminals, &newterm)
+				//cl.TermKills = append(cl.TermKills, &newdisc)
+
 				go linkClientToTerminal(ctx, activeClient, sshterm, &newterm)
 				defer cancel()
 				sshterm.terminal.SetPrompt("q2a/" + cl.Name + "> ")
@@ -435,7 +442,7 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal,
 		select {
 		case srvmsg := <-*stream:
 			now = time.Now().Format("15:04:05")
-			msg = fmt.Sprintf("%s %q\n", now, srvmsg)
+			msg = fmt.Sprintf("%s %s\n", now, srvmsg)
 			if cl.TermPaused {
 				cl.TermBuf = append(cl.TermBuf, msg)
 			} else {
@@ -446,6 +453,13 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal,
 			t.Println(msg)
 			cl.Terminals = cl.TerminalDisconnected(stream)
 			return
+			/*case disconnected := <-*close:
+			if disconnected {
+				t.Printf("server disconnected, closing stream thread\n")
+				cl.Terminals = cl.TerminalDisconnected(stream)
+				t.terminal.SetPrompt(fmt.Sprintf("%s ", TopLevelPrompt))
+				return
+			}*/
 		}
 	}
 }

@@ -54,12 +54,12 @@ type Client struct {
 	LogFile     *os.File             // pointer to file so we can close when client disconnects
 	APIKeys     *pb.ApiKeys          // keys generated for accessing this client
 	Path        string               // the fs path for this client
-	Terminal    chan string          // output stuff to terminal
-	Terminals   []*chan string
-	TermBuf     []string                // paused terminal output buffer
-	TermPaused  bool                    // Is the terminal ouptut paused?
-	Users       map[*pb.User][]*pb.Role // users who have access via ssh/web
-	Challenge   []byte                  // random data for auth set by server
+	Terminals   []*chan string       // pointers to the console streams
+	//TermKills   []*chan bool            // chans for closing stream thread
+	TermBuf    []string                // paused terminal output buffer
+	TermPaused bool                    // Is the terminal ouptut paused?
+	Users      map[*pb.User][]*pb.Role // users who have access via ssh/web
+	Challenge  []byte                  // random data for auth set by server
 }
 
 // Read rules from disk and return a slice of them
@@ -191,10 +191,8 @@ func (cl *Client) SSHPrintln(text string) {
 		select {
 		case *cl.Terminals[i] <- text:
 			log.Printf("Sending %q to ssh client %d\n", text, i)
-			// just don't block
 		default:
 			log.Println("doing nothing")
-			// do nothing
 		}
 	}
 }
@@ -225,3 +223,17 @@ func (cl *Client) TerminalDisconnected(t *chan string) []*chan string {
 	}
 	return terms
 }
+
+/*
+func (cl *Client) KillStreams() {
+	for i := range cl.TermKills {
+		select {
+		case *cl.TermKills[i] <- true:
+			log.Println("killing stream", i)
+			close(*cl.TermKills[i])
+		default:
+			// don't block
+		}
+	}
+}
+*/
