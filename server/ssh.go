@@ -73,7 +73,8 @@ type HelpCommands struct {
 	Extra string
 }
 
-const helpTemplate = `
+const (
+	helpTemplate = `
 Available commands:
 {{- range .Cmds}}
   {{ printf "%-20s" .Cmd }}                   {{ .Desc -}}
@@ -81,6 +82,23 @@ Available commands:
 
 {{.Extra}}
 `
+	statusTemplate = `
+Current map:   {{ .CurrentMap }}
+{{- if .PreviousMap }}Previous map:  {{ .PreviousMap }}{{ end -}}
+
+{{ if .PlayerCount }}
+num score name            vpn   address
+--- ----- --------------- ----- ------------------------------
+{{ range .Players}}
+{{- if .IP -}}
+{{ printf "%3d" .ClientID}} {{ printf "%5d" .Frags}} {{ printf "%-15s" .Name }} {{ printf "%-5t" .VPN }} {{ .IP -}}
+{{- end -}}
+{{ end }}
+{{ else }}
+No UDP clients
+{{ end }}
+`
+)
 
 // SSHTerminal is a basic wrapper to enable making it easier to write data
 // to the *term.Terminal pointer for this SSH session
@@ -159,7 +177,9 @@ func sessionHandler(s ssh.Session) {
 	var ctx context.Context
 	var cancel context.CancelFunc
 	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "q2a> ")}
+
 	helpTmpl := template.Must(template.New("helpout").Parse(helpTemplate))
+	statusTmpl := template.Must(template.New("statusout").Parse(statusTemplate))
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
@@ -330,7 +350,12 @@ func sessionHandler(s ssh.Session) {
 			ConsoleCommand(activeClient, c.args)
 
 		} else if c.command == "status" {
-			sshterm.Println(activeClient.StatusString())
+			var msg bytes.Buffer
+			if err := statusTmpl.Execute(&msg, cl); err != nil {
+				log.Println("error executing status command template:", err)
+			}
+			sshterm.Println(msg.String())
+			//sshterm.Println(activeClient.StatusString())
 
 		} else if c.command == "consolesay" {
 			if len(c.args) == 0 {
