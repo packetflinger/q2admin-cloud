@@ -2,6 +2,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/gliderlabs/ssh"
@@ -62,6 +64,23 @@ type CmdArgs struct {
 	argv    []string
 	args    string
 }
+
+type HelpCommands struct {
+	Cmds []struct {
+		Cmd  string
+		Desc string
+	}
+	Extra string
+}
+
+const helpTemplate = `
+Available commands:
+{{- range .Cmds}}
+  {{ printf "%-20s" .Cmd }}                   {{ .Desc -}}
+{{end}}
+
+{{.Extra}}
+`
 
 // SSHTerminal is a basic wrapper to enable making it easier to write data
 // to the *term.Terminal pointer for this SSH session
@@ -140,6 +159,7 @@ func sessionHandler(s ssh.Session) {
 	var ctx context.Context
 	var cancel context.CancelFunc
 	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "q2a> ")}
+	helpTmpl := template.Must(template.New("helpout").Parse(helpTemplate))
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
@@ -194,13 +214,23 @@ func sessionHandler(s ssh.Session) {
 			break
 
 		} else if (c.command == "help" || c.command == "?") && activeClient == nil {
-			msg := "Available commands:\n"
-			msg += "  help               - show this message\n"
-			msg += "  quit               - close the ssh connection\n"
-			msg += "  server [name]      - switch management servers\n"
-			msg += "                       omitting [name] will list possible servers\n"
-			msg += "\nYou need to use the server command to connect to a management server"
-			sshterm.Println(msg)
+			help := HelpCommands{
+				Cmds: []struct {
+					Cmd  string
+					Desc string
+				}{
+					{Cmd: "help", Desc: "show this message"},
+					{Cmd: "quit", Desc: "close the ssh connection"},
+					{Cmd: "server [name]", Desc: "switch mgmt servers, list"},
+				},
+				Extra: "You need to use the server command to connect to a management server",
+			}
+
+			var msg bytes.Buffer
+			if err := helpTmpl.Execute(&msg, help); err != nil {
+				log.Println("error executing help command template:", err)
+			}
+			sshterm.Println(msg.String())
 		}
 
 		if activeClient == nil {
@@ -216,23 +246,36 @@ func sessionHandler(s ssh.Session) {
 			SayEveryone(cl, PRINT_CHAT, c.args)
 
 		} else if c.command == "help" || c.command == "?" {
-			msg := "Available commands:\n"
-			msg += "  consolesay         - send print to server from console\n"
-			msg += "  help               - show this message\n"
-			msg += "  kick <#> [msg]     - kick player # with msg\n"
-			msg += "  mute <#> <secs>    - mute player # for secs seconds\n"
-			msg += "  pause/unpause      - Pause the console stream\n"
-			msg += "  quit               - close the ssh connection\n"
-			msg += "  rcon <cmd>         - execute <cmd> on the remote server\n"
-			msg += "  say <text>         - broadcasts <text> to all players\n"
-			msg += "  sayplayer <id> <msg>  - say something to player #id\n"
-			msg += "  search <string>    - search player records (names, hosts, userinfo, etc)\n"
-			msg += "  server [name]      - switch management servers or list\n"
-			msg += "                       omitting [name] will list possible servers\n"
-			msg += "  status             - display basic server status info\n"
-			msg += "  stuff <#> <cmd>    - force client # to do a command\n"
-			msg += "  whois <#>          - show player info for client #\n"
-			sshterm.Println(msg)
+			help := HelpCommands{
+				Cmds: []struct {
+					Cmd  string
+					Desc string
+				}{
+					{Cmd: "help", Desc: "show this message"},
+					{Cmd: "quit", Desc: "close the ssh connection"},
+					{Cmd: "pause", Desc: "pause the console stream"},
+					{Cmd: "server [name]", Desc: "switch mgmt servers, list"},
+					{Cmd: "unpause", Desc: "resume the console stream"},
+					{Cmd: "", Desc: ""},
+					{Cmd: "rcon <cmd>", Desc: "execute <cmd> on the remote server"},
+					{Cmd: "status", Desc: "display basic server status info"},
+					{Cmd: "search <string>", Desc: "search player records (names, hosts, userinfo, etc)"},
+					{Cmd: "stuff <#> <cmd>", Desc: "force client # to do a command"},
+					{Cmd: "whois <#>", Desc: "show player info for client #"},
+					{Cmd: "", Desc: ""},
+					{Cmd: "say", Desc: "broadcasts <text> to all players"},
+					{Cmd: "consolesay", Desc: "send print to server from console"},
+					{Cmd: "sayplayer <id> <msg>", Desc: "say something to player #id"},
+					{Cmd: "", Desc: ""},
+					{Cmd: "kick <#> [msg]", Desc: "kick player # with msg"},
+					{Cmd: "mute <#> <secs>", Desc: "mute player # for secs seconds"},
+				},
+			}
+			var msg bytes.Buffer
+			if err := helpTmpl.Execute(&msg, help); err != nil {
+				log.Println("error executing extended help command template:", err)
+			}
+			sshterm.Println(msg.String())
 
 		} else if c.command == "whois" {
 			if len(c.args) == 0 {
