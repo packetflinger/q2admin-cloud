@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/util"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -51,6 +52,7 @@ type SearchResult struct {
 	Version  string
 	Userinfo string
 	Time     int64
+	Ago      string
 }
 
 func (d Database) Begin() (*sql.Tx, error) {
@@ -121,6 +123,7 @@ func (d Database) Search(pattern string) ([]SearchResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error scanning results: %v", err)
 		}
+		r.Ago = util.TimeAgo(r.Time)
 		results = append(results, r)
 	}
 	return results, nil

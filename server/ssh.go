@@ -15,7 +15,7 @@ import (
 
 	"github.com/gliderlabs/ssh"
 	"github.com/packetflinger/q2admind/client"
-	"github.com/packetflinger/q2admind/util"
+	"github.com/packetflinger/q2admind/database"
 	"golang.org/x/term"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -73,6 +73,11 @@ type HelpCommands struct {
 	Extra string
 }
 
+type SearchResultsOutput struct {
+	Query   string
+	Results []database.SearchResult
+}
+
 const (
 	helpTemplate = `
 Available commands:
@@ -96,6 +101,15 @@ num score name            vpn   address
 {{ end }}
 {{ else }}
 No UDP clients
+{{ end }}
+`
+
+	searchTemplate = `
+Search results for "{{ .Query }}"
+name             server              seen  address
+---------------  ---------------  -------  -------------------------
+{{ range .Results -}}
+{{ printf "%-15s" .Name }}  {{ printf "%-15s" .Server}}  {{ printf "%7s" .Ago }}  {{ .IP }}
 {{ end }}
 `
 )
@@ -180,6 +194,7 @@ func sessionHandler(s ssh.Session) {
 
 	helpTmpl := template.Must(template.New("helpout").Parse(helpTemplate))
 	statusTmpl := template.Must(template.New("statusout").Parse(statusTemplate))
+	searchTmpl := template.Must(template.New("searchout").Parse(searchTemplate))
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
@@ -355,7 +370,6 @@ func sessionHandler(s ssh.Session) {
 				log.Println("error executing status command template:", err)
 			}
 			sshterm.Println(msg.String())
-			//sshterm.Println(activeClient.StatusString())
 
 		} else if c.command == "consolesay" {
 			if len(c.args) == 0 {
@@ -481,15 +495,16 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("database.Search(%q): %v\n", c.args, err)
 				continue
 			}
-			var out string
-			for _, r := range res {
-				out += fmt.Sprintf("%-6d %-15s %-15s %-15s %s\n", r.ID, r.Server, r.Name, r.IP, util.TimeAgo(r.Time))
+
+			var msg bytes.Buffer
+			so := SearchResultsOutput{
+				Query:   c.args,
+				Results: res,
 			}
-			if len(out) > 0 {
-				out = fmt.Sprintf("------ --------------- --------------- --------------- ---------\n%s", out)
-				out = fmt.Sprintf("%-6s %-15s %-15s %-15s %s%s", "ID", "Server", "Name", "IP", "Last Seen\n", out)
+			if err := searchTmpl.Execute(&msg, so); err != nil {
+				log.Println("error executing help command template:", err)
 			}
-			sshterm.Println(out)
+			sshterm.Println(msg.String())
 			continue
 		}
 	}
