@@ -17,6 +17,7 @@ import (
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/database"
 	"golang.org/x/term"
+	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
 	gossh "golang.org/x/crypto/ssh"
@@ -112,6 +113,13 @@ name             server              seen  address
 {{ printf "%-15s" .Name }}  {{ printf "%-15s" .Server}}  {{ printf "%7s" .Ago }}  {{ .IP }}
 {{ end }}
 `
+	rulesTemplate = `
+  num  uuid                                  type    description
+-----  ------------------------------------  -------  --------------------------
+{{ range $k, $v := . -}}
+{{ printf "%5d"  $k }}  {{ $v.GetUuid }}  {{ printf "%-7s" $v.GetType }}  {{ $v.GetDescription }}
+{{ end }}
+`
 )
 
 // SSHTerminal is a basic wrapper to enable making it easier to write data
@@ -195,6 +203,7 @@ func sessionHandler(s ssh.Session) {
 	helpTmpl := template.Must(template.New("helpout").Parse(helpTemplate))
 	statusTmpl := template.Must(template.New("statusout").Parse(statusTemplate))
 	searchTmpl := template.Must(template.New("searchout").Parse(searchTemplate))
+	rulesTmpl := template.Must(template.New("rulesout").Parse(rulesTemplate))
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
@@ -502,10 +511,52 @@ func sessionHandler(s ssh.Session) {
 				Results: res,
 			}
 			if err := searchTmpl.Execute(&msg, so); err != nil {
-				log.Println("error executing help command template:", err)
+				log.Println("error executing search template:", err)
 			}
 			sshterm.Println(msg.String())
 			continue
+		} else if c.command == "rules" {
+			if c.argc == 0 {
+				sshterm.Printf("Rules in affect on %q:\n", cl.Name)
+				var msg bytes.Buffer
+				if err := rulesTmpl.Execute(&msg, cl.Rules); err != nil {
+					log.Println("error executing rules template:", err)
+				}
+				sshterm.Println(msg.String())
+			} else if c.argc > 1 && c.argv[0] == "show" {
+				id, err := strconv.ParseInt(c.argv[1], 10, 32)
+				if err != nil {
+					log.Println("error parsing rule index:", err)
+					continue
+				}
+				if int(id) > len(cl.Rules)-1 || id < 0 {
+					sshterm.Printf("Invalid rule number [%d]\n", id)
+					continue
+				}
+				sshterm.Printf("Detail for rule [%d]:\n\n", id)
+				sshterm.Println(prototext.Format(cl.Rules[id]))
+			} else if c.argc > 1 && (c.argv[0] == "del" || c.argv[0] == "delete" || c.argv[0] == "remove") {
+				_, idx, err := FetchRuleByIndex(c.argv[1], cl.Rules)
+				if err != nil {
+					sshterm.Println(err.Error())
+					continue
+				}
+				var newrules []*pb.Rule
+				for i := range cl.Rules {
+					if i == idx {
+						continue
+					}
+					newrules = append(newrules, cl.Rules[i])
+				}
+				cl.Rules = newrules
+				err = cl.MaterializeRules(cl.Rules)
+				if err != nil {
+					log.Println(err)
+					sshterm.Println("error writing rules to persistent storage")
+					continue
+				}
+				sshterm.Printf("Rule #%d removed.\n", idx)
+			}
 		}
 	}
 }

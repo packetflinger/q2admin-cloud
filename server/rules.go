@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"regexp"
@@ -510,4 +511,23 @@ func RuleDetailLine(rule *pb.Rule) (string, error) {
 		return "", fmt.Errorf("RuleDetailLine() error: %v", err)
 	}
 	return string(out), nil
+}
+
+// FetchRuleByIndex parses a rule index (integer) from user input as a string,
+// converts to an integer, checks the bounds, and returns a pointer to the
+// rule
+func FetchRuleByIndex(idx string, rules []*pb.Rule) (*pb.Rule, int, error) {
+	i, err := strconv.ParseInt(idx, 10, 32)
+	index := int(i)
+	if err != nil {
+		log.Println("error converting rule index string to int:", err)
+		return nil, 0, fmt.Errorf("invalid input for rule number: %q", idx)
+	}
+	if index < 0 || (len(rules)-1) < index {
+		return nil, 0, fmt.Errorf("invalid rule index: %d", index)
+	}
+	if rules[index] == nil {
+		return nil, 0, fmt.Errorf("no rule found for index %d", index)
+	}
+	return rules[index], index, nil
 }

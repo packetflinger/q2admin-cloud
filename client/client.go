@@ -78,6 +78,24 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	return rules, nil
 }
 
+// MaterializeRules will write the current list of rules to disk. Client rules
+// are always found in the <client>/rules.pb file.
+func (cl *Client) MaterializeRules(rules []*pb.Rule) error {
+	collection := &pb.Rules{Rule: rules}
+	filename := path.Join(cl.Path, "rules.pb")
+	data, err := prototext.MarshalOptions{Indent: "  "}.Marshal(collection)
+	if err != nil {
+		return fmt.Errorf("error marshalling rules: %v", err)
+	}
+	header := []byte("# proto-file: proto/serverconfig.proto\n# proto-message: Rules\n\n")
+	data = append(header, data...)
+	err = os.WriteFile(filename, data, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing rules to %q: %v", filename, err)
+	}
+	return nil
+}
+
 // Read settings file for client from disk and make a *Client struct
 // from them.
 func LoadSettings(name string, clientsDir string) (Client, error) {
