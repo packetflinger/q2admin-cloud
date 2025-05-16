@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gliderlabs/ssh"
+	"github.com/google/uuid"
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/database"
 	"golang.org/x/term"
@@ -126,6 +127,7 @@ name             server              seen  address
 // to the *term.Terminal pointer for this SSH session
 type SSHTerminal struct {
 	terminal *term.Terminal
+	prompt   string
 }
 
 // TerminalMessage is a struct that is sent from the client to the SSH server
@@ -198,7 +200,10 @@ func sessionHandler(s ssh.Session) {
 	var activeClient *client.Client
 	var ctx context.Context
 	var cancel context.CancelFunc
-	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "q2a> ")}
+	sshterm := SSHTerminal{
+		prompt:   "q2a> ", // safe for later
+		terminal: term.NewTerminal(s, "q2a> "),
+	}
 
 	helpTmpl := template.Must(template.New("helpout").Parse(helpTemplate))
 	statusTmpl := template.Must(template.New("statusout").Parse(statusTemplate))
@@ -250,7 +255,8 @@ func sessionHandler(s ssh.Session) {
 
 				go linkClientToTerminal(ctx, activeClient, sshterm, &newterm)
 				defer cancel()
-				sshterm.terminal.SetPrompt("q2a/" + cl.Name + "> ")
+				sshterm.prompt = "q2a/" + cl.Name + "> "
+				sshterm.terminal.SetPrompt(sshterm.prompt)
 			}
 			sshterm.Println(msg)
 
@@ -556,6 +562,17 @@ func sessionHandler(s ssh.Session) {
 					continue
 				}
 				sshterm.Printf("Rule #%d removed.\n", idx)
+			} else if c.argc == 1 && c.argv[0] == "add" {
+				r, err := AddRuleWizard(&sshterm, cl)
+				if err != nil {
+					sshterm.Println(err.Error())
+				}
+				sshterm.Printf("Adding rule proto:\n%s\n", prototext.Format(r))
+				cl.Rules = append(cl.Rules, r)
+				err = cl.MaterializeRules(cl.Rules)
+				if err != nil {
+					sshterm.Printf(err.Error())
+				}
 			}
 		}
 	}
@@ -785,4 +802,55 @@ func MyServersResponse(s ssh.Session) (string, error) {
 		}
 	}
 	return output, nil
+}
+
+// AddRuleWizard will prompt the user to enter all the data needed to construct
+// a rule proto affecting players.
+func AddRuleWizard(t *SSHTerminal, cl *client.Client) (*pb.Rule, error) {
+	var r pb.Rule
+	t.terminal.SetPrompt("")
+gettype:
+	t.Printf("  [Rule Wizard] What type of rule to create? (ban, mute, stifle, message)? ")
+	in, err := t.terminal.ReadLine()
+	if err != nil {
+		return nil, fmt.Errorf("error reading rule wizard input: %v", err)
+	}
+	if in != "ban" && in != "mute" && in != "stifle" && in != "message" {
+		t.Println("Invalid selection")
+		goto gettype
+	}
+	switch in {
+	case "ban":
+		r.Type = pb.RuleType_BAN
+	case "mute":
+		r.Type = pb.RuleType_MUTE
+	case "stifle":
+		r.Type = pb.RuleType_STIFLE
+	case "message":
+		r.Type = pb.RuleType_MESSAGE
+	}
+
+	t.Printf("  [Rule Wizard] What network address should this affect (CIDR notation (8.8.8.0/24))? ")
+	in, err = t.terminal.ReadLine()
+	if err != nil {
+		return nil, fmt.Errorf("error reading rule wizard input: %v", err)
+	}
+	r.Address = append(r.Address, in)
+
+	t.Printf("  [Rule Wizard] Enter a description for this rule (only admins can see this): ")
+	in, err = t.terminal.ReadLine()
+	if err != nil {
+		return nil, fmt.Errorf("error reading rule wizard input: %v", err)
+	}
+	r.Description = append(r.Description, in)
+
+	t.Printf("  [Rule Wizard] Enter a message to display to players matching this rule: ")
+	in, err = t.terminal.ReadLine()
+	if err != nil {
+		return nil, fmt.Errorf("error reading rule wizard input: %v", err)
+	}
+	r.Message = append(r.Message, in)
+	r.Uuid = uuid.NewString()
+	t.terminal.SetPrompt(t.prompt)
+	return &r, nil
 }
