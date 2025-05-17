@@ -28,7 +28,7 @@ func TestWriteClients(t *testing.T) {
 		},
 	}
 	//fmt.Println(clients)
-	err := WriteClients("/tmp/clients.textpb", clients)
+	err := MaterializeClients("/tmp/clients.textpb", clients)
 	if err != nil {
 		t.Error(err)
 	}

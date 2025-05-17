@@ -240,7 +240,7 @@ func LoadClients(filename string) ([]client.Client, error) {
 }
 
 // Write the clients proto to disk as text-format
-func WriteClients(outfile string, clients []client.Client) error {
+func MaterializeClients(outfile string, clients []client.Client) error {
 	clientspb := []*pb.Client{}
 	for _, c := range clients {
 		p := c.ToProto()
