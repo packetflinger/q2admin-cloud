@@ -31,17 +31,6 @@ type Server struct {
 	privateKey *rsa.PrivateKey // private to us
 	publicKey  *rsa.PublicKey  // known to clients
 	maintCount int             // total maintenance runs
-	// ipCache    map[string]IPInfo // key is the IP address
-}
-
-// Information about a particular IP address, including any PTR records from DNS,
-// and whether it's associated with a VPN provider.
-type IPInfo struct {
-	Addr       string
-	Hostname   string
-	TimeToLive int64
-	VPN        bool
-	Lookups    int64
 }
 
 var (
