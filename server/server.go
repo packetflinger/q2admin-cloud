@@ -56,6 +56,7 @@ const (
 	TeleportWidth   = 80         // max chars per line for teleport replies
 	StifleMax       = 300        // 5 minutes
 	GreetingLength  = 306
+	NetReadLength   = 5000
 )
 
 // Commands sent from the Q2 server to us
@@ -353,7 +354,7 @@ func SendError(cl *client.Client, pl *client.Player, severity int, err string) {
 func (s *Server) HandleConnection(c net.Conn) {
 	defer c.Close()
 
-	input := make([]byte, 5000)
+	input := make([]byte, NetReadLength)
 	count, err := c.Read(input)
 	if err != nil {
 		srv.Logf(LogLevelDebug, "Client read error: %v\n", err)
@@ -494,7 +495,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 	// - parse any messages received, react as necessary
 	// - send any responses
 	for {
-		input := make([]byte, 5000)
+		input := make([]byte, NetReadLength)
 		size, err := c.Read(input)
 		if err != nil {
 			srv.Logf(LogLevelInfo, "[%s] read error: %v\n", cl.Name, err)
