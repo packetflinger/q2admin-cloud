@@ -246,12 +246,9 @@ func MaterializeClients(outfile string, clients []client.Client) error {
 		p := c.ToProto()
 		clientspb = append(clientspb, p)
 	}
-
-	// combine into a single message
 	cls := pb.Clients{
 		Client: clientspb,
 	}
-
 	opt := prototext.MarshalOptions{
 		Multiline: true,
 		Indent:    "  ",
