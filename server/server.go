@@ -148,43 +148,6 @@ func (s *Server) GetUserByEmail(email string) (*pb.User, error) {
 	return &pb.User{}, fmt.Errorf("user not found: %q", email)
 }
 
-// Someone deleted a managed server via the web interface.
-// This should mean:
-// - remove from database, including foreign key constraints
-// - close any open connections to this server
-// - remove from active server slice in memory
-//
-// TODO: make this better
-func RemoveClient(uuid string) bool {
-	cl, err := srv.FindClient(uuid)
-	if err != nil {
-		return false
-	}
-
-	// mark in-ram server object as disabled to prevent reconnects
-	cl.Enabled = false
-
-	tr, err := db.Begin()
-	if err != nil {
-		log.Println(err)
-		return false
-	}
-
-	sql := "DELETE FROM server WHERE id = ?"
-	_, err = tr.Exec(sql, cl.ID)
-	if err != nil {
-		log.Println(err)
-		tr.Rollback()
-		return false
-	}
-
-	// log data?
-	// chat data?
-
-	tr.Commit()
-	return true
-}
-
 // ClientsByContext will provide a collection of pointers for clients
 // accessible to the context.
 //
