@@ -466,17 +466,16 @@ func (s *Server) HandleConnection(c net.Conn) {
 	cl.Trusted = false
 }
 
-// Send all messages in the outgoing queue to the client (gameserver)
+// Send all messages in the outgoing queue to the client (gameserver). If the
+// client requested encrypted transit, encrypt using the session key generated
+// during the handshake.
 func SendMessages(cl *client.Client) {
 	if !cl.Connected {
 		return
 	}
-
 	if len(cl.MessageOut.Data) == 0 {
 		return
 	}
-
-	// keys have been exchanged, encrypt the message
 	if cl.Trusted && cl.Encrypted {
 		cipher := crypto.SymmetricEncrypt(
 			cl.CryptoKey.Key,
@@ -484,8 +483,6 @@ func SendMessages(cl *client.Client) {
 			cl.MessageOut.Data[:cl.MessageOut.Index])
 		cl.MessageOut = message.NewBuffer(cipher)
 	}
-
-	// only send if there is something to send
 	if len(cl.MessageOut.Data) > 0 {
 		(*cl.Connection).Write(cl.MessageOut.Data)
 		(&cl.MessageOut).Reset()
