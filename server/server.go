@@ -190,18 +190,14 @@ func RotateKeys(cl *client.Client) {
 	if !cl.Encrypted {
 		return
 	}
-
 	keyData := crypto.EncryptionKey{
 		Key:        crypto.RandomBytes(crypto.AESBlockLength),
 		InitVector: crypto.RandomBytes(crypto.AESIVLength),
 	}
 	blob := append(keyData.Key, keyData.InitVector...)
-
-	// Send immediately so old keys used for this message
 	(&cl.MessageOut).WriteByte(SCMDKey)
 	(&cl.MessageOut).WriteData(blob)
 	SendMessages(cl)
-
 	cl.CryptoKey = keyData
 }
 
