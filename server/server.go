@@ -575,7 +575,6 @@ func Startup(configFile string, foreground bool) {
 		srv.rules = rules
 	}
 
-	// Read users
 	srv.Logf(LogLevelInfo, "%-21s %s\n", "loading users:", srv.config.GetUserFile())
 	users, err := api.ReadUsersFromDisk(srv.config.GetUserFile())
 	if err != nil {
@@ -604,7 +603,6 @@ func Startup(configFile string, foreground bool) {
 		log.Println(err)
 		return
 	}
-
 	defer listener.Close()
 
 	srv.Logf(LogLevelNormal, "listening for gameservers on %s\n", port)
