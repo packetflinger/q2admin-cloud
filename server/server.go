@@ -346,7 +346,6 @@ func (s *Server) HandleConnection(c net.Conn) {
 		log.Println(err)
 		return
 	}
-	// defer cl.KillStreams()
 
 	cl.Path = path.Join(srv.config.GetClientDirectory(), cl.Name)
 
