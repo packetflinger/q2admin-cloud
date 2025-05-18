@@ -23,13 +23,13 @@ import (
 //
 // Called every time a player connects from ParseConnect()
 func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
-	rules := []*pb.Rule{} // which ones match
-	for _, r := range ruleset {
+	var rules []*pb.Rule
+	for _, r := range SortRules(ruleset) {
 		if CheckRule(p, r, time.Now()) {
 			rules = append(rules, r)
 		}
 	}
-	return len(rules) > 0, SortRules(rules)
+	return len(rules) > 0, rules
 }
 
 // Check if a player matches a particular rule.

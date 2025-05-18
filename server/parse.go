@@ -230,7 +230,7 @@ func ParseConnect(cl *client.Client) {
 		// add a slight delay when processing rules
 		time.Sleep(1 * time.Second)
 
-		match, rules := CheckRules(p, cl.Rules)
+		match, rules := CheckRules(p, append(cl.Rules, srv.rules...))
 		if match {
 			p.Rules = rules
 			ApplyMatchedRules(p, rules)
