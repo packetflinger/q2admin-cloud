@@ -1,8 +1,6 @@
 module github.com/packetflinger/q2admind
 
-go 1.21.2
-
-toolchain go1.22.3
+go 1.22.3
 
 require (
 	github.com/gliderlabs/ssh v0.3.7

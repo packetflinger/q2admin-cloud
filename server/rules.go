@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -225,22 +226,18 @@ func FetchRules(filename string) ([]*pb.Rule, error) {
 	return SortRules(rules.GetRule()), nil
 }
 
-// Put ban rules first for fast failing.
+// SortRules will reorder the rules in descending seriousness. A player who is
+// banned will be kicked, so it doesn't matter if a mute or stifle also match
+// them. It's a waste of resources to continue checking less severe rules.
+//
 // Order:
-// 1. Bans
-// 2. Mutes
-// 3. Stifles
-// 4. Messages
+//
+//	Bans > Mutes > Stifles > Messages
 //
 // Called from FetchRules() on startup.
 // Also called as new rules are added while running
 func SortRules(rules []*pb.Rule) []*pb.Rule {
-	newruleset := []*pb.Rule{}
-	bans := []*pb.Rule{}
-	mutes := []*pb.Rule{}
-	stifles := []*pb.Rule{}
-	msgs := []*pb.Rule{}
-
+	var bans, mutes, stifles, msgs []*pb.Rule
 	for _, r := range rules {
 		switch r.GetType() {
 		case pb.RuleType_BAN:
@@ -253,12 +250,7 @@ func SortRules(rules []*pb.Rule) []*pb.Rule {
 			msgs = append(msgs, r)
 		}
 	}
-
-	newruleset = append(newruleset, bans...)
-	newruleset = append(newruleset, mutes...)
-	newruleset = append(newruleset, stifles...)
-	newruleset = append(newruleset, msgs...)
-	return newruleset
+	return slices.Concat(bans, mutes, stifles, msgs)
 }
 
 // Does a player's userinfo match the rules?
