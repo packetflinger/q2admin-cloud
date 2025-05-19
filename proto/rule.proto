@@ -108,6 +108,7 @@ message Rule {
     repeated Exception exception = 17; // prevent a rule match
     TimeSpec timespec = 21;            // time-related stuff
     bool disabled = 22;                // ignore this rule?
+    string scope = 23;                 // where is this rule applied? (server/client)
 }
 
 // A collection of rules

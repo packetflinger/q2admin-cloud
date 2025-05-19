@@ -75,7 +75,14 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 		return rules, err
 	}
 	rules = rl.GetRule()
+	cl.ScopeRules("client", rules)
 	return rules, nil
+}
+
+func (cl *Client) ScopeRules(scope string, rules []*pb.Rule) {
+	for i := range rules {
+		rules[i].Scope = scope
+	}
 }
 
 // MaterializeRules will write the current list of rules to disk. Client rules

@@ -115,10 +115,10 @@ name             server              seen  address
 {{ end }}
 `
 	rulesTemplate = `
-  num  uuid                                  type    description
------  ------------------------------------  -------  --------------------------
-{{ range $k, $v := . -}}
-{{ printf "%5d"  $k }}  {{ $v.GetUuid }}  {{ printf "%-7s" $v.GetType }}  {{ $v.GetDescription }}
+id        type     description
+--------  -------  -----------------------------------------------------
+{{ range . -}}
+{{ slice .GetUuid 0 8}}  {{ printf "%-7s" .GetType }}  {{ join .GetDescription " " | truncate 53 }}
 {{ end }}
 `
 )
@@ -205,10 +205,20 @@ func sessionHandler(s ssh.Session) {
 		terminal: term.NewTerminal(s, "q2a> "),
 	}
 
+	funcmap := template.FuncMap{
+		"join": strings.Join,
+		"truncate": func(s int, str string) string {
+			if len(str) > s {
+				return str[0:s]
+			}
+			return str
+		},
+	}
+
 	helpTmpl := template.Must(template.New("helpout").Parse(helpTemplate))
 	statusTmpl := template.Must(template.New("statusout").Parse(statusTemplate))
 	searchTmpl := template.Must(template.New("searchout").Parse(searchTemplate))
-	rulesTmpl := template.Must(template.New("rulesout").Parse(rulesTemplate))
+	rulesTmpl := template.Must(template.New("rulesout").Funcs(funcmap).Parse(rulesTemplate))
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
@@ -523,36 +533,55 @@ func sessionHandler(s ssh.Session) {
 			continue
 		} else if c.command == "rules" {
 			if c.argc == 0 {
-				sshterm.Printf("Rules in affect on %q:\n", cl.Name)
+				sshterm.Printf("CLIENT-level rules in affect on %q:\n", cl.Name)
 				var msg bytes.Buffer
 				if err := rulesTmpl.Execute(&msg, cl.Rules); err != nil {
 					log.Println("error executing rules template:", err)
 				}
 				sshterm.Println(msg.String())
+				msg.Reset()
+				sshterm.Printf("SERVER-level rules in affect on %q:\n", cl.Name)
+				if err := rulesTmpl.Execute(&msg, srv.rules); err != nil {
+					log.Println("error executing rules template:", err)
+				}
+				sshterm.Println(msg.String())
 			} else if c.argc > 1 && c.argv[0] == "show" {
-				id, err := strconv.ParseInt(c.argv[1], 10, 32)
-				if err != nil {
-					log.Println("error parsing rule index:", err)
-					continue
+				for _, r := range append(cl.Rules, srv.rules...) {
+					if strings.HasPrefix(r.GetUuid(), c.argv[1]) {
+						sshterm.Printf("Detail for rule [%s]:\n\n", c.argv[1])
+						sshterm.Println(prototext.Format(r))
+						break
+					}
 				}
-				if int(id) > len(cl.Rules)-1 || id < 0 {
-					sshterm.Printf("Invalid rule number [%d]\n", id)
-					continue
-				}
-				sshterm.Printf("Detail for rule [%d]:\n\n", id)
-				sshterm.Println(prototext.Format(cl.Rules[id]))
 			} else if c.argc > 1 && (c.argv[0] == "del" || c.argv[0] == "delete" || c.argv[0] == "remove") {
-				_, idx, err := FetchRuleByIndex(c.argv[1], cl.Rules)
-				if err != nil {
-					sshterm.Println(err.Error())
+				id := c.argv[1]
+				if len(id) < 4 {
+					sshterm.Printf("ID %q has too few characters\n", id)
 					continue
 				}
+				notAllowed := false
+				for _, r := range srv.rules {
+					if strings.HasPrefix(r.Uuid, id) {
+						sshterm.Printf("Rule %q is applied globally, you can't remove it\n", r.Uuid)
+						notAllowed = true
+						break
+					}
+				}
+				if notAllowed {
+					continue
+				}
+				var found *pb.Rule
 				var newrules []*pb.Rule
-				for i := range cl.Rules {
-					if i == idx {
+				for i, r := range cl.Rules {
+					if strings.HasPrefix(r.Uuid, id) {
+						found = r
 						continue
 					}
 					newrules = append(newrules, cl.Rules[i])
+				}
+				if found == nil {
+					sshterm.Printf("error: no client-scoped rule found with ID %q\n", id)
+					continue
 				}
 				cl.Rules = newrules
 				err = cl.MaterializeRules(cl.Rules)
@@ -561,7 +590,7 @@ func sessionHandler(s ssh.Session) {
 					sshterm.Println("error writing rules to persistent storage")
 					continue
 				}
-				sshterm.Printf("Rule #%d removed.\n", idx)
+				sshterm.Printf("Rule %q removed.\n", found.Uuid)
 			} else if c.argc == 1 && c.argv[0] == "add" {
 				r, err := AddRuleWizard(&sshterm, cl)
 				if err != nil {
