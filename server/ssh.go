@@ -4,7 +4,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -721,7 +720,7 @@ func (c ansiCode) Render() string {
 // ParseCmdArgs breaks up the current SSH command and args
 func ParseCmdArgs(input string) (CmdArgs, error) {
 	if len(input) == 0 {
-		return CmdArgs{}, errors.New("empty input")
+		return CmdArgs{}, nil
 	}
 	tokens := strings.Split(strings.Trim(input, " \n\t"), " ")
 	if len(tokens) == 0 {
