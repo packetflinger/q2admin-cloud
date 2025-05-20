@@ -254,7 +254,7 @@ func sessionHandler(s ssh.Session) {
 			break
 		}
 		if activeClient != nil && !activeClient.Connected { // server dropped
-			sshterm.Printf("** server connection to %s dropped **\n", activeClient.Name)
+			sshterm.Printf(yellow("** server connection to %s dropped **\n"), activeClient.Name)
 			if cancel != nil {
 				cancel()
 			}
@@ -651,7 +651,7 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal,
 	var now string
 	var msg string
 
-	msg = fmt.Sprintf("* linking terminal to %s *", cl.Name)
+	msg = fmt.Sprintf("* connecting to %s's console stream *", cl.Name)
 	t.Println(yellow(msg))
 
 	for {
@@ -664,9 +664,7 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal,
 			} else {
 				t.Println(msg)
 			}
-		case <-ctx.Done():
-			msg = fmt.Sprintf("* unlinking %s *", cl.Name)
-			t.Println(msg)
+		case <-ctx.Done(): // cancel() called from SSH thread
 			cl.Terminals = cl.TerminalDisconnected(stream)
 			return
 		}
