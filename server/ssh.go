@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"text/template"
@@ -90,15 +91,16 @@ Available commands:
 {{.Extra}}
 `
 	statusTemplate = `
+Frontend: {{ .Connection.RemoteAddr.String | magenta }}
 Current map:   {{ .CurrentMap }}
 {{- if .PreviousMap }}Previous map:  {{ .PreviousMap }}{{ end -}}
 
 {{ if .PlayerCount }}
-num score name            vpn   address
---- ----- --------------- ----- ------------------------------
+num score name            vpn address
+--- ----- --------------- --- ------------------------------
 {{ range .Players}}
 {{- if .IP -}}
-{{ printf "%3d" .ClientID}} {{ printf "%5d" .Frags}} {{ printf "%-15s" .Name }} {{ printf "%-5t" .VPN }} {{ .IP -}}
+{{ printf "%3d" .ClientID}} {{ printf "%5d" .Frags}} {{ printf "%-15s" .Name }}  {{ .VPN | checkMark | red }}  {{ .IP -}}
 {{- end -}}
 {{ end }}
 {{ else }}
@@ -213,10 +215,15 @@ func sessionHandler(s ssh.Session) {
 			}
 			return str
 		},
+		"green":     green,
+		"red":       red,
+		"yello":     yellow,
+		"magenta":   magenta,
+		"checkMark": checkMark,
 	}
 
 	helpTmpl := template.Must(template.New("helpout").Parse(helpTemplate))
-	statusTmpl := template.Must(template.New("statusout").Parse(statusTemplate))
+	statusTmpl := template.Must(template.New("statusout").Funcs(funcmap).Parse(statusTemplate))
 	searchTmpl := template.Must(template.New("searchout").Parse(searchTemplate))
 	rulesTmpl := template.Must(template.New("rulesout").Funcs(funcmap).Parse(rulesTemplate))
 
@@ -790,6 +797,22 @@ func yellow(s string) string {
 
 func magenta(s string) string {
 	return ansiCode{foreground: ColorMagenta}.Render() + s + AnsiReset
+}
+
+// Convert a logical variable (1/0, true/false, "yes"/"no") into an emoji
+// checkmark
+func checkMark(in any) string {
+	if reflect.TypeOf(in) == reflect.TypeOf(true) {
+		if in == true {
+			return "\u2713"
+		}
+	}
+	if reflect.TypeOf(in) == reflect.TypeOf(1) {
+		if in == 1 {
+			return "\u2713"
+		}
+	}
+	return " "
 }
 
 // MyServersResponse will format a string containing all the gameservers and
