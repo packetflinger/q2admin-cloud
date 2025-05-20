@@ -43,8 +43,10 @@ const (
 	ColorBrightCyan    = 96
 	ColorWhite         = 97
 	AnsiReset          = "\033[m"
-	TopLevelPrompt     = "q2a>"
+	TopLevelPrompt     = "q2a"
+	PauseLength        = 600 // 10 minutes
 )
+
 const (
 	TermMsgTypeGeneral = iota
 	TermMsgTypePlayerChat
@@ -148,8 +150,20 @@ id        type     description
 // SSHTerminal is a basic wrapper to enable making it easier to write data
 // to the *term.Terminal pointer for this SSH session
 type SSHTerminal struct {
+	// What we're wrapping
 	terminal *term.Terminal
-	prompt   string
+	// Displayed to the left of the cursor while waiting for input
+	prompt string
+	// A unix timestamp of when the terminal pause will expire. If this value
+	// is greater than 0, the terminal is "paused" and new incoming messages
+	// should be buffered. We use a timestamp here to prevent a terminal from
+	// being paused for an extended period of time slowly sucking up memory to
+	// store the buffer.
+	paused int64
+	// This is where incoming messages are stored while the terminal is paused.
+	// When the terminal is resumed, these messages are sent to the terminal
+	// and the structure set to nil.
+	buffer []string
 }
 
 // TerminalMessage is a struct that is sent from the client to the SSH server
@@ -222,10 +236,8 @@ func sessionHandler(s ssh.Session) {
 	var activeClient *client.Client
 	var ctx context.Context
 	var cancel context.CancelFunc
-	sshterm := SSHTerminal{
-		prompt:   "q2a> ", // safe for later
-		terminal: term.NewTerminal(s, "q2a> "),
-	}
+	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "> ")}
+	sshterm.SetPrompt(TopLevelPrompt, true)
 
 	funcmap := template.FuncMap{
 		"join": strings.Join,
@@ -258,7 +270,7 @@ func sessionHandler(s ssh.Session) {
 			if cancel != nil {
 				cancel()
 			}
-			sshterm.terminal.SetPrompt("q2a> ")
+			sshterm.SetPrompt(TopLevelPrompt, true)
 			activeClient = nil
 			continue
 		}
@@ -291,10 +303,10 @@ func sessionHandler(s ssh.Session) {
 				newterm := make(chan string)
 				cl.Terminals = append(cl.Terminals, &newterm)
 
-				go linkClientToTerminal(ctx, activeClient, sshterm, &newterm)
+				go linkClientToTerminal(ctx, activeClient, &sshterm, &newterm)
 				defer cancel()
-				sshterm.prompt = "q2a/" + cl.Name + "> "
-				sshterm.terminal.SetPrompt(sshterm.prompt)
+
+				sshterm.SetPrompt(fmt.Sprintf("%s/%s", TopLevelPrompt, cl.Name), true)
 			}
 			sshterm.Println(msg)
 
@@ -518,28 +530,22 @@ func sessionHandler(s ssh.Session) {
 			MutePlayer(cl, p, secs)
 
 		} else if c.command == "pause" {
-			if activeClient.TermPaused {
+			if sshterm.paused > 0 {
 				continue
 			}
-			activeClient.TermPaused = true
-			prompt := fmt.Sprintf("%s%s%s>",
-				ansiCode{foreground: ColorBrightRed}.Render(),
-				activeClient.Name,
-				AnsiReset,
-			)
-			sshterm.terminal.SetPrompt(prompt)
+			sshterm.paused = time.Now().Unix() + PauseLength
+			sshterm.SetPrompt(fmt.Sprintf("%s [%s]", sshterm.prompt, red("paused")), false)
 
 		} else if c.command == "unpause" {
-			if !activeClient.TermPaused {
+			if sshterm.paused == 0 {
 				continue
 			}
-			activeClient.TermPaused = false
-			for _, line := range activeClient.TermBuf {
+			sshterm.paused = 0
+			for _, line := range sshterm.buffer {
 				sshterm.Println(line)
 			}
-			prompt := fmt.Sprintf("%s>", activeClient.Name)
-			sshterm.terminal.SetPrompt(prompt)
-			activeClient.TermBuf = []string{}
+			sshterm.RestorePrompt()
+			sshterm.buffer = nil
 
 		} else if c.command == "search" {
 			if c.argc == 0 {
@@ -647,9 +653,8 @@ func sessionHandler(s ssh.Session) {
 //
 // The context arg is a "withCancel" context, so the calling func can terminate
 // this go routine even when it's blocking waiting for input if needed.
-func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal, stream *chan string) {
-	var now string
-	var msg string
+func linkClientToTerminal(ctx context.Context, cl *client.Client, t *SSHTerminal, stream *chan string) {
+	var now, msg string
 
 	msg = fmt.Sprintf("* connecting to %s's console stream *", cl.Name)
 	t.Println(yellow(msg))
@@ -659,8 +664,8 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t SSHTerminal,
 		case srvmsg := <-*stream:
 			now = time.Now().Format("15:04:05")
 			msg = fmt.Sprintf("%s %s\n", now, srvmsg)
-			if cl.TermPaused {
-				cl.TermBuf = append(cl.TermBuf, msg)
+			if t.paused > 0 {
+				t.buffer = append(t.buffer, msg)
 			} else {
 				t.Println(msg)
 			}
@@ -835,6 +840,28 @@ func checkMark(in any) string {
 		}
 	}
 	return " "
+}
+
+// SetPrompt will set the current terminal's prompt to the s arg. The save arg
+// will cause the terminal to keep a local copy of the prompt. This will allow
+// for restoring it back to a previous value after a temporary change.
+//
+// The "> " is appended to the end when set, don't include that manually.
+func (t *SSHTerminal) SetPrompt(s string, save bool) {
+	if save {
+		t.prompt = s
+	}
+	t.terminal.SetPrompt(s + "> ")
+}
+
+// RestorePrompt will change the prompt back to whatever value is set in the
+// `prompt` property. This is only useful if SetPrompt() is used with the
+// `save` property as false.
+func (t *SSHTerminal) RestorePrompt() {
+	if t.prompt == "" {
+		t.prompt = ">"
+	}
+	t.SetPrompt(t.prompt, false)
 }
 
 // MyServersResponse will format a string containing all the gameservers and
