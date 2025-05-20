@@ -136,6 +136,13 @@ UserInfo Data:
 {{ range $k, $v := .UserinfoMap -}}
 {{ printf "%15s" $k}} = {{ $v }}
 {{ end -}}
+
+Rules matching:
+id        type     description
+--------  -------  -----------------------------------------------------
+{{ range .Rules -}}
+{{ slice .GetUuid 0 8}}  {{ printf "%-7s" .GetType }}  {{ join .GetDescription " " | truncate 53 }}
+{{ end }}
 `
 )
 
