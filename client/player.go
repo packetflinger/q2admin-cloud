@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	pb "github.com/packetflinger/q2admind/proto"
-	"github.com/packetflinger/q2admind/util"
 )
 
 // Each player on a game server has one of these.
@@ -169,24 +168,4 @@ func (cl *Client) FindPlayerByName(name string) *Player {
 	}
 
 	return nil
-}
-
-// Dump will return a string containing information about the player
-func (p *Player) Dump() string {
-	var out string
-	out += fmt.Sprintf("%s's information\n", p.Name)
-	out += fmt.Sprintf("  %-20s%s\n", "name:", p.Name)
-	out += fmt.Sprintf("  %-20s%s\n", "ip:", p.IP)
-	out += fmt.Sprintf("  %-20s%s\n", "client:", p.Version)
-	out += fmt.Sprintf("  %-20s%v\n", "vpn:", p.VPN)
-	out += fmt.Sprintf("  %-20s\n", "userinfo:")
-	uiKeys := util.SortUserinfoKeys(p.UserinfoMap)
-	for _, k := range uiKeys {
-		out += fmt.Sprintf("%15s = %s\n", k, p.UserinfoMap[k])
-	}
-	out += fmt.Sprintf("  %-20s\n", "rules matched:")
-	for _, r := range p.Rules {
-		out += fmt.Sprintf("%25s\n", strings.Join(r.GetDescription(), " "))
-	}
-	return out
 }

@@ -123,6 +123,20 @@ id        type     description
 {{ slice .GetUuid 0 8}}  {{ printf "%-7s" .GetType }}  {{ join .GetDescription " " | truncate 53 }}
 {{ end }}
 `
+
+	whoisTemplate = `
+Player information:
+  name:     {{ .Name }}
+  ip:       {{ .IP }} 
+  dns:      {{ .Hostname }}
+  client:   {{ .Version }}
+  vpn:      {{ .VPN }}
+
+UserInfo Data:
+{{ range $k, $v := .UserinfoMap -}}
+{{ printf "%15s" $k}} = {{ $v }}
+{{ end -}}
+`
 )
 
 // SSHTerminal is a basic wrapper to enable making it easier to write data
@@ -226,6 +240,7 @@ func sessionHandler(s ssh.Session) {
 	statusTmpl := template.Must(template.New("statusout").Funcs(funcmap).Parse(statusTemplate))
 	searchTmpl := template.Must(template.New("searchout").Parse(searchTemplate))
 	rulesTmpl := template.Must(template.New("rulesout").Funcs(funcmap).Parse(rulesTemplate))
+	whoisTmpl := template.Must(template.New("whoisout").Funcs(funcmap).Parse(whoisTemplate))
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
@@ -363,8 +378,11 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("whois: client_id %q not in use\n", c.argv[0])
 				continue
 			}
-			msg := p.Dump()
-			sshterm.Println(msg)
+			var msg bytes.Buffer
+			if err := whoisTmpl.Execute(&msg, p); err != nil {
+				log.Println("error executing whois template:", err)
+			}
+			sshterm.Println(msg.String())
 
 		} else if c.command == "stuff" {
 			if len(c.args) == 0 {
