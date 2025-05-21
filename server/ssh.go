@@ -25,26 +25,8 @@ import (
 )
 
 const (
-	ColorReset         = 0
-	ColorBlack         = 30
-	ColorRed           = 31
-	ColorGreen         = 32
-	ColorYellow        = 33
-	ColorBlue          = 34
-	ColorMagenta       = 35
-	ColorCyan          = 36
-	ColorLightGray     = 37
-	ColorDarkGray      = 90
-	ColorBrightRed     = 91
-	ColorBrightGreen   = 92
-	ColorBrightYellow  = 93
-	ColorBrightBlue    = 94
-	ColorBrightMagenta = 95
-	ColorBrightCyan    = 96
-	ColorWhite         = 97
-	AnsiReset          = "\033[m"
-	TopLevelPrompt     = "q2a"
-	PauseLength        = 600 // 10 minutes
+	TopLevelPrompt = "q2a"
+	PauseLength    = 600 // 10 minutes
 )
 
 const (
@@ -53,14 +35,6 @@ const (
 	TermMsgTypeBan
 	TermMsgTypeMute
 )
-
-type ansiCode struct {
-	foreground int
-	background int
-	bold       bool
-	underlined bool
-	inversed   bool
-}
 
 type CmdArgs struct {
 	command string
@@ -702,24 +676,6 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	return false
 }
 
-// Render will build an ANSI color code based on the receiver. This is only
-// used when sending strings to an SSH terminal.
-func (c ansiCode) Render() string {
-	b := 22
-	if c.bold {
-		b = 1
-	}
-	u := 24
-	if c.underlined {
-		u = 4
-	}
-	r := 27
-	if c.inversed {
-		r = 7
-	}
-	return fmt.Sprintf("\033[0;%d;%d;%d;%d;%dm", c.foreground, c.background+10, b, u, r)
-}
-
 // ParseCmdArgs breaks up the current SSH command and args
 func ParseCmdArgs(input string) (CmdArgs, error) {
 	if len(input) == 0 {
@@ -805,25 +761,6 @@ func User(email string) (*pb.User, error) {
 		}
 	}
 	return nil, fmt.Errorf("User(%q): unable to locate user", email)
-}
-
-// Make a string red
-func red(s string) string {
-	return ansiCode{foreground: ColorRed}.Render() + s + AnsiReset
-}
-
-// make it green!
-func green(s string) string {
-	return ansiCode{foreground: ColorGreen}.Render() + s + AnsiReset
-}
-
-// make it yellow
-func yellow(s string) string {
-	return ansiCode{foreground: ColorYellow}.Render() + s + AnsiReset
-}
-
-func magenta(s string) string {
-	return ansiCode{foreground: ColorMagenta}.Render() + s + AnsiReset
 }
 
 // Convert a logical variable (1/0, true/false, "yes"/"no") into an emoji
