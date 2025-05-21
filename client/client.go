@@ -1,6 +1,5 @@
-// In this system, a "client" is a Quake 2 game server.
-// They are servers to their connected players, but
-// clients to us.
+// In this system, a "client" is a Quake 2 game server. They are servers to
+// their connected players, but clients to us.
 package client
 
 import (
@@ -59,7 +58,7 @@ type Client struct {
 	Challenge   []byte                  // random data for auth set by server
 }
 
-// Read rules from disk and return a slice of them
+// Read rules from disk and return a scoped slice of them
 func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	var rules []*pb.Rule
 	filename := path.Join(cl.Path, "rules.pb")
@@ -77,6 +76,9 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	return rules, nil
 }
 
+// ScopeRules will add a token to the `Scope` property all the rules in a set.
+// This is used to mark rules in different contexts (server-level vs client-
+// level)
 func (cl *Client) ScopeRules(scope string, rules []*pb.Rule) {
 	for i := range rules {
 		rules[i].Scope = scope
@@ -175,11 +177,11 @@ func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 			}
 		}
 	}
-
 	return players, nil
 }
 
-// convert to
+// ToProto will convert a Client struct into the corresponding protobuf. This
+// is used when materializing the clients to disk.
 func (cl *Client) ToProto() *pb.Client {
 	return &pb.Client{
 		Address:     fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port),
