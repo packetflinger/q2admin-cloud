@@ -219,19 +219,6 @@ func (cl *Client) SSHPrintln(text string) {
 	}
 }
 
-// Create a status-esque string for this client
-func (cl *Client) StatusString() string {
-	var out string
-	out = fmt.Sprintf("Current map: %20s (previous: %s)\n\n", cl.CurrentMap, cl.PreviousMap)
-	out += fmt.Sprintf("%-20s %s %5s %-130s\n", "player", "id", "rtt", "address")
-	for _, p := range cl.Players {
-		if len(p.IP) > 0 {
-			out += fmt.Sprintf("%-20s %d %3sms %-130s\n", p.Name, p.ClientID, "0", p.IP)
-		}
-	}
-	return out
-}
-
 // The terminal goroutine will call this when disconnecting so the client can
 // close the console stream channel.
 func (cl *Client) TerminalDisconnected(t *chan string) []*chan string {
