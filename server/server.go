@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/api"
@@ -431,7 +432,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 	out.WriteByte(SCMDTrusted)
 	SendMessages(cl)
 	cl.Trusted = true
-
+	cl.ConnectTime = time.Now().Unix()
 	cl.Players = make([]client.Player, cl.MaxPlayers)
 
 	// main connection loop for this client
@@ -462,6 +463,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 		SendMessages(cl)
 	}
 
+	cl.Connection = nil
 	cl.Connected = false
 	cl.Trusted = false
 }

@@ -50,22 +50,22 @@ func TimeAgo(ts int64) string {
 		return "just now"
 	}
 	if elapsed < 60 {
-		return fmt.Sprintf("%ds ago", elapsed)
+		return fmt.Sprintf("%ds", elapsed)
 	}
 	if elapsed < 3600 {
-		return fmt.Sprintf("%dm ago", elapsed/60)
+		return fmt.Sprintf("%dm", elapsed/60)
 	}
 	if elapsed < 86400 {
-		return fmt.Sprintf("%dh ago", elapsed/3600)
+		return fmt.Sprintf("%dh", elapsed/3600)
 	}
 	if elapsed < 86400*7 {
-		return fmt.Sprintf("%dd ago", elapsed/86400)
+		return fmt.Sprintf("%dd", elapsed/86400)
 	}
 	if elapsed < 86400*30 {
-		return fmt.Sprintf("%dw ago", elapsed/(86400*7))
+		return fmt.Sprintf("%dw", elapsed/(86400*7))
 	}
 	if elapsed < 86400*30*52 {
-		return fmt.Sprintf("%dy ago", elapsed/(86400*30))
+		return fmt.Sprintf("%dy", elapsed/(86400*30))
 	}
 	return "forever ago"
 }

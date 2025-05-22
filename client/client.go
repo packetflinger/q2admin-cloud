@@ -56,6 +56,7 @@ type Client struct {
 	Terminals   []*chan string          // pointers to the console streams
 	Users       map[*pb.User][]*pb.Role // users who have access via ssh/web
 	Challenge   []byte                  // random data for auth set by server
+	ConnectTime int64                   // unix timestamp when connection made
 }
 
 // Read rules from disk and return a scoped slice of them

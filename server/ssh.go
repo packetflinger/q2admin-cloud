@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/database"
+	"github.com/packetflinger/q2admind/util"
 	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -118,6 +119,14 @@ id        type     description
 {{ range .Rules -}}
 {{ slice .GetUuid 0 8}}  {{ printf "%-7s" .GetType }}  {{ join .GetDescription " " | truncate 53 }}
 {{ end }}
+`
+	serversTemplate = `
+Your servers:
+Name                  Status     Time  Peer
+--------------------  ---------  ----  --------------------------------------
+{{ range . -}}
+{{ printf "%-20s" .Name }}  {{ printf "%-9s" (. | connected) }}  {{ if .Connection }}{{ printf "%-4s" (.ConnectTime | ago)}}  {{ .Connection.RemoteAddr.String }}{{ end }}
+{{ end -}}
 `
 )
 
@@ -226,6 +235,9 @@ func sessionHandler(s ssh.Session) {
 		"yello":     yellow,
 		"magenta":   magenta,
 		"checkMark": checkMark,
+		"connected": connectionIndicator,
+		"now":       time.Now().Unix,
+		"ago":       util.TimeAgo,
 	}
 
 	helpTmpl := template.Must(template.New("helpout").Parse(helpTemplate))
@@ -233,6 +245,7 @@ func sessionHandler(s ssh.Session) {
 	searchTmpl := template.Must(template.New("searchout").Parse(searchTemplate))
 	rulesTmpl := template.Must(template.New("rulesout").Funcs(funcmap).Parse(rulesTemplate))
 	whoisTmpl := template.Must(template.New("whoisout").Funcs(funcmap).Parse(whoisTemplate))
+	srvTmpl := template.Must(template.New("srvout").Funcs(funcmap).Parse(serversTemplate))
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
@@ -256,11 +269,17 @@ func sessionHandler(s ssh.Session) {
 		if c.command == "server" || c.command == "servers" {
 			msg := ""
 			if c.argc == 0 {
-				msg, err = MyServersResponse(s)
+				u, err := User(s.User())
 				if err != nil {
-					sshterm.Println(err.Error())
+					sshterm.Println("problems identifying you...")
 					continue
 				}
+				var msg bytes.Buffer
+				cls := MyClients(u)
+				if err := srvTmpl.Execute(&msg, cls); err != nil {
+					log.Println("error executing servers template:", err)
+				}
+				sshterm.Println(msg.String())
 			} else {
 				cl, err = srv.FindClientByName(c.argv[0])
 				if err != nil {
@@ -891,4 +910,17 @@ gettype:
 	r.Uuid = uuid.NewString()
 	t.terminal.SetPrompt(t.prompt)
 	return &r, nil
+}
+
+// Helper func for using in templates
+func connectionIndicator(c *client.Client) string {
+	if c.Connected && c.Trusted {
+		return green("connected")
+	}
+	return red("offline")
+}
+
+// Helper func for using in templates
+func serverConnectTime(now, then int64) int64 {
+	return now - then
 }
