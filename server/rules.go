@@ -438,8 +438,18 @@ func stringToTime(t string) (time.Time, error) {
 	return ts, nil
 }
 
+// Take the appropriate action against the player for the set of rules.
+//
+// Players are matched against all the rules prior to calling this, so the
+// `rules` arg will contain only rules that we know already match
+// the player. The set of rules will also already be sorted in descending
+// order of severity (bans, mutes, stifles, msgs).
+//
+// Bans are handled first in order to fast-fail. Once a ban rule is encountered
+// the rest of the rules are not processed since that player will be kicked
+// from the server immediatly.
 func ApplyMatchedRules(p *client.Player, rules []*pb.Rule) {
-	if len(rules) == 0 {
+	if len(rules) == 0 || p == nil {
 		return
 	}
 	cl := p.Client
@@ -451,7 +461,7 @@ func ApplyMatchedRules(p *client.Player, rules []*pb.Rule) {
 		if rule.GetType() == pb.RuleType_BAN {
 			SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
 			KickPlayer(cl, p, "")
-			break
+			break // don't bother with the rest
 		}
 		if rule.GetType() == pb.RuleType_MUTE {
 			p.Muted = true
