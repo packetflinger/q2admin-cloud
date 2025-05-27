@@ -96,7 +96,7 @@ name             server              seen  address
 id        type     description
 --------  -------  -----------------------------------------------------
 {{ range . -}}
-{{ slice .GetUuid 0 8}}  {{ printf "%-7s" .GetType }}  {{ join .GetDescription " " | truncate 53 }}
+{{ if .GetUuid }}{{ slice .GetUuid 0 8}}  {{ printf "%-7s" .GetType }}  {{ join .GetDescription " " | truncate 53 }}{{ end }}
 {{ end }}
 `
 
@@ -625,6 +625,7 @@ func sessionHandler(s ssh.Session) {
 				r, err := AddRuleWizard(&sshterm, cl)
 				if err != nil {
 					sshterm.Println(err.Error())
+					continue
 				}
 				sshterm.Printf("Adding rule proto:\n%s\n", prototext.Format(r))
 				cl.Rules = append(cl.Rules, r)
