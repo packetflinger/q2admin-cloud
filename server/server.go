@@ -4,10 +4,12 @@ import (
 	"crypto/rsa"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -202,40 +204,33 @@ func RotateKeys(cl *client.Client) {
 	cl.CryptoKey = keyData
 }
 
-// Read all client names from disk, load their data
-// into memory. Add each to the client list.
-//
-// Called from initialize() at startup
-func LoadClients(filename string) ([]client.Client, error) {
-	clients := []client.Client{}
-	clientspb := pb.ClientList{}
-	inuse := make(map[string]bool)
-
-	contents, err := os.ReadFile(filename)
-	if err != nil {
-		return clients, err
-	}
-	err = prototext.Unmarshal(contents, &clientspb)
-	if err != nil {
-		return clients, err
-	}
-
-	clientNames := clientspb.GetClient()
-	for _, c := range clientNames {
-		cl, err := client.LoadSettings(c, srv.config.ClientDirectory)
+// ParseClients will build a slice of Client structs based on the files on
+// disk. Each client is in its own directory in the client directory. The
+// clients directory is specified in the main server config. Only clients
+// with a valid "settings.pb" file and not disabled will be loaded.
+func (s *Server) ParseClients() ([]client.Client, error) {
+	var clients []client.Client
+	err := filepath.WalkDir(s.config.GetClientDirectory(), func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
-			continue
+			return fmt.Errorf("error walking client directory: %v", err)
 		}
-		if inuse[cl.UUID] { // id already found, don't have duplicates
-			log.Printf("[%s] overlapping ID %s, skipping", cl.Name, cl.UUID)
-			continue
+		if d.IsDir() {
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			cl, err := client.LoadSettings(info.Name(), s.config.GetClientDirectory())
+			if err != nil {
+				return nil
+			}
+			if cl.Enabled {
+				clients = append(clients, cl)
+			}
 		}
-		cl.Rules, err = cl.FetchRules()
-		if err != nil {
-			log.Println(err)
-		}
-		clients = append(clients, cl)
-		inuse[cl.UUID] = true
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return clients, nil
 }
@@ -585,8 +580,8 @@ func Startup(configFile string, foreground bool) {
 		srv.users = users
 	}
 
-	srv.Logf(LogLevelNormal, "%-21s %s\n", "loading clients:", srv.config.GetClientFile())
-	clients, err := LoadClients(srv.config.GetClientFile())
+	srv.Logf(LogLevelNormal, "loading clients from %q\n", srv.config.ClientDirectory)
+	clients, err := srv.ParseClients()
 	if err != nil {
 		log.Println(err)
 	} else {

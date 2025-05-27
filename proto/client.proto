@@ -76,6 +76,9 @@ message Client {
 
     // permissions
     repeated ClientAccess access = 13;
+
+    // whether the server should ignore this client
+    bool disabled = 14;
 }
 
 // who can access this client and how

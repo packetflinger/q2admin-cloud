@@ -128,6 +128,7 @@ func LoadSettings(name string, clientsDir string) (Client, error) {
 		client.Description = c.GetDescription()
 		client.UUID = c.GetUuid()
 		client.Path = path.Join(clientsDir, client.Name)
+		client.Enabled = !c.GetDisabled()
 
 		tokens := strings.Split(c.GetAddress(), ":")
 		if len(tokens) == 2 {
