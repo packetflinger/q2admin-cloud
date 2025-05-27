@@ -14,7 +14,6 @@ message Config {
     bool api_enabled = 5;
     string api_address = 6;     // ip addr
     uint32 api_port = 7;
-    string client_file = 8;
     string client_directory = 9;
     string user_file = 10;
     string access_file = 11;
