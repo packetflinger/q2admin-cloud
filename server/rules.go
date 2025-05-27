@@ -76,7 +76,7 @@ func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
 		}
 	}
 
-	if len(r.Hostname) > 0 {
+	if len(r.GetHostname()) > 0 {
 		need++
 		for _, host := range r.Hostname {
 			// case insensitive
@@ -92,7 +92,7 @@ func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
 		}
 	}
 
-	if len(r.Name) > 0 {
+	if len(r.GetName()) > 0 {
 		need++
 		for _, name := range r.Name {
 			// case insensitive
