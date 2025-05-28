@@ -817,7 +817,7 @@ func (t *SSHTerminal) SetPrompt(s string, save bool) {
 // `save` property as false.
 func (t *SSHTerminal) RestorePrompt() {
 	if t.prompt == "" {
-		t.prompt = ">"
+		t.prompt = "> "
 	}
 	t.SetPrompt(t.prompt, false)
 }
@@ -867,7 +867,7 @@ func MyServersResponse(s ssh.Session) (string, error) {
 // a rule proto affecting players.
 func AddRuleWizard(t *SSHTerminal, cl *client.Client) (*pb.Rule, error) {
 	var r pb.Rule
-	t.terminal.SetPrompt("")
+	t.SetPrompt("", false)
 gettype:
 	t.Printf("  [Rule Wizard] What type of rule to create? (ban, mute, stifle, message)? ")
 	in, err := t.terminal.ReadLine()
@@ -910,7 +910,7 @@ gettype:
 	}
 	r.Message = append(r.Message, in)
 	r.Uuid = uuid.NewString()
-	t.terminal.SetPrompt(t.prompt)
+	t.RestorePrompt()
 	return &r, nil
 }
 
