@@ -178,7 +178,6 @@ func ConsoleSay(cl *client.Client, print string) {
 	txt := fmt.Sprintf("say %s\n", print)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(txt)
-	SendMessages(cl)
 }
 
 // Force a player to do a command
@@ -195,7 +194,6 @@ func StuffPlayer(cl *client.Client, p *client.Player, cmd string) {
 	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.ClientID, cmd)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(stuffcmd)
-	SendMessages(cl)
 }
 
 // Prevent the player from talking.
@@ -225,7 +223,6 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 	(&cl.MessageOut).WriteByte(p.ClientID)
 	(&cl.MessageOut).WriteByte(PRINT_HIGH)
 	(&cl.MessageOut).WriteString(msg)
-	SendMessages(cl)
 
 	cl.Log.Printf(logMsg)
 	cl.SSHPrintln(logMsg)
@@ -260,32 +257,29 @@ func StiflePlayer(cl *client.Client, p *client.Player, seconds int) {
 	(&cl.MessageOut).WriteByte(p.ClientID)
 	(&cl.MessageOut).WriteByte(PRINT_HIGH)
 	(&cl.MessageOut).WriteString(msg)
-	SendMessages(cl)
 
 	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", p.StifleLength, p.Name, p.ClientID)
 	cl.Log.Printf(logMsg)
 	cl.SSHPrintln(logMsg)
 }
 
-// Tell the client to disconnect a specific player
+// Instruct a client to kick a player. The target player will receive a direct
+// message explaining why (if `msg` is not empty) just before the kick.
 func KickPlayer(cl *client.Client, p *client.Player, msg string) {
-	if cl == nil {
+	if cl == nil || p == nil {
 		return
 	}
-	if p == nil {
-		return
+	if msg != "" {
+		if !strings.HasSuffix(msg, "\n") {
+			msg += "\n"
+		}
+		(&cl.MessageOut).WriteByte(SCMDSayClient)
+		(&cl.MessageOut).WriteByte(p.ClientID)
+		(&cl.MessageOut).WriteByte(PRINT_CHAT)
+		(&cl.MessageOut).WriteString(msg)
 	}
-	if len(msg) == 0 {
-		msg = "You were kicked for reasons\n"
-	}
-	cmd := fmt.Sprintf("kick %d\n", p.ClientID)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
-	(&cl.MessageOut).WriteString(cmd)
-	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(p.ClientID)
-	(&cl.MessageOut).WriteByte(PRINT_HIGH)
-	(&cl.MessageOut).WriteString(msg)
-	SendMessages(cl)
+	(&cl.MessageOut).WriteString(fmt.Sprintf("kick %d\n", p.ClientID))
 
 	logMsg := fmt.Sprintf("KICK %-20s [%d] %q\n", p.Name, p.ClientID, msg)
 	cl.Log.Println(logMsg)
@@ -305,7 +299,6 @@ func ConsoleCommand(cl *client.Client, cmd string) {
 	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
-	SendMessages(cl)
 }
 
 // Send a message to every player on the server
@@ -325,7 +318,6 @@ func SayEveryone(cl *client.Client, level int, text string) {
 	(&cl.MessageOut).WriteByte(SCMDSayAll)
 	(&cl.MessageOut).WriteByte(level)
 	(&cl.MessageOut).WriteString(text)
-	SendMessages(cl)
 }
 
 // Send a message to a particular player
@@ -346,7 +338,6 @@ func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
 	(&cl.MessageOut).WriteByte(p.ClientID)
 	(&cl.MessageOut).WriteByte(level)
 	(&cl.MessageOut).WriteString(text)
-	SendMessages(cl)
 }
 
 // Setup a new cookie on a player

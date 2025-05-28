@@ -459,7 +459,6 @@ func ApplyMatchedRules(p *client.Player, rules []*pb.Rule) {
 	}
 	for _, rule := range rules {
 		if rule.GetType() == pb.RuleType_BAN {
-			SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
 			KickPlayer(cl, p, strings.Join(rule.Message, "\n"))
 			break // don't bother with the rest
 		}

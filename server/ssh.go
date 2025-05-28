@@ -635,6 +635,7 @@ func sessionHandler(s ssh.Session) {
 				}
 			}
 		}
+		SendMessages(cl)
 	}
 }
 
