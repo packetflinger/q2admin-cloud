@@ -921,8 +921,3 @@ func connectionIndicator(c *client.Client) string {
 	}
 	return red("offline")
 }
-
-// Helper func for using in templates
-func serverConnectTime(now, then int64) int64 {
-	return now - then
-}
