@@ -201,12 +201,8 @@ func StuffPlayer(cl *client.Client, p *client.Player, cmd string) {
 // Specify the length of silence using the seconds arg. Using zero or a
 // negative number of seconds makes it permanent.
 func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
-	var cmd string
-	var logMsg string
-	if cl == nil {
-		return
-	}
-	if p == nil {
+	var cmd, logMsg string
+	if cl == nil || p == nil {
 		return
 	}
 	if seconds > 0 {
@@ -216,14 +212,8 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)
 		logMsg = fmt.Sprintf("MUTE[perm] %-20s [%d]\n", p.Name, p.ClientID)
 	}
-	msg := "You've been muted"
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
-	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(p.ClientID)
-	(&cl.MessageOut).WriteByte(PRINT_HIGH)
-	(&cl.MessageOut).WriteString(msg)
-
 	cl.Log.Printf(logMsg)
 	cl.SSHPrintln(logMsg)
 }
