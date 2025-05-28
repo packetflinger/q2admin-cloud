@@ -218,10 +218,7 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 // Seconds must be greater than 0, maximum length is 300 (5 minutes)
 func StiflePlayer(cl *client.Client, p *client.Player, seconds int) {
 	var cmd string
-	if cl == nil {
-		return
-	}
-	if p == nil {
+	if cl == nil || p == nil {
 		return
 	}
 	if seconds < 0 {
