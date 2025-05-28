@@ -303,10 +303,7 @@ func SayEveryone(cl *client.Client, level int, text string) {
 
 // Send a message to a particular player
 func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
-	if text == "" {
-		return
-	}
-	if cl == nil || p == nil {
+	if cl == nil || p == nil || text == "" {
 		return
 	}
 	if level < 0 || level > PRINT_CHAT {
