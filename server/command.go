@@ -169,10 +169,7 @@ func Invite(cl *client.Client) {
 
 // Have client broadcast print from "console"
 func ConsoleSay(cl *client.Client, print string) {
-	if cl == nil {
-		return
-	}
-	if print == "" {
+	if cl == nil || print == "" {
 		return
 	}
 	txt := fmt.Sprintf("say %s\n", print)
