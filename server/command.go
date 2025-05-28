@@ -284,10 +284,7 @@ func ConsoleCommand(cl *client.Client, cmd string) {
 
 // Send a message to every player on the server
 func SayEveryone(cl *client.Client, level int, text string) {
-	if text == "" {
-		return
-	}
-	if cl == nil {
+	if cl == nil || text == "" {
 		return
 	}
 	if level < 0 || level > PRINT_CHAT {
