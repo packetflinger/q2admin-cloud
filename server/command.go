@@ -182,13 +182,7 @@ func ConsoleSay(cl *client.Client, print string) {
 
 // Force a player to do a command
 func StuffPlayer(cl *client.Client, p *client.Player, cmd string) {
-	if cl == nil {
-		return
-	}
-	if p == nil {
-		return
-	}
-	if len(cmd) == 0 {
+	if cl == nil || p == nil || cmd == "" {
 		return
 	}
 	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.ClientID, cmd)
