@@ -269,10 +269,7 @@ func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 
 // Issue a command as if you were typing it into the console.
 func ConsoleCommand(cl *client.Client, cmd string) {
-	if cl == nil {
-		return
-	}
-	if cmd == "" {
+	if cl == nil || cmd == "" {
 		return
 	}
 	if !strings.HasSuffix(cmd, "\n") {
