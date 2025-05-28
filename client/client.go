@@ -57,6 +57,7 @@ type Client struct {
 	Users       map[*pb.User][]*pb.Role // users who have access via ssh/web
 	Challenge   []byte                  // random data for auth set by server
 	ConnectTime int64                   // unix timestamp when connection made
+	Server      any                     // pointer for circular reference back
 }
 
 // Read rules from disk and return a scoped slice of them
@@ -65,12 +66,12 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	filename := path.Join(cl.Path, "rules.pb")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
-		return rules, err
+		return nil, err
 	}
 	rl := pb.Rules{}
 	err = prototext.Unmarshal(contents, &rl)
 	if err != nil {
-		return rules, err
+		return nil, err
 	}
 	rules = rl.GetRule()
 	cl.ScopeRules("client", rules)

@@ -480,6 +480,7 @@ func ApplyMatchedRules(p *client.Player, rules []*pb.Rule) {
 			SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
 		}
 	}
+	SendMessages(cl)
 }
 
 // RuleDetail will return a condensed string explaining the criteria of

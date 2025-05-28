@@ -223,6 +223,12 @@ func (s *Server) ParseClients() ([]client.Client, error) {
 			if err != nil {
 				return nil
 			}
+			rules, err := cl.FetchRules()
+			if err != nil {
+				s.Logf(LogLevelInfo, "error fetching rules for %q: %v\n", cl.Name, err)
+			}
+			cl.Rules = rules
+			cl.Server = s
 			if cl.Enabled {
 				clients = append(clients, cl)
 			}
@@ -473,6 +479,7 @@ func SendMessages(cl *client.Client) {
 	if len(cl.MessageOut.Data) == 0 {
 		return
 	}
+	cl.Server.(*Server).Logf(LogLevelDeveloper, "Sending to client:\n%s\n", hex.Dump(cl.MessageOut.Data))
 	if cl.Trusted && cl.Encrypted {
 		cipher := crypto.SymmetricEncrypt(
 			cl.CryptoKey.Key,
