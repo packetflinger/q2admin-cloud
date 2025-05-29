@@ -1,0 +1,22 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative teleport.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+// An individual destination for teleporting
+message TeleportDestination {
+    string name = 1;                // alias "pf-tdm-de3"
+    string address = 2;             // ip:port
+    string map = 3;                 // currently loaded map
+    string players = 4;             // comma delimited string of player names
+}
+
+// All info needed to respond to a teleport command
+message TeleportReply {
+    int64 reply_date = 1;           // unix timestamp
+    repeated TeleportDestination active_servers = 2;
+    string empty_servers = 3;       // comma delimited list of names
+}
