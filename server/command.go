@@ -4,11 +4,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
@@ -46,56 +44,6 @@ func TeleportAvailableReply() string {
 	serverstr = fmt.Sprintf("%s\n", serverstr)
 
 	return serverstr
-}
-
-/**
- * Player issued an invite command.
- *
- * Broadcast the invite to all connected servers
- */
-func Invite(cl *client.Client) {
-	if cl == nil {
-		return
-	}
-	client := (&cl.Message).ReadByte()
-	text := (&cl.Message).ReadString()
-
-	p, err := cl.FindPlayer(int(client))
-	if err != nil {
-		cl.Log.Println("invite problem:", err)
-		cl.SSHPrintln("invite problem: " + err.Error())
-	}
-	log.Printf("[%s/INVITE/%s] %s\n", cl.Name, p.Name, text)
-
-	now := time.Now().Unix()
-	invtime := now - p.LastInvite
-
-	if p.InvitesAvailable == 0 {
-		if invtime > 600 {
-			p.InvitesAvailable = 3
-		} else {
-			txt := fmt.Sprintf("You have no more invites available, wait %d seconds\n", 600-invtime)
-			SayPlayer(cl, p, PRINT_HIGH, txt)
-			return
-		}
-	} else {
-		if invtime < 30 {
-			txt := fmt.Sprintf("Invite used too recently, wait %d seconds\n", 30-invtime)
-			SayPlayer(cl, p, PRINT_HIGH, txt)
-			return
-		}
-	}
-
-	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, cl.Name, cl.IPAddress, cl.Port)
-	for _, s := range srv.clients {
-		if s.Enabled && s.Connected {
-			SayEveryone(&s, PRINT_CHAT, inv)
-		}
-	}
-
-	p.Invites++
-	p.LastInvite = now
-	p.InvitesAvailable--
 }
 
 // Have client broadcast print from "console"

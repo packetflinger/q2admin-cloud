@@ -18,10 +18,11 @@ func (s *Server) startMaintenance() {
 
 		s.Logf(LogLevelDeveloperPlus, "running maintenance")
 		// check time-based player rules
-		for _, cl := range srv.clients {
+		for i, cl := range srv.clients {
 			if !cl.Connected && !cl.Trusted {
 				continue
 			}
+			s.clients[i].Invites.InviteBucketAdd()
 			for _, p := range cl.Players {
 				if p.ConnectTime == 0 {
 					continue

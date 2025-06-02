@@ -42,13 +42,15 @@ var (
 )
 
 const (
-	ProtocolMagic   = 1128346193 // "Q2AC"
-	versionRequired = 706        // git revision number
-	challengeLength = 16         // bytes
-	TeleportWidth   = 80         // max chars per line for teleport replies
-	StifleMax       = 300        // 5 minutes
-	GreetingLength  = 306
-	NetReadLength   = 5000
+	ProtocolMagic       = 1128346193 // "Q2AC"
+	versionRequired     = 706        // git revision number
+	challengeLength     = 16         // bytes
+	TeleportWidth       = 80         // max chars per line for teleport replies
+	StifleMax           = 300        // 5 minutes
+	GreetingLength      = 306
+	NetReadLength       = 5000
+	MaxInviteTokens     = 3
+	InviteTokenInterval = 300 // seconds per token added
 )
 
 // Commands sent from the Q2 server to us
@@ -231,6 +233,12 @@ func (s *Server) ParseClients() ([]client.Client, error) {
 			cl.Server = s
 			if cl.Enabled {
 				clients = append(clients, cl)
+			}
+			cl.AllowInvite = true
+			cl.Invites = client.InviteBucket{
+				Tokens: MaxInviteTokens,
+				Max:    MaxInviteTokens,
+				Freq:   InviteTokenInterval,
 			}
 		}
 		return nil
@@ -435,6 +443,11 @@ func (s *Server) HandleConnection(c net.Conn) {
 	cl.Trusted = true
 	cl.ConnectTime = time.Now().Unix()
 	cl.Players = make([]client.Player, cl.MaxPlayers)
+	cl.Invites = client.InviteBucket{
+		Tokens: MaxInviteTokens,
+		Max:    MaxInviteTokens,
+		Freq:   30,
+	}
 
 	// main connection loop for this client
 	// - wait for input

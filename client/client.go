@@ -12,6 +12,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/crypto"
@@ -58,6 +59,32 @@ type Client struct {
 	Challenge   []byte                  // random data for auth set by server
 	ConnectTime int64                   // unix timestamp when connection made
 	Server      any                     // pointer for circular reference back
+	AllowInvite bool                    // honor invites from players
+	Invites     InviteBucket
+}
+
+// Each client has a small collection of invite tokens available. As players
+// use the invite command, tokens removed. The command won't work once token
+// count reaches 0. The bucket is refilled by the maintenance thread one token
+// at a time at a specific interval (every 5 minutes).
+//
+// Why? Because invites have a high likelihood of being abused. Either players
+// spamming them or cross-server shit-talking via invite is expected. Players
+// also have a token bucket for invites
+type InviteBucket struct {
+	Tokens       int
+	Max          int
+	Freq         int64 // how often to add one (in seconds)
+	LastAddition int64 // unix timestamp
+}
+
+func (b *InviteBucket) InviteBucketAdd() {
+	now := time.Now().Unix()
+	if b.Tokens < b.Max && now-b.LastAddition > b.Freq {
+		log.Printf("Adding invite token to bucket (%d/%d)\n", b.Tokens, b.Max)
+		b.Tokens++
+		b.LastAddition = now
+	}
 }
 
 // Read rules from disk and return a scoped slice of them
@@ -130,6 +157,8 @@ func LoadSettings(name string, clientsDir string) (Client, error) {
 		client.UUID = c.GetUuid()
 		client.Path = path.Join(clientsDir, client.Name)
 		client.Enabled = !c.GetDisabled()
+		client.AllowInvite = c.GetAllowInvite()
+		// invite bucket setup when client connects
 
 		tokens := strings.Split(c.GetAddress(), ":")
 		if len(tokens) == 2 {
