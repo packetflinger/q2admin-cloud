@@ -219,12 +219,14 @@ func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 // is used when materializing the clients to disk.
 func (cl *Client) ToProto() *pb.Client {
 	return &pb.Client{
-		Address:     fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port),
-		Name:        cl.Name,
-		Uuid:        cl.UUID,
-		Description: cl.Description,
-		Owner:       cl.Owner,
-		Verified:    cl.Verified,
+		Address:       fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port),
+		Name:          cl.Name,
+		Uuid:          cl.UUID,
+		Description:   cl.Description,
+		Owner:         cl.Owner,
+		Verified:      cl.Verified,
+		AllowTeleport: cl.AllowTeleport,
+		AllowInvite:   cl.AllowInvite,
 	}
 }
 

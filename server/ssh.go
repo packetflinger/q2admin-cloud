@@ -352,6 +352,7 @@ func sessionHandler(s ssh.Session) {
 					{Cmd: "quit", Desc: "close the ssh connection"},
 					{Cmd: "pause", Desc: "pause the console stream"},
 					{Cmd: "server [name]", Desc: "switch mgmt servers, list"},
+					{Cmd: "settings", Desc: "show front-end config"},
 					{Cmd: "unpause", Desc: "resume the console stream"},
 					{Cmd: "", Desc: ""},
 					{Cmd: "rcon <cmd>", Desc: "execute <cmd> on the remote server"},
@@ -638,6 +639,8 @@ func sessionHandler(s ssh.Session) {
 					sshterm.Printf(err.Error())
 				}
 			}
+		} else if c.command == "settings" {
+			sshterm.Printf("%s\n", prototext.Format(activeClient.ToProto()))
 		}
 		SendMessages(cl)
 	}
