@@ -212,6 +212,7 @@ func RotateKeys(cl *client.Client) {
 // with a valid "settings.pb" file and not disabled will be loaded.
 func (s *Server) ParseClients() ([]client.Client, error) {
 	var clients []client.Client
+	// this essentially loops through each file in the directory
 	err := filepath.WalkDir(s.config.GetClientDirectory(), func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("error walking client directory: %v", err)
@@ -234,7 +235,6 @@ func (s *Server) ParseClients() ([]client.Client, error) {
 			if cl.Enabled {
 				clients = append(clients, cl)
 			}
-			cl.AllowInvite = true
 			cl.Invites = client.InviteBucket{
 				Tokens: MaxInviteTokens,
 				Max:    MaxInviteTokens,

@@ -67,9 +67,13 @@ Available commands:
 {{.Extra}}
 `
 	statusTemplate = `
-Frontend: {{ .Connection.RemoteAddr.String | magenta }}
+Frontend:      {{ .IPAddress }}:{{ .Port }}
+Peer:          {{ .Connection.RemoteAddr.String | magenta }}
 Current map:   {{ .CurrentMap }}
-{{- if .PreviousMap }}Previous map:  {{ .PreviousMap }}{{ end -}}
+Previous map:  {{ .PreviousMap }}
+Invite Tokens: {{ .Invites.Tokens }}/{{ .Invites.Max }}
+Invites Used:  {{ .Invites.UseCount }}
+Teleports:     {{ .TeleportCount }}
 
 {{ if .PlayerCount }}
 num score name            vpn address

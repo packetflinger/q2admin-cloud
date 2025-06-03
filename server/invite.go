@@ -61,4 +61,6 @@ func Invite(cl *client.Client) {
 	p.Invites++
 	p.LastInvite = now
 	p.InvitesAvailable--
+	cl.Invites.Tokens--
+	cl.Invites.UseCount++
 }

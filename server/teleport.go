@@ -8,6 +8,7 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 	"text/template"
 	"time"
@@ -67,12 +68,20 @@ func (s *Server) teleportDestinations() (*pb.TeleportReply, error) {
 // for destination. Then issuing the command with the server name as an arg
 // will cause the cloud admin server to stuff a connect command to the player.
 func Teleport(cl *client.Client) {
+	if cl == nil {
+		log.Println("teleport problem: client was nil")
+		return
+	}
 	sv := cl.Server.(*Server)
 	player := (&cl.Message).ReadByte()
 	target := (&cl.Message).ReadString()
 	p, err := cl.FindPlayer(int(player))
 	if err != nil {
 		sv.Logf(LogLevelInfo, "teleport error: %v\n", err)
+		return
+	}
+	if !cl.AllowTeleport {
+		SayPlayer(cl, p, PRINT_CHAT, "Teleporting is disabled on this server")
 		return
 	}
 	if target == "" {
@@ -90,7 +99,7 @@ func Teleport(cl *client.Client) {
 		return
 	}
 
-	for _, c := range sv.clients {
+	for i, c := range sv.clients {
 		if strings.EqualFold(c.Name, target) {
 			notice := fmt.Sprintf("Teleporting to %s to %s [%s:%d]\n", p.Name, c.Name, c.IPAddress, c.Port)
 			SayEveryone(cl, PRINT_CHAT, notice)
@@ -99,6 +108,7 @@ func Teleport(cl *client.Client) {
 			StuffPlayer(cl, p, cmd)
 			p.LastTeleport = time.Now().Unix()
 			p.Teleports++
+			sv.clients[i].TeleportCount++
 			return
 		}
 	}

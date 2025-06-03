@@ -25,42 +25,44 @@ import (
 // on disk during init and the rest is filled in when the game
 // server actually connects
 type Client struct {
-	ID          int                     // this is the database index, remove later
-	UUID        string                  // random identifier
-	Owner       string                  // email addr
-	Version     int                     // q2admin library version
-	Name        string                  // the teleport name
-	Description string                  // used in teleporting
-	IPAddress   string                  // used for teleporting
-	Port        int                     // used for teleporting
-	Connected   bool                    // is it currently connected to us?
-	Verified    bool                    // client owner proved they're the owner
-	CurrentMap  string                  // what map is currently running
-	PreviousMap string                  // what was the last map?
-	Enabled     bool                    // actually use it
-	Connection  *net.Conn               // the tcp connection
-	Players     []Player                // all the connected players
-	PlayerCount int                     // len(Players)
-	MaxPlayers  int                     // total number
-	Message     message.Buffer          // incoming byte stream
-	MessageOut  message.Buffer          // outgoing byte stream
-	Encrypted   bool                    // are the messages AES encrypted?
-	Trusted     bool                    // signature challenge verified
-	PublicKey   *rsa.PublicKey          // supplied by owner via website
-	CryptoKey   crypto.EncryptionKey    // AES 128 CBC
-	Rules       []*pb.Rule              // bans, mutes, etc
-	PingCount   int                     // how many pings client has seen
-	Log         *log.Logger             // log stuff here
-	LogFile     *os.File                // pointer to file so we can close when client disconnects
-	APIKeys     *pb.ApiKeys             // keys generated for accessing this client
-	Path        string                  // the fs path for this client
-	Terminals   []*chan string          // pointers to the console streams
-	Users       map[*pb.User][]*pb.Role // users who have access via ssh/web
-	Challenge   []byte                  // random data for auth set by server
-	ConnectTime int64                   // unix timestamp when connection made
-	Server      any                     // pointer for circular reference back
-	AllowInvite bool                    // honor invites from players
-	Invites     InviteBucket
+	ID            int                     // this is the database index, remove later
+	UUID          string                  // random identifier
+	Owner         string                  // email addr
+	Version       int                     // q2admin library version
+	Name          string                  // the teleport name
+	Description   string                  // used in teleporting
+	IPAddress     string                  // used for teleporting
+	Port          int                     // used for teleporting
+	Connected     bool                    // is it currently connected to us?
+	Verified      bool                    // client owner proved they're the owner
+	CurrentMap    string                  // what map is currently running
+	PreviousMap   string                  // what was the last map?
+	Enabled       bool                    // actually use it
+	Connection    *net.Conn               // the tcp connection
+	Players       []Player                // all the connected players
+	PlayerCount   int                     // len(Players)
+	MaxPlayers    int                     // total number
+	Message       message.Buffer          // incoming byte stream
+	MessageOut    message.Buffer          // outgoing byte stream
+	Encrypted     bool                    // are the messages AES encrypted?
+	Trusted       bool                    // signature challenge verified
+	PublicKey     *rsa.PublicKey          // supplied by owner via website
+	CryptoKey     crypto.EncryptionKey    // AES 128 CBC
+	Rules         []*pb.Rule              // bans, mutes, etc
+	PingCount     int                     // how many pings client has seen
+	Log           *log.Logger             // log stuff here
+	LogFile       *os.File                // pointer to file so we can close when client disconnects
+	APIKeys       *pb.ApiKeys             // keys generated for accessing this client
+	Path          string                  // the fs path for this client
+	Terminals     []*chan string          // pointers to the console streams
+	Users         map[*pb.User][]*pb.Role // users who have access via ssh/web
+	Challenge     []byte                  // random data for auth set by server
+	ConnectTime   int64                   // unix timestamp when connection made
+	Server        any                     // pointer for circular reference back
+	AllowInvite   bool                    // honor invites from players
+	Invites       InviteBucket            // Invite throttling
+	AllowTeleport bool                    // enable teleport functionality
+	TeleportCount int                     // how many times teleport was used
 }
 
 // Each client has a small collection of invite tokens available. As players
@@ -76,6 +78,7 @@ type InviteBucket struct {
 	Max          int
 	Freq         int64 // how often to add one (in seconds)
 	LastAddition int64 // unix timestamp
+	UseCount     int   // how many times invite has been used
 }
 
 func (b *InviteBucket) InviteBucketAdd() {
@@ -158,7 +161,7 @@ func LoadSettings(name string, clientsDir string) (Client, error) {
 		client.Path = path.Join(clientsDir, client.Name)
 		client.Enabled = !c.GetDisabled()
 		client.AllowInvite = c.GetAllowInvite()
-		// invite bucket setup when client connects
+		client.AllowTeleport = c.GetAllowTeleport()
 
 		tokens := strings.Split(c.GetAddress(), ":")
 		if len(tokens) == 2 {

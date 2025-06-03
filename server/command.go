@@ -171,7 +171,7 @@ func SayEveryone(cl *client.Client, level int, text string) {
 	(&cl.MessageOut).WriteString(text)
 }
 
-// Send a message to a particular player
+// Send a message to a particular player. Newlines automatically added.
 func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
 	if cl == nil || p == nil || text == "" {
 		return
