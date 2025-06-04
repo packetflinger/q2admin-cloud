@@ -26,6 +26,9 @@ type greeting struct {
 // Loop through all the data from the client
 // and act accordingly
 func ParseMessage(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	msg := &cl.Message
 	for {
 		if msg.Index >= len(msg.Data) {
@@ -61,6 +64,9 @@ func ParseMessage(cl *client.Client) {
 }
 
 func ParseGreeting(msg *message.Buffer) (greeting, error) {
+	if msg == nil {
+		return greeting{}, fmt.Errorf("null msg buffer")
+	}
 	if msg.Length < GreetingLength {
 		return greeting{}, fmt.Errorf("short greeting (%d)", msg.Length)
 	}
@@ -77,6 +83,12 @@ func ParseGreeting(msg *message.Buffer) (greeting, error) {
 // Parse the client's response to the server's auth challenge and compare the
 // results.
 func (s *Server) AuthenticateClient(msg *message.Buffer, cl *client.Client) (bool, error) {
+	if msg == nil {
+		return false, fmt.Errorf("null msg buffer")
+	}
+	if cl == nil {
+		return false, fmt.Errorf("null client")
+	}
 	if msg.Length != crypto.RSAKeyLength+3 {
 		return false, fmt.Errorf("[%s] invalid client auth length (%d)", cl.Name, msg.Length)
 	}
@@ -111,6 +123,9 @@ func (s *Server) AuthenticateClient(msg *message.Buffer, cl *client.Client) (boo
 // by parsing the obituary print. For self and environmental
 // frags, the attacker and victim will be the same.
 func ParseFrag(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	var aName string
 	msg := &cl.Message
 	v := msg.ReadByte()
@@ -143,6 +158,9 @@ func ParseFrag(cl *client.Client) {
 
 // Received a ping from a client, send a pong to show we're alive
 func Pong(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	if srv.config.GetVerboseLevel() >= LogLevelDeveloperPlus {
 		log.Printf("[%s/PING]\n", cl.Name)
 	}
@@ -160,6 +178,9 @@ func Pong(cl *client.Client) {
 // 1 byte: print level
 // string: the actual message
 func ParsePrint(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	msg := &cl.Message
 	level := msg.ReadByte()
 	text := msg.ReadString()
@@ -205,6 +226,9 @@ func ParsePrint(cl *client.Client) {
 // - Log the connection
 // - Apply any rules that match them
 func ParseConnect(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	p := ParsePlayer(cl)
 	if p == nil {
 		return
@@ -240,6 +264,9 @@ func ParseConnect(cl *client.Client) {
 
 // A player disconnected from a q2 server
 func ParseDisconnect(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	clientnum := int((&cl.Message).ReadByte())
 
 	if clientnum < 0 || clientnum > cl.MaxPlayers {
@@ -262,6 +289,9 @@ func ParseDisconnect(cl *client.Client) {
 // Client told us what map is currently running. Typically happens
 // when the map changes
 func ParseMap(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	mapname := (&cl.Message).ReadString()
 	cl.PreviousMap = cl.CurrentMap
 	cl.CurrentMap = mapname
@@ -274,6 +304,9 @@ func ParseMap(cl *client.Client) {
 //
 // Called from ParsePrint()
 func ParseObituary(cl *client.Client, obit string) {
+	if cl == nil || obit == "" {
+		return
+	}
 	death, err := cl.CalculateDeath(obit)
 	if err != nil {
 		return
@@ -303,6 +336,9 @@ func ParseObituary(cl *client.Client, obit string) {
 // 1 byte is quantity
 // then that number of players are sent
 func ParsePlayerlist(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	count := (&cl.Message).ReadByte()
 	cl.Log.Println("PLAYERLIST", count)
 	for i := 0; i < int(count); i++ {
@@ -316,6 +352,9 @@ func ParsePlayerlist(cl *client.Client) {
 // Called any time a player msg is sent, usually on
 // join or new map
 func ParsePlayer(cl *client.Client) *client.Player {
+	if cl == nil {
+		return nil
+	}
 	msg := &cl.Message
 	clientnum := msg.ReadByte()
 	userinfo := msg.ReadString()
@@ -358,6 +397,9 @@ func ParsePlayer(cl *client.Client) *client.Player {
 
 // A command was issued from a player on a client
 func ParseCommand(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	cmd := (&cl.Message).ReadByte()
 	switch cmd {
 	case PCMDTeleport:
@@ -370,6 +412,9 @@ func ParseCommand(cl *client.Client) {
 
 // A player changed their userinfo, reparse it and re-apply rules
 func ParsePlayerUpdate(cl *client.Client) {
+	if cl == nil {
+		return
+	}
 	msg := &cl.Message
 	clientnum := msg.ReadByte()
 	userinfo := msg.ReadString()
