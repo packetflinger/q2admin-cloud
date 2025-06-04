@@ -138,6 +138,9 @@ func (s *Server) FindClient(lookup string) (*client.Client, error) {
 // Locate the struct of the server for a particular
 // name, get a pointer to it
 func (s *Server) FindClientByName(name string) (*client.Client, error) {
+	if name == "" {
+		return nil, fmt.Errorf("empty name looking up client")
+	}
 	for i := range s.clients {
 		if s.clients[i].Name == name {
 			return &s.clients[i], nil
@@ -148,6 +151,9 @@ func (s *Server) FindClientByName(name string) (*client.Client, error) {
 
 // Get a pointer to a user based on their email
 func (s *Server) GetUserByEmail(email string) (*pb.User, error) {
+	if email == "" {
+		return nil, fmt.Errorf("empty email getting user")
+	}
 	for _, u := range s.users {
 		if u.GetEmail() == email {
 			return u, nil
@@ -162,6 +168,9 @@ func (s *Server) GetUserByEmail(email string) (*pb.User, error) {
 // Circular: find clients by context to include in that context
 func ClientsByContext(ctx *IdentityContext) []*client.Client {
 	cls := []*client.Client{}
+	if ctx == nil {
+		return cls
+	}
 	for i, cl := range srv.clients {
 		if cl.Owner == ctx.user.Email {
 			cls = append(cls, &srv.clients[i])
@@ -180,6 +189,9 @@ func ClientsByContext(ctx *IdentityContext) []*client.Client {
 // has access to (owners and delegates)
 func ClientsByIdentity(ident string) []client.Client {
 	list := []client.Client{}
+	if ident == "" {
+		return list
+	}
 	for _, cl := range srv.clients {
 		if strings.EqualFold(cl.Owner, ident) {
 			list = append(list, cl)
@@ -195,7 +207,7 @@ func ClientsByIdentity(ident string) []client.Client {
 //
 // Called from Pong() every hour or so
 func RotateKeys(cl *client.Client) {
-	if !cl.Encrypted {
+	if cl == nil || !cl.Encrypted {
 		return
 	}
 	keyData := crypto.EncryptionKey{
@@ -215,6 +227,9 @@ func RotateKeys(cl *client.Client) {
 // with a valid "settings.pb" file and not disabled will be loaded.
 func (s *Server) ParseClients() ([]client.Client, error) {
 	var clients []client.Client
+	if s == nil {
+		return clients, fmt.Errorf("null receiver")
+	}
 	// this essentially loops through each file in the directory
 	err := filepath.WalkDir(s.config.GetClientDirectory(), func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -254,6 +269,12 @@ func (s *Server) ParseClients() ([]client.Client, error) {
 
 // Write the clients proto to disk as text-format
 func MaterializeClients(outfile string, clients []client.Client) error {
+	if outfile == "" {
+		return fmt.Errorf("empty output file name")
+	}
+	if len(clients) == 0 {
+		return fmt.Errorf("no clients to write")
+	}
 	clientspb := []*pb.Client{}
 	for _, c := range clients {
 		p := c.ToProto()
@@ -279,6 +300,9 @@ func MaterializeClients(outfile string, clients []client.Client) error {
 
 // SendError is a way of letting the client know there's a problem.
 func SendError(cl *client.Client, pl *client.Player, severity int, err string) {
+	if cl == nil || err == "" {
+		return
+	}
 	out := &cl.MessageOut
 	out.WriteByte(SCMDError)
 	if pl == nil {
@@ -489,10 +513,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 // client requested encrypted transit, encrypt using the session key generated
 // during the handshake.
 func SendMessages(cl *client.Client) {
-	if !cl.Connected {
-		return
-	}
-	if len(cl.MessageOut.Data) == 0 {
+	if cl == nil || !cl.Connected || cl.MessageOut.Length == 0 {
 		return
 	}
 	cl.Server.(*Server).Logf(LogLevelDeveloper, "Sending to client:\n%s\n", hex.Dump(cl.MessageOut.Data))
@@ -521,6 +542,9 @@ func Shutdown() {
 // line number, and a formatted string. Logging is dependant on verbosity level
 // from the config.
 func (s *Server) Logf(level int, format string, args ...any) {
+	if format == "" {
+		return
+	}
 	if int(s.config.GetVerboseLevel()) < level {
 		return
 	}
@@ -551,6 +575,9 @@ func (s *Server) Logln(level int, args ...any) {
 
 // Start the cloud admin server
 func Startup(configFile string, foreground bool) {
+	if configFile == "" {
+		log.Fatalln("no config file specified")
+	}
 	log.Printf("%-21s %s\n", "Loading config:", configFile)
 	textpb, err := os.ReadFile(configFile)
 	if err != nil {
