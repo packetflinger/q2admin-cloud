@@ -656,8 +656,10 @@ func sessionHandler(s ssh.Session) {
 // The context arg is a "withCancel" context, so the calling func can terminate
 // this go routine even when it's blocking waiting for input if needed.
 func linkClientToTerminal(ctx context.Context, cl *client.Client, t *SSHTerminal, stream *chan string) {
+	if cl == nil || t == nil {
+		return
+	}
 	var now, msg string
-
 	msg = fmt.Sprintf("* connecting to %s's console stream *", cl.Name)
 	t.Println(yellow(msg))
 
@@ -706,7 +708,7 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 
 // ParseCmdArgs breaks up the current SSH command and args
 func ParseCmdArgs(input string) (CmdArgs, error) {
-	if len(input) == 0 {
+	if input == "" {
 		return CmdArgs{}, nil
 	}
 	tokens := strings.Split(strings.Trim(input, " \n\t"), " ")
@@ -724,6 +726,9 @@ func ParseCmdArgs(input string) (CmdArgs, error) {
 // Println will send str to the SSH terminal. If the input string is missing
 // a newline, it's added before sending.
 func (t SSHTerminal) Println(str string) {
+	if str == "" {
+		return
+	}
 	if !strings.HasSuffix(str, "\n") {
 		str += "\n"
 	}
@@ -733,13 +738,19 @@ func (t SSHTerminal) Println(str string) {
 // Printf is a wrapper to emulate the functionality of fmt.Printf and output
 // to the SSH terminal.
 func (t SSHTerminal) Printf(format string, a ...any) {
+	if format == "" {
+		return
+	}
 	str := fmt.Sprintf(format, a...)
 	t.terminal.Write([]byte(str))
 }
 
 // ClientsByUser will get a list of clients this particular user has access to.
 func ClientsByUser(user *pb.User) []*client.Client {
-	cls := []*client.Client{}
+	var cls []*client.Client
+	if user == nil {
+		return cls
+	}
 	for i := range srv.clients {
 		c := &srv.clients[i]
 		for k := range c.Users {
@@ -753,7 +764,10 @@ func ClientsByUser(user *pb.User) []*client.Client {
 
 // Get the clients owned by this user
 func MyClients(u *pb.User) []*client.Client {
-	cls := []*client.Client{}
+	var cls []*client.Client
+	if u == nil {
+		return cls
+	}
 	for i := range srv.clients {
 		c := &srv.clients[i]
 		if c.Owner == u.Email {
@@ -765,7 +779,10 @@ func MyClients(u *pb.User) []*client.Client {
 
 // Get the clients who have access delegated to me
 func MyDelegates(u *pb.User) []*client.Client {
-	cls := []*client.Client{}
+	var cls []*client.Client
+	if u == nil {
+		return cls
+	}
 	for i := range srv.clients {
 		c := &srv.clients[i]
 		roles, ok := c.Users[u]
@@ -783,6 +800,9 @@ func MyDelegates(u *pb.User) []*client.Client {
 
 // User returns a user proto for the given email address
 func User(email string) (*pb.User, error) {
+	if email == "" {
+		return nil, fmt.Errorf("blank email input")
+	}
 	for i := range srv.users {
 		if srv.users[i].Email == email {
 			return srv.users[i], nil
@@ -813,6 +833,9 @@ func checkMark(in any) string {
 //
 // The "> " is appended to the end when set, don't include that manually.
 func (t *SSHTerminal) SetPrompt(s string, save bool) {
+	if s == "" {
+		return
+	}
 	if save {
 		t.prompt = s
 	}
@@ -873,6 +896,9 @@ func MyServersResponse(s ssh.Session) (string, error) {
 // AddRuleWizard will prompt the user to enter all the data needed to construct
 // a rule proto affecting players.
 func AddRuleWizard(t *SSHTerminal, cl *client.Client) (*pb.Rule, error) {
+	if t == nil || cl == nil {
+		return nil, fmt.Errorf("null terminal or client")
+	}
 	var r pb.Rule
 	t.SetPrompt("", false)
 gettype:
@@ -923,6 +949,9 @@ gettype:
 
 // Helper func for using in templates
 func connectionIndicator(c *client.Client) string {
+	if c == nil {
+		return "error"
+	}
 	if c.Connected && c.Trusted {
 		return green("connected")
 	}
