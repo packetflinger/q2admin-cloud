@@ -8,8 +8,9 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/packetflinger/q2admind/proto"
 	"google.golang.org/protobuf/encoding/prototext"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 var (
@@ -32,11 +33,11 @@ func ReadVPNConfig(cfgfile string) (*pb.VPNConfig, error) {
 	var cfg *pb.VPNConfig
 	contents, err := os.ReadFile(cfgfile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to open VPN config: %v", err)
 	}
 	err = prototext.Unmarshal(contents, cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error unmarshalling VPN config: %v", err)
 	}
 	return cfg, nil
 }
@@ -48,6 +49,9 @@ func InitVPNCache() {
 // Check if the supplied IP address is from a VPN service. First look at the cache, then
 // lookup via the actual service (and add to the cache)
 func IsVPN(ip string, cache map[string]VPNCacheEntry, config *pb.VPNConfig) (bool, error) {
+	if config == nil {
+		return false, fmt.Errorf("null config")
+	}
 	if !config.Enabled {
 		return false, nil
 	}
@@ -77,6 +81,12 @@ func IsVPN(ip string, cache map[string]VPNCacheEntry, config *pb.VPNConfig) (boo
 }
 
 func lookupVPNStatus(ip string, config *pb.VPNConfig) (bool, error) {
+	if ip == "" {
+		return false, fmt.Errorf("empty ip looking up vpn status")
+	}
+	if config == nil {
+		return false, fmt.Errorf("null config looking up vpn status")
+	}
 	type Results struct {
 		Security struct {
 			VPN bool `JSON:"vpn"`
