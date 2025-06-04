@@ -124,6 +124,9 @@ const (
 // Locate the struct of the server for a particular
 // ID, get a pointer to it
 func (s *Server) FindClient(lookup string) (*client.Client, error) {
+	if lookup == "" {
+		return nil, fmt.Errorf("empty uuid looking up client")
+	}
 	for i := range s.clients {
 		if s.clients[i].UUID == lookup {
 			return &s.clients[i], nil
