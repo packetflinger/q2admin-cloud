@@ -24,6 +24,9 @@ import (
 // Called every time a player connects from ParseConnect()
 func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 	var rules []*pb.Rule
+	if p == nil {
+		return false, rules
+	}
 	for _, r := range SortRules(ruleset) {
 		if CheckRule(p, r, time.Now()) {
 			rules = append(rules, r)
@@ -46,6 +49,9 @@ func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 //
 // Called from CheckRules()
 func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
+	if p == nil || r == nil {
+		return false
+	}
 	match := false
 	now := t.Unix()
 	need := 0
@@ -213,6 +219,9 @@ func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
 // Read rules from disk
 func FetchRules(filename string) ([]*pb.Rule, error) {
 	r := []*pb.Rule{}
+	if filename == "" {
+		return r, fmt.Errorf("no rules file specified")
+	}
 	filedata, err := os.ReadFile(filename)
 	if err != nil {
 		return r, err
@@ -237,6 +246,9 @@ func FetchRules(filename string) ([]*pb.Rule, error) {
 // Also called as new rules are added while running
 func SortRules(rules []*pb.Rule) []*pb.Rule {
 	var bans, mutes, stifles, msgs []*pb.Rule
+	if len(rules) == 0 {
+		return msgs
+	}
 	for _, r := range rules {
 		switch r.GetType() {
 		case pb.RuleType_BAN:
@@ -256,6 +268,9 @@ func SortRules(rules []*pb.Rule) []*pb.Rule {
 //
 // Called from CheckRule()
 func UserinfoMatches(ui *pb.UserInfo, p *client.Player) bool {
+	if ui == nil || p == nil {
+		return false
+	}
 	for k, v := range p.UserinfoMap {
 		if k == ui.GetProperty() {
 			re, err := regexp.Compile(ui.GetValue())
@@ -274,6 +289,9 @@ func UserinfoMatches(ui *pb.UserInfo, p *client.Player) bool {
 // exception, therefore causing the parent rule to not match this player
 // when it otherwise would have.
 func RuleExceptionMatch(ex *pb.Exception, p *client.Player) bool {
+	if ex == nil || p == nil {
+		return false
+	}
 	now := time.Now().Unix()
 
 	// expired exception, ignore it
@@ -336,6 +354,9 @@ func RuleExceptionMatch(ex *pb.Exception, p *client.Player) bool {
 //
 // Used in parsing TimeSpec proto messages for rules.
 func durationToSeconds(ts string) (int, error) {
+	if ts == "" {
+		return 0, fmt.Errorf("empty timespec")
+	}
 	multiplier := map[string]int{
 		"s": 1,
 		"m": 60,
@@ -419,6 +440,9 @@ func durationToSeconds(ts string) (int, error) {
 // For formats that don't include a date, that time on any day will match. For
 // the date-only format, midnight on that day will match.
 func stringToTime(t string) (time.Time, error) {
+	if t == "" {
+		return time.Now(), fmt.Errorf("empty time specified")
+	}
 	ts, err := time.Parse(time.TimeOnly, t)
 	if err != nil {
 		ts, err = time.Parse(time.Kitchen, t)
