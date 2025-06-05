@@ -61,6 +61,9 @@ func (d Database) Begin() (*sql.Tx, error) {
 
 // AddPlayer will insert the player into the database
 func (d Database) AddPlayer(pl *client.Player) error {
+	if pl == nil {
+		return fmt.Errorf("error adding player to db: null player")
+	}
 	_, err := d.Handle.Exec(
 		insertPlayer, pl.Client.Name, pl.Name, pl.IP, pl.Hostname, pl.VPN,
 		pl.Cookie, pl.Version, pl.Userinfo, time.Now().Unix(),
@@ -77,6 +80,9 @@ func (d Database) AddPlayer(pl *client.Player) error {
 // Called from server.Startup()
 func Open(filename string) (Database, error) {
 	var database Database
+	if filename == "" {
+		return database, fmt.Errorf("blank database file string")
+	}
 	db, err := sql.Open("sqlite3", filename)
 	if err != nil {
 		return database, fmt.Errorf("error opening database: %v", err)
@@ -103,6 +109,9 @@ func Open(filename string) (Database, error) {
 // Search will fetch the rows that match the input pattern.
 func (d Database) Search(pattern string) ([]SearchResult, error) {
 	var results []SearchResult
+	if pattern == "" {
+		return results, fmt.Errorf("blank search string")
+	}
 	if len(pattern) < 3 {
 		return nil, fmt.Errorf("error search input needs to be at least 3 characters")
 	}
