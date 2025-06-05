@@ -2,49 +2,13 @@ package server
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 
 	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
 )
-
-// Resolve a teleport name to an ip:port
-func FindTeleportDestination(dest string) (*client.Client, error) {
-	for i, c := range srv.clients {
-		if c.Name == dest {
-			return &srv.clients[i], nil
-		}
-	}
-
-	return nil, errors.New("unknown destination")
-}
-
-func TeleportAvailableReply() string {
-	var allservers []string
-
-	for _, c := range srv.clients {
-		if !c.Connected {
-			continue
-		}
-
-		allservers = append(allservers, c.Name)
-	}
-
-	// alphabetize the list
-	sort.Strings(allservers)
-
-	serverstr := "Available Servers:"
-	for _, s := range allservers {
-		serverstr = fmt.Sprintf("%s %s", serverstr, s)
-	}
-	serverstr = fmt.Sprintf("%s\n", serverstr)
-
-	return serverstr
-}
 
 // Have client broadcast print from "console"
 func ConsoleSay(cl *client.Client, print string) {
