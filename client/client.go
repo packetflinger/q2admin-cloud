@@ -82,6 +82,9 @@ type InviteBucket struct {
 }
 
 func (b *InviteBucket) InviteBucketAdd() {
+	if b == nil {
+		return
+	}
 	now := time.Now().Unix()
 	if b.Tokens < b.Max && now-b.LastAddition > b.Freq {
 		log.Printf("Adding invite token to bucket (%d/%d)\n", b.Tokens, b.Max)
@@ -93,6 +96,9 @@ func (b *InviteBucket) InviteBucketAdd() {
 // Read rules from disk and return a scoped slice of them
 func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 	var rules []*pb.Rule
+	if cl == nil {
+		return rules, fmt.Errorf("error fetching rules: null receiver")
+	}
 	filename := path.Join(cl.Path, "rules.pb")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
@@ -112,6 +118,9 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 // This is used to mark rules in different contexts (server-level vs client-
 // level)
 func (cl *Client) ScopeRules(scope string, rules []*pb.Rule) {
+	if cl == nil || scope == "" {
+		return
+	}
 	for i := range rules {
 		rules[i].Scope = scope
 	}
@@ -120,6 +129,12 @@ func (cl *Client) ScopeRules(scope string, rules []*pb.Rule) {
 // MaterializeRules will write the current list of rules to disk. Client rules
 // are always found in the <client>/rules.pb file.
 func (cl *Client) MaterializeRules(rules []*pb.Rule) error {
+	if cl == nil {
+		return fmt.Errorf("error writing rules: null receiver")
+	}
+	if len(rules) == 0 {
+		return nil
+	}
 	collection := &pb.Rules{Rule: rules}
 	filename := path.Join(cl.Path, "rules.pb")
 	data, err := prototext.MarshalOptions{Indent: "  "}.Marshal(collection)
@@ -139,6 +154,12 @@ func (cl *Client) MaterializeRules(rules []*pb.Rule) error {
 // from them.
 func LoadSettings(name string, clientsDir string) (Client, error) {
 	var client Client
+	if name == "" {
+		return client, fmt.Errorf("error loading settings: blank client name supplied")
+	}
+	if clientsDir == "" {
+		return client, fmt.Errorf("error loading settings: blank client directly supplied")
+	}
 	filename := path.Join(clientsDir, name, "settings.pb")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
@@ -197,7 +218,12 @@ func LoadSettings(name string, clientsDir string) (Client, error) {
 func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 	var players []*Player
 	var name string
-
+	if cl == nil {
+		return players, fmt.Errorf("error getting player from print: null receiver")
+	}
+	if txt == "" {
+		return players, fmt.Errorf("error getting player from print: empty print")
+	}
 	count := strings.Count(txt, ": ") // note the space
 	if count == 0 {
 		return nil, errors.New("no name in print")
@@ -218,6 +244,9 @@ func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 // ToProto will convert a Client struct into the corresponding protobuf. This
 // is used when materializing the clients to disk.
 func (cl *Client) ToProto() *pb.Client {
+	if cl == nil {
+		return &pb.Client{}
+	}
 	return &pb.Client{
 		Address:       fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port),
 		Name:          cl.Name,
@@ -235,6 +264,9 @@ func (cl *Client) ToProto() *pb.Client {
 // return all of them.
 func (cl *Client) PlayersByName(name string) ([]*Player, error) {
 	var players []*Player
+	if cl == nil {
+		return players, fmt.Errorf("error getting players by name: null receiver")
+	}
 	if name == "" {
 		return players, errors.New("blank name argument")
 	}
@@ -248,6 +280,9 @@ func (cl *Client) PlayersByName(name string) ([]*Player, error) {
 
 // SSHPrintln will send the value of text to all the SSH-connected clients.
 func (cl *Client) SSHPrintln(text string) {
+	if cl == nil || text == "" {
+		return
+	}
 	for i := range cl.Terminals {
 		select {
 		case *cl.Terminals[i] <- text:
@@ -262,6 +297,9 @@ func (cl *Client) SSHPrintln(text string) {
 // close the console stream channel.
 func (cl *Client) TerminalDisconnected(t *chan string) []*chan string {
 	var terms []*chan string
+	if cl == nil {
+		return terms
+	}
 	for i := range cl.Terminals {
 		if cl.Terminals[i] == t {
 			close(*cl.Terminals[i])
