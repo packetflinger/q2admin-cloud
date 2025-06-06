@@ -45,6 +45,9 @@ type Player struct {
 
 // Get a pointer to a player based on a client number
 func (cl *Client) FindPlayer(client int) (*Player, error) {
+	if cl == nil {
+		return nil, fmt.Errorf("error finding player: null receiver")
+	}
 	if !cl.ValidPlayerID(client) {
 		return nil, fmt.Errorf("invalid player id %q", client)
 	}
@@ -74,8 +77,9 @@ func (cl *Client) FindPlayer(client int) (*Player, error) {
 //
 // TODO: figure out the database-ness
 func (player *Player) LoadPlayerHash() {
-	//var database_id int64
-
+	if player == nil {
+		return
+	}
 	phash := player.UserinfoMap["phash"]
 	if phash != "" {
 		player.UserInfoHash = phash
@@ -94,27 +98,22 @@ func (player *Player) LoadPlayerHash() {
 		hash := md5.Sum(pt)
 		player.UserInfoHash = fmt.Sprintf("%x", hash[:8])
 	}
-
-	/*
-		database_id = int64(GetPlayerIdFromHash(player.UserInfoHash))
-		if database_id > 0 {
-			player.Database_ID = database_id
-			return
-		}
-
-		database_id = InsertPlayer(player)
-		player.Database_ID = database_id
-	*/
 }
 
 // Check if a client ID is valid for a particular server context,
 // does not care if a valid player structure is located there or not
 func (cl *Client) ValidPlayerID(client int) bool {
+	if cl == nil {
+		return false
+	}
 	return client >= 0 && client < len(cl.Players)
 }
 
 // Remove a player from the players slice (used when player quits)
 func (cl *Client) RemovePlayer(client int) {
+	if cl == nil {
+		return
+	}
 	if !cl.ValidPlayerID(client) {
 		log.Printf("invalid client number (%d) when removing player\n", client)
 		return
@@ -161,6 +160,9 @@ func UserinfoMap(ui string) map[string]string {
 //
 // Called from CalculateDeath()
 func (cl *Client) FindPlayerByName(name string) *Player {
+	if cl == nil {
+		return nil
+	}
 	for i, p := range cl.Players {
 		if p.Name == name {
 			return &cl.Players[i]
