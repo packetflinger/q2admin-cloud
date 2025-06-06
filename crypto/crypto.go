@@ -38,6 +38,9 @@ type EncryptionKey struct {
 // Get a hash of an input byte slice
 // Currently using SHA256, if that changes, update the DigestLength constant above!
 func MessageDigest(input []byte) ([]byte, error) {
+	if len(input) == 0 {
+		return []byte{}, fmt.Errorf("hashing error: empty input")
+	}
 	hash := sha256.New()
 	_, err := hash.Write(input)
 	if err != nil {
@@ -50,12 +53,18 @@ func MessageDigest(input []byte) ([]byte, error) {
 // Get an MD5 hash of an input string. Just used for
 // change comparisons.
 func MD5Hash(input string) string {
+	if input == "" {
+		return ""
+	}
 	hash := md5.Sum([]byte(input))
 	return hex.EncodeToString(hash[:])
 }
 
 // Generate a private/public key pair of a certain bit length
 func GenerateKeys(bitlength int) bool {
+	if bitlength < 1024 {
+		return false
+	}
 	// make the actual keys
 	privatekey, err := rsa.GenerateKey(rand.Reader, bitlength)
 	if err != nil {
@@ -107,6 +116,9 @@ func GenerateKeys(bitlength int) bool {
 
 // Read an RSA private key into memory from the filesystem
 func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
+	if keyfile == "" {
+		return nil, fmt.Errorf("error loading private key: blank file path")
+	}
 	priv, err := os.ReadFile(keyfile)
 	if err != nil {
 		panic(err)
@@ -174,6 +186,9 @@ func PKCS5Padding(input []byte, blockSize int) []byte {
 // using the server's public key. The decrypted data is sent back to the client
 // to prove the server has the matching private key, authenticating the server.
 func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
+	if key == nil {
+		return []byte{}, fmt.Errorf("error decrypting: null key")
+	}
 	plaintext, err := key.Decrypt(nil, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("asymmetric decrypt failed: %v", err)
@@ -190,6 +205,9 @@ func PrivateDecrypt(key *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
 // hash of the data. If the hashes match, the client is successfully
 // authenticated.
 func PublicEncrypt(key *rsa.PublicKey, plaintext []byte) ([]byte, error) {
+	if key == nil {
+		return []byte{}, fmt.Errorf("error encrypting: null key")
+	}
 	encryptedBytes, err := rsa.EncryptPKCS1v15(rand.Reader, key, plaintext)
 	if err != nil {
 		return nil, fmt.Errorf("asymmetric encrypt failed: %v", err)
@@ -199,6 +217,9 @@ func PublicEncrypt(key *rsa.PublicKey, plaintext []byte) ([]byte, error) {
 
 // Get a byte slice of random data (for generating keys)
 func RandomBytes(length int) []byte {
+	if length < 1 {
+		return []byte{}
+	}
 	b := make([]byte, length)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -211,6 +232,9 @@ func RandomBytes(length int) []byte {
 // Hash the plaintext, encrypt the resulting digest with our private key.
 // Only our public key can decrypt, proving it's really us
 func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
+	if key == nil {
+		return []byte{}
+	}
 	hash := sha256.New()
 	_, _ = hash.Write(plaintext)
 
@@ -265,6 +289,9 @@ func SymmetricEncrypt(key []byte, nonce []byte, plaintext []byte) []byte {
 
 // Use a public key to decrypt a signature and compare it to hash of the content
 func VerifySignature(key *rsa.PublicKey, plaintext []byte, sig []byte) bool {
+	if key == nil {
+		return false
+	}
 	hash := sha256.New()
 	temp := plaintext
 	_, _ = hash.Write(temp)
