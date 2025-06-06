@@ -513,7 +513,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 // client requested encrypted transit, encrypt using the session key generated
 // during the handshake.
 func SendMessages(cl *client.Client) {
-	if cl == nil || !cl.Connected || cl.MessageOut.Length == 0 {
+	if cl == nil || cl.MessageOut.Size() == 0 {
 		return
 	}
 	cl.Server.(*Server).Logf(LogLevelDeveloper, "Sending to client:\n%s\n", hex.Dump(cl.MessageOut.Data))
@@ -524,10 +524,8 @@ func SendMessages(cl *client.Client) {
 			cl.MessageOut.Data[:cl.MessageOut.Index])
 		cl.MessageOut = message.NewBuffer(cipher)
 	}
-	if len(cl.MessageOut.Data) > 0 {
-		(*cl.Connection).Write(cl.MessageOut.Data)
-		(&cl.MessageOut).Reset()
-	}
+	(*cl.Connection).Write(cl.MessageOut.Data)
+	(&cl.MessageOut).Reset()
 }
 
 // Gracefully shut everything down
