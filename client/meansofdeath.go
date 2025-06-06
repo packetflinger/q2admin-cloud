@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 )
 
@@ -62,7 +63,12 @@ const (
 // Called from ParseObituary()
 func (cl *Client) CalculateDeath(obit string) (*Death, error) {
 	death := &Death{}
-
+	if cl == nil {
+		return death, fmt.Errorf("error caclulating death: null receiver")
+	}
+	if obit == "" {
+		return death, fmt.Errorf("error calculating death: blank obit provided")
+	}
 	type ObitTest struct {
 		matchstr string
 		mod      int
@@ -256,7 +262,9 @@ func (cl *Client) CalculateDeath(obit string) (*Death, error) {
 // MeansToString will return a string representation of the means of death.
 func (d *Death) MeansToString() string {
 	var means string
-
+	if d == nil {
+		return "unknown"
+	}
 	switch d.Means {
 	case ModBlaster:
 		means = "blaster"
