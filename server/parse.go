@@ -248,7 +248,7 @@ func ParseConnect(cl *client.Client) {
 		}
 
 		msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.ClientID, p.Name, p.IP)
-		cl.Log.Printf(msg)
+		cl.Log.Printf("%s", msg)
 		cl.SSHPrintln(msg)
 
 		// add a slight delay when processing rules
@@ -281,7 +281,7 @@ func ParseDisconnect(cl *client.Client) {
 	}
 
 	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "DISCONNECT:", pl.ClientID, pl.Name, pl.IP)
-	cl.Log.Printf(msg)
+	cl.Log.Printf("%s", msg)
 	cl.SSHPrintln(msg)
 	cl.RemovePlayer(clientnum)
 }
@@ -328,7 +328,7 @@ func ParseObituary(cl *client.Client, obit string) {
 			death.MeansToString(),
 		)
 	}
-	cl.Log.Printf(logObit)
+	cl.Log.Printf("%s", logObit)
 	cl.SSHPrintln(logObit)
 }
 

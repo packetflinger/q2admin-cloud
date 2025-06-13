@@ -636,7 +636,7 @@ func sessionHandler(s ssh.Session) {
 				cl.Rules = append(cl.Rules, r)
 				err = cl.MaterializeRules(cl.Rules)
 				if err != nil {
-					sshterm.Printf(err.Error())
+					sshterm.Printf("%s", err.Error())
 				}
 			}
 		} else if c.command == "settings" {

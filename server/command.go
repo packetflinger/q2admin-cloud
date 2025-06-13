@@ -48,7 +48,7 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
-	cl.Log.Printf(logMsg)
+	cl.Log.Printf("%s", logMsg)
 	cl.SSHPrintln(logMsg)
 }
 
@@ -80,7 +80,7 @@ func StiflePlayer(cl *client.Client, p *client.Player, seconds int) {
 	(&cl.MessageOut).WriteString(msg)
 
 	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", p.StifleLength, p.Name, p.ClientID)
-	cl.Log.Printf(logMsg)
+	cl.Log.Printf("%s", logMsg)
 	cl.SSHPrintln(logMsg)
 }
 
