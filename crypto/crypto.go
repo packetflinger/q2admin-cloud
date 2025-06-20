@@ -20,6 +20,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -248,27 +249,36 @@ func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
 	return signature
 }
 
-// Decrypt incoming messages using AES
+// Decrypt incoming messages using AES in CBC mode. Any errors encountered here
+// are considered fatal, so errors are not returned.
 func SymmetricDecrypt(key []byte, nonce []byte, ciphertext []byte) ([]byte, int) {
+	if len(key) != len(nonce) {
+		log.Panicf("crypto error: key and IV different lengths - %d, %d", len(key), len(nonce))
+	}
+	if len(ciphertext)%len(key) != 0 {
+		log.Panicf("crypto error: key must match block length - %d, %d", len(key), len(ciphertext))
+	}
+	if len(ciphertext) == 0 {
+		return []byte{}, 0
+	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		fmt.Println("newcipher:", err)
-
+		log.Panicln("error creating new cipher:", err)
 	}
 
 	plaintext := make([]byte, len(ciphertext))
 	cbc := cipher.NewCBCDecrypter(block, nonce)
 	cbc.CryptBlocks(plaintext, ciphertext)
 
-	// the last byte
+	// The last byte value is the number of bytes padded.
 	padding := int(plaintext[len(plaintext)-1])
 
-	// padding bit should never exceed message length,
+	// Padding bit should never exceed message length, that would spill over
+	// into a new block.
 	if padding > len(plaintext) {
 		return []byte{}, 0
 	}
 	unpadded := plaintext[:len(plaintext)-padding]
-
 	return unpadded, len(unpadded)
 }
 

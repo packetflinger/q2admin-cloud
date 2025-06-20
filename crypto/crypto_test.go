@@ -75,6 +75,28 @@ func TestSymmetricEncryption(t *testing.T) {
 	}
 }
 
+func TestSymmetricDecrypt(t *testing.T) {
+	tests := []struct {
+		name   string
+		cipher string
+		key    string
+		iv     string
+		want   string
+	}{
+		{
+			name:   "test1",
+			cipher: "d3 91 59 06 33 0b fa 8e  c3 76 c9 dc 07 3c a8 95",
+			key:    "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+
+		})
+	}
+}
+
 /*
 func TestMD5Hash(t *testing.T) {
 	tests := []struct {

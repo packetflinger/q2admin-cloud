@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/packetflinger/libq2/message"
-	"github.com/packetflinger/q2admind/crypto"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -47,7 +46,9 @@ type Client struct {
 	Encrypted     bool                    // are the messages AES encrypted?
 	Trusted       bool                    // signature challenge verified
 	PublicKey     *rsa.PublicKey          // supplied by owner via website
-	CryptoKey     crypto.EncryptionKey    // AES 128 CBC
+	SymmetricKey  []byte                  // AES 128 CBC
+	InitVector    []byte                  // AES IV,
+	PreviousIV    []byte                  // the next to last AES IV we used (just in case)
 	Rules         []*pb.Rule              // bans, mutes, etc
 	PingCount     int                     // how many pings client has seen
 	Log           *log.Logger             // log stuff here

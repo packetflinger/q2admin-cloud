@@ -210,15 +210,14 @@ func RotateKeys(cl *client.Client) {
 	if cl == nil || !cl.Encrypted {
 		return
 	}
-	keyData := crypto.EncryptionKey{
-		Key:        crypto.RandomBytes(crypto.AESBlockLength),
-		InitVector: crypto.RandomBytes(crypto.AESIVLength),
-	}
-	blob := append(keyData.Key, keyData.InitVector...)
+	newkey := crypto.RandomBytes(crypto.AESBlockLength)
+	newIV := crypto.RandomBytes(crypto.AESIVLength)
+	blob := append(newkey, newIV...)
 	(&cl.MessageOut).WriteByte(SCMDKey)
 	(&cl.MessageOut).WriteData(blob)
 	SendMessages(cl)
-	cl.CryptoKey = keyData
+	cl.SymmetricKey = newkey
+	cl.InitVector = newIV
 }
 
 // ParseClients will build a slice of Client structs based on the files on
@@ -420,12 +419,10 @@ func (s *Server) HandleConnection(c net.Conn) {
 
 	// If client requests encrypted transit, generate session keys and append
 	if cl.Encrypted {
-		cl.CryptoKey = crypto.EncryptionKey{
-			Key:        crypto.RandomBytes(crypto.AESBlockLength),
-			InitVector: crypto.RandomBytes(crypto.AESIVLength),
-		}
-		blob = append(blob, cl.CryptoKey.Key...)
-		blob = append(blob, cl.CryptoKey.InitVector...)
+		cl.SymmetricKey = crypto.RandomBytes(crypto.AESBlockLength)
+		cl.InitVector = crypto.RandomBytes(crypto.AESIVLength)
+		blob = append(blob, cl.SymmetricKey...)
+		blob = append(blob, cl.InitVector...)
 	}
 
 	// Encrypt the whole blob with client's public key so only that client can
@@ -488,22 +485,26 @@ func (s *Server) HandleConnection(c net.Conn) {
 			cl.Log.Println("read error:", err)
 			break
 		}
-
 		if cl.Encrypted && cl.Trusted {
-			input, size = crypto.SymmetricDecrypt(cl.CryptoKey.Key, cl.CryptoKey.InitVector, input[:size])
+			srv.Logf(LogLevelDeveloperPlus, "encrypted packet received:\n%s", hex.Dump(input[:size]))
+			input, size = crypto.SymmetricDecrypt(cl.SymmetricKey, cl.InitVector, input[:size])
 			if size == 0 {
-				srv.Logf(LogLevelNormal, "[%s] symmetric decrypt error\n", cl.Name)
-				cl.Log.Println("decryption error, dropping client")
-				break
+				srv.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nIV: %s\n", hex.Dump(cl.SymmetricKey), hex.Dump(cl.InitVector))
+				// try again with the previous IV in case this message was sent
+				// prior to receiving our last.
+				input, size = crypto.SymmetricDecrypt(cl.SymmetricKey, cl.PreviousIV, input[:size])
+				if size == 0 {
+					srv.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nPrevIV: %s\n", hex.Dump(cl.SymmetricKey), hex.Dump(cl.PreviousIV))
+					srv.Logf(LogLevelNormal, "[%s] error decrypting packet from frontend, disconnecting.\n", cl.Name)
+					cl.Log.Println("error decrypting packet, disconnecting.")
+					return
+				}
 			}
 		}
-
 		cl.Message = message.NewBuffer(input[:size])
-
 		ParseMessage(cl)
 		SendMessages(cl)
 	}
-
 	cl.Connection = nil
 	cl.Connected = false
 	cl.Trusted = false
@@ -516,13 +517,12 @@ func SendMessages(cl *client.Client) {
 	if cl == nil || cl.MessageOut.Size() == 0 {
 		return
 	}
-	cl.Server.(*Server).Logf(LogLevelDeveloper, "Sending to client:\n%s\n", hex.Dump(cl.MessageOut.Data))
+	cl.Server.(*Server).Logf(LogLevelDeveloperPlus, "Sending to client:\n%s\n", hex.Dump(cl.MessageOut.Data))
 	if cl.Trusted && cl.Encrypted {
-		cipher := crypto.SymmetricEncrypt(
-			cl.CryptoKey.Key,
-			cl.CryptoKey.InitVector,
-			cl.MessageOut.Data[:cl.MessageOut.Index])
+		cipher := crypto.SymmetricEncrypt(cl.SymmetricKey, cl.InitVector, cl.MessageOut.Data[:cl.MessageOut.Index])
 		cl.MessageOut = message.NewBuffer(cipher)
+		cl.PreviousIV = cl.InitVector
+		cl.InitVector = cipher[:crypto.AESIVLength]
 	}
 	(*cl.Connection).Write(cl.MessageOut.Data)
 	(&cl.MessageOut).Reset()
