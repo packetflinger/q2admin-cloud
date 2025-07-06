@@ -43,7 +43,7 @@ var (
 
 const (
 	ProtocolMagic       = 1128346193 // "Q2AC"
-	versionRequired     = 706        // git revision number
+	versionRequired     = 715        // git revision number
 	challengeLength     = 16         // bytes
 	TeleportWidth       = 80         // max chars per line for teleport replies
 	StifleMax           = 300        // 5 minutes
