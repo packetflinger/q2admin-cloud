@@ -126,10 +126,10 @@ id        type     description
 `
 	serversTemplate = `
 Your servers:
-Name                  Status     Time  Peer
---------------------  ---------  ----  --------------------------------------
+Name                  Status     Ver  Time  Peer
+--------------------  ---------  ---- ----  ------------------------------------------
 {{ range . -}}
-{{ printf "%-20s" .Name }}  {{ printf "%-9s" (. | connected) }}  {{ if .Connection }}{{ printf "%-4s" (.ConnectTime | ago)}}  {{ .Connection.RemoteAddr.String }}{{ end }}
+{{ printf "%-20s" .Name }}  {{ printf "%-9s" (. | connected) }}  {{ printf "%4d" .Version }} {{ if .Connection }}{{ printf "%-4s" (.ConnectTime | ago)}}  {{ .Connection.RemoteAddr.String }}{{ end }}
 {{ end -}}
 `
 )
@@ -955,5 +955,5 @@ func connectionIndicator(c *client.Client) string {
 	if c.Connected && c.Trusted {
 		return green("connected")
 	}
-	return red("offline")
+	return red("offline  ") // pad with 2 space to match length
 }
