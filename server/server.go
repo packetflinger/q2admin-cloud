@@ -391,8 +391,6 @@ func (s *Server) HandleConnection(c net.Conn) {
 	}
 	cl.Log.Printf("[%s] connecting...\n", cl.IPAddress)
 
-	log.Println("game version:", greeting.version)
-	log.Println("version reqd:", versionRequired)
 	if greeting.version < versionRequired {
 		srv.Logf(LogLevelNormal, "game version < %d required, found %d\n", versionRequired, greeting.version)
 		cl.Log.Printf("game version < %d required, found %d\n", versionRequired, greeting.version)
