@@ -1,10 +1,10 @@
-package client
+package frontend
 
 import (
 	"testing"
 )
 
-func MODTestSetup() *Client {
+func MODTestSetup() *Frontend {
 
 	players := []Player{
 		{
@@ -16,16 +16,16 @@ func MODTestSetup() *Client {
 			IP:   "192.168.4.5",
 		},
 	}
-	cl := Client{
+	fe := Frontend{
 		Players: players,
 	}
-	return &cl
+	return &fe
 }
 
 func TestMOD1(t *testing.T) {
-	cl := MODTestSetup()
+	fe := MODTestSetup()
 	obit := "claire feels scarred's pain"
-	d, e := cl.CalculateDeath(obit)
+	d, e := fe.CalculateDeath(obit)
 	if e != nil {
 		t.Error(e)
 	}
@@ -39,7 +39,7 @@ func TestMOD1(t *testing.T) {
 	}
 
 	obit = "claire saw the light"
-	d, e = cl.CalculateDeath(obit)
+	d, e = fe.CalculateDeath(obit)
 	if e != nil {
 		t.Error(e)
 	}

@@ -6,12 +6,12 @@ import (
 	"math"
 	"strings"
 
-	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
+	"github.com/packetflinger/q2admind/frontend"
 )
 
 // Have client broadcast print from "console"
-func ConsoleSay(cl *client.Client, print string) {
+func ConsoleSay(cl *frontend.Frontend, print string) {
 	if cl == nil || print == "" {
 		return
 	}
@@ -21,11 +21,11 @@ func ConsoleSay(cl *client.Client, print string) {
 }
 
 // Force a player to do a command
-func StuffPlayer(cl *client.Client, p *client.Player, cmd string) {
+func StuffPlayer(cl *frontend.Frontend, p *frontend.Player, cmd string) {
 	if cl == nil || p == nil || cmd == "" {
 		return
 	}
-	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.ClientID, cmd)
+	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.FrontendID, cmd)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(stuffcmd)
 }
@@ -34,17 +34,17 @@ func StuffPlayer(cl *client.Client, p *client.Player, cmd string) {
 //
 // Specify the length of silence using the seconds arg. Using zero or a
 // negative number of seconds makes it permanent.
-func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
+func MutePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 	var cmd, logMsg string
 	if cl == nil || p == nil {
 		return
 	}
 	if seconds > 0 {
-		cmd = fmt.Sprintf("sv !mute CL %d %d\n", p.ClientID, seconds)
-		logMsg = fmt.Sprintf("MUTE[%d] %-20s [%d]\n", seconds, p.Name, p.ClientID)
+		cmd = fmt.Sprintf("sv !mute CL %d %d\n", p.FrontendID, seconds)
+		logMsg = fmt.Sprintf("MUTE[%d] %-20s [%d]\n", seconds, p.Name, p.FrontendID)
 	} else {
-		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)
-		logMsg = fmt.Sprintf("MUTE[perm] %-20s [%d]\n", p.Name, p.ClientID)
+		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.FrontendID)
+		logMsg = fmt.Sprintf("MUTE[perm] %-20s [%d]\n", p.Name, p.FrontendID)
 	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
@@ -59,7 +59,7 @@ func MutePlayer(cl *client.Client, p *client.Player, seconds int) {
 // be able to speak again, once followed by another period of silence.
 //
 // Seconds must be greater than 0, maximum length is 300 (5 minutes)
-func StiflePlayer(cl *client.Client, p *client.Player, seconds int) {
+func StiflePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 	var cmd string
 	if cl == nil || p == nil {
 		return
@@ -71,22 +71,22 @@ func StiflePlayer(cl *client.Client, p *client.Player, seconds int) {
 		seconds = StifleMax
 	}
 	msg := "You've been stifled"
-	cmd = fmt.Sprintf("sv !stifle CL %d %d", p.ClientID, seconds)
+	cmd = fmt.Sprintf("sv !stifle CL %d %d", p.FrontendID, seconds)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(p.ClientID)
+	(&cl.MessageOut).WriteByte(p.FrontendID)
 	(&cl.MessageOut).WriteByte(PRINT_HIGH)
 	(&cl.MessageOut).WriteString(msg)
 
-	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", p.StifleLength, p.Name, p.ClientID)
+	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", p.StifleLength, p.Name, p.FrontendID)
 	cl.Log.Printf("%s", logMsg)
 	cl.SSHPrintln(logMsg)
 }
 
 // Instruct a client to kick a player. The target player will receive a direct
 // message explaining why (if `msg` is not empty) just before the kick.
-func KickPlayer(cl *client.Client, p *client.Player, msg string) {
+func KickPlayer(cl *frontend.Frontend, p *frontend.Player, msg string) {
 	if cl == nil || p == nil {
 		return
 	}
@@ -95,20 +95,20 @@ func KickPlayer(cl *client.Client, p *client.Player, msg string) {
 			msg += "\n"
 		}
 		(&cl.MessageOut).WriteByte(SCMDSayClient)
-		(&cl.MessageOut).WriteByte(p.ClientID)
+		(&cl.MessageOut).WriteByte(p.FrontendID)
 		(&cl.MessageOut).WriteByte(PRINT_CHAT)
 		(&cl.MessageOut).WriteString(msg)
 	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
-	(&cl.MessageOut).WriteString(fmt.Sprintf("kick %d\n", p.ClientID))
+	(&cl.MessageOut).WriteString(fmt.Sprintf("kick %d\n", p.FrontendID))
 
-	logMsg := fmt.Sprintf("KICK %-20s [%d] %q\n", p.Name, p.ClientID, msg)
+	logMsg := fmt.Sprintf("KICK %-20s [%d] %q\n", p.Name, p.FrontendID, msg)
 	cl.Log.Println(logMsg)
 	cl.SSHPrintln(logMsg)
 }
 
 // Issue a command as if you were typing it into the console.
-func ConsoleCommand(cl *client.Client, cmd string) {
+func ConsoleCommand(cl *frontend.Frontend, cmd string) {
 	if cl == nil || cmd == "" {
 		return
 	}
@@ -120,7 +120,7 @@ func ConsoleCommand(cl *client.Client, cmd string) {
 }
 
 // Send a message to every player on the server
-func SayEveryone(cl *client.Client, level int, text string) {
+func SayEveryone(cl *frontend.Frontend, level int, text string) {
 	if cl == nil || text == "" {
 		return
 	}
@@ -136,7 +136,7 @@ func SayEveryone(cl *client.Client, level int, text string) {
 }
 
 // Send a message to a particular player. Newlines automatically added.
-func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
+func SayPlayer(cl *frontend.Frontend, p *frontend.Player, level int, text string) {
 	if cl == nil || p == nil || text == "" {
 		return
 	}
@@ -147,7 +147,7 @@ func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
 		text += "\n"
 	}
 	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(p.ClientID)
+	(&cl.MessageOut).WriteByte(p.FrontendID)
 	(&cl.MessageOut).WriteByte(level)
 	(&cl.MessageOut).WriteString(text)
 }
@@ -168,7 +168,7 @@ func SayPlayer(cl *client.Client, p *client.Player, level int, text string) {
 // with a different client and still be identified. This is great
 // for tracking statistics and disciplinary actions (muting/banning
 // shitheads).
-func SetupPlayerCookie(cl *client.Client, p *client.Player) {
+func SetupPlayerCookie(cl *frontend.Frontend, p *frontend.Player) {
 	value := hex.EncodeToString(crypto.RandomBytes(12)) // random ID
 
 	// "modern" clients (q2pro, r1q2) support seta for archive vars

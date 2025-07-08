@@ -3,11 +3,11 @@ package server
 import (
 	"testing"
 
-	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/frontend"
 )
 
 func TestWriteClients(t *testing.T) {
-	clients := []client.Client{
+	frontends := []frontend.Frontend{
 		{
 			UUID:        "ljsfoiuwer",
 			Name:        "test1",
@@ -28,7 +28,7 @@ func TestWriteClients(t *testing.T) {
 		},
 	}
 	//fmt.Println(clients)
-	err := MaterializeClients("/tmp/clients.textpb", clients)
+	err := MaterializeFrontends("/tmp/clients.textpb", frontends)
 	if err != nil {
 		t.Error(err)
 	}

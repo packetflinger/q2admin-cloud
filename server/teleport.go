@@ -1,8 +1,8 @@
 // Teleporting is a feature where players can issue a console command (default
 // is `!teleport` (configurable in the game library config)) to see what other
-// servers are available with info about current map and players. They can also
-// join those server using the same command. The cloud admin server will stuff
-// a connect message to the appropriate ip:port to the player.
+// frontends are available with info about current map and players. They can
+// also join those frontends using the same command. The cloud admin server
+// will stuff a connect message to the appropriate ip:port to the player.
 package server
 
 import (
@@ -13,7 +13,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/frontend"
 
 	pb "github.com/packetflinger/q2admind/proto"
 )
@@ -35,17 +35,17 @@ Empty servers:
 func (s *Server) teleportDestinations() (*pb.TeleportReply, error) {
 	var reply pb.TeleportReply
 	var empty []string
-	for _, cl := range s.clients {
-		if !cl.Trusted {
+	for _, fe := range s.frontends {
+		if !fe.Trusted {
 			continue
 		}
 		var dest pb.TeleportDestination
-		dest.Name = cl.Name
-		dest.Address = fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port)
-		dest.Map = cl.CurrentMap
+		dest.Name = fe.Name
+		dest.Address = fmt.Sprintf("%s:%d", fe.IPAddress, fe.Port)
+		dest.Map = fe.CurrentMap
 
 		var players []string
-		for _, p := range cl.Players {
+		for _, p := range fe.Players {
 			if p.Name != "" {
 				players = append(players, p.Name)
 			}
@@ -54,7 +54,7 @@ func (s *Server) teleportDestinations() (*pb.TeleportReply, error) {
 		if dest.Players != "" {
 			reply.ActiveServers = append(reply.ActiveServers, &dest)
 		} else {
-			empty = append(empty, cl.Name)
+			empty = append(empty, fe.Name)
 		}
 	}
 	reply.EmptyServers = strings.Join(empty, ",")
@@ -67,21 +67,21 @@ func (s *Server) teleportDestinations() (*pb.TeleportReply, error) {
 // issuing the command will present the player with all the possible options
 // for destination. Then issuing the command with the server name as an arg
 // will cause the cloud admin server to stuff a connect command to the player.
-func Teleport(cl *client.Client) {
-	if cl == nil {
-		log.Println("teleport problem: client was nil")
+func Teleport(fe *frontend.Frontend) {
+	if fe == nil {
+		log.Println("teleport problem: frontend was nil")
 		return
 	}
-	sv := cl.Server.(*Server)
-	player := (&cl.Message).ReadByte()
-	target := (&cl.Message).ReadString()
-	p, err := cl.FindPlayer(int(player))
+	sv := fe.Server.(*Server)
+	player := (&fe.Message).ReadByte()
+	target := (&fe.Message).ReadString()
+	p, err := fe.FindPlayer(int(player))
 	if err != nil {
 		sv.Logf(LogLevelInfo, "teleport error: %v\n", err)
 		return
 	}
-	if !cl.AllowTeleport {
-		SayPlayer(cl, p, PRINT_CHAT, "Teleporting is disabled on this server")
+	if !fe.AllowTeleport {
+		SayPlayer(fe, p, PRINT_CHAT, "Teleporting is disabled on this server")
 		return
 	}
 	if target == "" {
@@ -95,20 +95,20 @@ func Teleport(cl *client.Client) {
 		if err := teleTmpl.Execute(&rendered, dests); err != nil {
 			sv.Logf(LogLevelInfo, "error executing teleport template: %v\n", err)
 		}
-		SayPlayer(cl, p, PRINT_CHAT, rendered.String())
+		SayPlayer(fe, p, PRINT_CHAT, rendered.String())
 		return
 	}
 
-	for i, c := range sv.clients {
-		if strings.EqualFold(c.Name, target) {
-			notice := fmt.Sprintf("Teleporting to %s to %s [%s:%d]\n", p.Name, c.Name, c.IPAddress, c.Port)
-			SayEveryone(cl, PRINT_CHAT, notice)
+	for i, f := range sv.frontends {
+		if strings.EqualFold(f.Name, target) {
+			notice := fmt.Sprintf("Teleporting to %s to %s [%s:%d]\n", p.Name, f.Name, f.IPAddress, f.Port)
+			SayEveryone(fe, PRINT_CHAT, notice)
 
-			cmd := fmt.Sprintf("connect %s:%d\n", c.IPAddress, c.Port)
-			StuffPlayer(cl, p, cmd)
+			cmd := fmt.Sprintf("connect %s:%d\n", f.IPAddress, f.Port)
+			StuffPlayer(fe, p, cmd)
 			p.LastTeleport = time.Now().Unix()
 			p.Teleports++
-			sv.clients[i].TeleportCount++
+			sv.frontends[i].TeleportCount++
 			return
 		}
 	}

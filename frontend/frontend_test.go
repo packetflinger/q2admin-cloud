@@ -1,4 +1,4 @@
-package client
+package frontend
 
 import (
 	"reflect"
@@ -8,15 +8,15 @@ import (
 
 func TestGetPlayerFromPrint(t *testing.T) {
 	tests := []struct {
-		name   string
-		text   string
-		client Client
-		want   []string
+		name string
+		text string
+		fe   Frontend
+		want []string
 	}{
 		{
 			name: "test1",
 			text: "claire: blah blah blah",
-			client: Client{
+			fe: Frontend{
 				Players: []Player{
 					{
 						Name: "claire",
@@ -30,7 +30,7 @@ func TestGetPlayerFromPrint(t *testing.T) {
 		{
 			name: "test2",
 			text: "claire: blah blah blah",
-			client: Client{
+			fe: Frontend{
 				Players: []Player{
 					{
 						Name: "claire",
@@ -51,7 +51,7 @@ func TestGetPlayerFromPrint(t *testing.T) {
 		{
 			name: "test3",
 			text: "claire: dude: blah blah blah",
-			client: Client{
+			fe: Frontend{
 				Players: []Player{
 					{
 						Name: "claire",
@@ -73,7 +73,7 @@ func TestGetPlayerFromPrint(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := (tc.client).GetPlayerFromPrint(tc.text)
+			got, err := (tc.fe).GetPlayerFromPrint(tc.text)
 			if err != nil {
 				t.Error(err)
 			}

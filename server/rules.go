@@ -11,18 +11,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/frontend"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
-// Check a client against the rules, returns whether there were
-// any matches and what specific rules matched, for processing
-// later.
+// Check a player against the rules, returns whether there were any matches and
+// what specific rules matched, for processing later.
 //
 // Called every time a player connects from ParseConnect()
-func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
+func CheckRules(p *frontend.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 	var rules []*pb.Rule
 	if p == nil {
 		return false, rules
@@ -48,7 +47,7 @@ func CheckRules(p *client.Player, ruleset []*pb.Rule) (bool, []*pb.Rule) {
 //	player.
 //
 // Called from CheckRules()
-func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
+func CheckRule(p *frontend.Player, r *pb.Rule, t time.Time) bool {
 	if p == nil || r == nil {
 		return false
 	}
@@ -141,7 +140,7 @@ func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
 		need++
 		when, err := stringToTime(r.GetTimespec().GetBefore())
 		if err != nil {
-			p.Client.Log.Printf("error in rule %q, invalid timespec %q\n", r.GetUuid(), r.GetTimespec().GetBefore())
+			p.Frontend.Log.Printf("error in rule %q, invalid timespec %q\n", r.GetUuid(), r.GetTimespec().GetBefore())
 			return false
 		}
 		// time-only
@@ -162,7 +161,7 @@ func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
 		need++
 		when, err := stringToTime(r.GetTimespec().GetAfter())
 		if err != nil {
-			p.Client.Log.Printf("error in rule %q, invalid timespec %q\n", r.GetUuid(), r.GetTimespec().GetAfter())
+			p.Frontend.Log.Printf("error in rule %q, invalid timespec %q\n", r.GetUuid(), r.GetTimespec().GetAfter())
 			return false
 		}
 		// time-only
@@ -184,7 +183,7 @@ func CheckRule(p *client.Player, r *pb.Rule, t time.Time) bool {
 		playtime := t.Unix() - p.ConnectTime
 		limit, err := durationToSeconds(r.Timespec.GetPlayTime())
 		if err != nil {
-			p.Client.Log.Printf("error in rule %q, invalid timespec %q\n", r.GetUuid(), r.GetTimespec().GetPlayTime())
+			p.Frontend.Log.Printf("error in rule %q, invalid timespec %q\n", r.GetUuid(), r.GetTimespec().GetPlayTime())
 			return false
 		}
 		if playtime >= int64(limit) {
@@ -267,7 +266,7 @@ func SortRules(rules []*pb.Rule) []*pb.Rule {
 // Does a player's userinfo match the rules?
 //
 // Called from CheckRule()
-func UserinfoMatches(ui *pb.UserInfo, p *client.Player) bool {
+func UserinfoMatches(ui *pb.UserInfo, p *frontend.Player) bool {
 	if ui == nil || p == nil {
 		return false
 	}
@@ -288,7 +287,7 @@ func UserinfoMatches(ui *pb.UserInfo, p *client.Player) bool {
 // RuleExcptionMatch will decide if a player struct matches a particular
 // exception, therefore causing the parent rule to not match this player
 // when it otherwise would have.
-func RuleExceptionMatch(ex *pb.Exception, p *client.Player) bool {
+func RuleExceptionMatch(ex *pb.Exception, p *frontend.Player) bool {
 	if ex == nil || p == nil {
 		return false
 	}
@@ -472,24 +471,24 @@ func stringToTime(t string) (time.Time, error) {
 // Bans are handled first in order to fast-fail. Once a ban rule is encountered
 // the rest of the rules are not processed since that player will be kicked
 // from the server immediatly.
-func ApplyMatchedRules(p *client.Player, rules []*pb.Rule) {
+func ApplyMatchedRules(p *frontend.Player, rules []*pb.Rule) {
 	if len(rules) == 0 || p == nil {
 		return
 	}
-	cl := p.Client
-	cl.Log.Printf("%s|%d matched the following rules:\n", p.Name, p.ClientID)
+	fe := p.Frontend
+	fe.Log.Printf("%s|%d matched the following rules:\n", p.Name, p.FrontendID)
 	for _, rule := range rules {
-		cl.Log.Printf("  - %s (%s)\n", strings.Join(rule.GetDescription(), " "), rule.GetType())
+		fe.Log.Printf("  - %s (%s)\n", strings.Join(rule.GetDescription(), " "), rule.GetType())
 	}
 	for _, rule := range rules {
 		if rule.GetType() == pb.RuleType_BAN {
-			KickPlayer(cl, p, strings.Join(rule.Message, "\n"))
+			KickPlayer(fe, p, strings.Join(rule.Message, "\n"))
 			break // don't bother with the rest
 		}
 		if rule.GetType() == pb.RuleType_MUTE {
 			p.Muted = true
-			SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
-			MutePlayer(cl, p, -1)
+			SayPlayer(fe, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
+			MutePlayer(fe, p, -1)
 		}
 		if rule.GetType() == pb.RuleType_STIFLE {
 			if p.Muted {
@@ -497,14 +496,14 @@ func ApplyMatchedRules(p *client.Player, rules []*pb.Rule) {
 			}
 			p.Stifled = true
 			p.StifleLength = int(rule.GetStifleLength())
-			SayPlayer(cl, p, PRINT_CHAT, "You're stifled")
-			MutePlayer(cl, p, p.StifleLength)
+			SayPlayer(fe, p, PRINT_CHAT, "You're stifled")
+			MutePlayer(fe, p, p.StifleLength)
 		}
 		if rule.GetType() == pb.RuleType_MESSAGE {
-			SayPlayer(cl, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
+			SayPlayer(fe, p, PRINT_CHAT, strings.Join(rule.GetMessage(), " "))
 		}
 	}
-	SendMessages(cl)
+	SendMessages(fe)
 }
 
 // RuleDetail will return a condensed string explaining the criteria of

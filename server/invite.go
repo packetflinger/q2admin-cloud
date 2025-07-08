@@ -5,32 +5,32 @@ import (
 	"log"
 	"time"
 
-	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/frontend"
 )
 
 // Called when a player issues the invite command in-game. This will print a
-// message on all connected gameservers (configured to accept invites).
-func Invite(cl *client.Client) {
-	if cl == nil {
+// message on all connected frontends (configured to accept invites).
+func Invite(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
-	client := (&cl.Message).ReadByte()
-	text := (&cl.Message).ReadString()
+	client := (&fe.Message).ReadByte()
+	text := (&fe.Message).ReadString()
 
-	p, err := cl.FindPlayer(int(client))
+	p, err := fe.FindPlayer(int(client))
 	if err != nil {
-		cl.Log.Println("invite problem:", err)
-		cl.SSHPrintln("invite problem: " + err.Error())
+		fe.Log.Println("invite problem:", err)
+		fe.SSHPrintln("invite problem: " + err.Error())
 	}
-	if !cl.AllowInvite {
-		SayPlayer(cl, p, PRINT_CHAT, "This server doesn't allow invites.")
+	if !fe.AllowInvite {
+		SayPlayer(fe, p, PRINT_CHAT, "This server doesn't allow invites.")
 		return
 	}
-	if cl.Invites.Tokens == 0 {
-		SayPlayer(cl, p, PRINT_CHAT, "No invite tokens remaining, you'll have to wait a few minutes.")
+	if fe.Invites.Tokens == 0 {
+		SayPlayer(fe, p, PRINT_CHAT, "No invite tokens remaining, you'll have to wait a few minutes.")
 		return
 	}
-	log.Printf("[%s/INVITE/%s] %s\n", cl.Name, p.Name, text)
+	log.Printf("[%s/INVITE/%s] %s\n", fe.Name, p.Name, text)
 
 	now := time.Now().Unix()
 	invtime := now - p.LastInvite
@@ -40,19 +40,19 @@ func Invite(cl *client.Client) {
 			p.InvitesAvailable = 3
 		} else {
 			txt := fmt.Sprintf("You have no more invite tokens available, wait %d seconds\n", 600-invtime)
-			SayPlayer(cl, p, PRINT_HIGH, txt)
+			SayPlayer(fe, p, PRINT_HIGH, txt)
 			return
 		}
 	} else {
 		if invtime < 30 {
 			txt := fmt.Sprintf("Invite used too recently, wait %d seconds\n", 30-invtime)
-			SayPlayer(cl, p, PRINT_HIGH, txt)
+			SayPlayer(fe, p, PRINT_HIGH, txt)
 			return
 		}
 	}
 
-	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, cl.Name, cl.IPAddress, cl.Port)
-	for _, s := range srv.clients {
+	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, fe.Name, fe.IPAddress, fe.Port)
+	for _, s := range srv.frontends {
 		if s.Enabled && s.Connected && s.AllowInvite {
 			SayEveryone(&s, PRINT_CHAT, inv)
 		}
@@ -61,6 +61,6 @@ func Invite(cl *client.Client) {
 	p.Invites++
 	p.LastInvite = now
 	p.InvitesAvailable--
-	cl.Invites.Tokens--
-	cl.Invites.UseCount++
+	fe.Invites.Tokens--
+	fe.Invites.UseCount++
 }

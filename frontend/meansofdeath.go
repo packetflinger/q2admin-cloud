@@ -1,4 +1,4 @@
-package client
+package frontend
 
 import (
 	"errors"
@@ -61,9 +61,9 @@ const (
 // output of this will be combined with the frag notification.
 //
 // Called from ParseObituary()
-func (cl *Client) CalculateDeath(obit string) (*Death, error) {
+func (fe *Frontend) CalculateDeath(obit string) (*Death, error) {
 	death := &Death{}
-	if cl == nil {
+	if fe == nil {
 		return death, fmt.Errorf("error caclulating death: null receiver")
 	}
 	if obit == "" {
@@ -232,8 +232,8 @@ func (cl *Client) CalculateDeath(obit string) (*Death, error) {
 		if pattern.Match([]byte(obit)) {
 			submatches := pattern.FindAllStringSubmatch(obit, -1)
 			death.Means = frag.mod
-			death.Victim = cl.FindPlayerByName(submatches[0][1])
-			death.Murderer = cl.FindPlayerByName(submatches[0][2])
+			death.Victim = fe.FindPlayerByName(submatches[0][1])
+			death.Murderer = fe.FindPlayerByName(submatches[0][2])
 			death.Solo = false
 			return death, nil
 		}
@@ -249,7 +249,7 @@ func (cl *Client) CalculateDeath(obit string) (*Death, error) {
 		if pattern.Match([]byte(obit)) {
 			submatches := pattern.FindAllStringSubmatch(obit, -1)
 			death.Means = frag.mod
-			death.Victim = cl.FindPlayerByName(submatches[0][1])
+			death.Victim = fe.FindPlayerByName(submatches[0][1])
 			death.Murderer = nil
 			death.Solo = true
 			return death, nil

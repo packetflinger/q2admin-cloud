@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/frontend"
 	"github.com/packetflinger/q2admind/util"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -60,12 +60,12 @@ func (d Database) Begin() (*sql.Tx, error) {
 }
 
 // AddPlayer will insert the player into the database
-func (d Database) AddPlayer(pl *client.Player) error {
+func (d Database) AddPlayer(pl *frontend.Player) error {
 	if pl == nil {
 		return fmt.Errorf("error adding player to db: null player")
 	}
 	_, err := d.Handle.Exec(
-		insertPlayer, pl.Client.Name, pl.Name, pl.IP, pl.Hostname, pl.VPN,
+		insertPlayer, pl.Frontend.Name, pl.Name, pl.IP, pl.Hostname, pl.VPN,
 		pl.Cookie, pl.Version, pl.Userinfo, time.Now().Unix(),
 	)
 	if err != nil {

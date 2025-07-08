@@ -92,7 +92,7 @@ func APIServerList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientList := []ServerWithUUID{}
-	cls := ClientsByIdentity(user.Email)
+	cls := FrontendsByIdentity(user.Email)
 	for _, c := range cls {
 		clientList = append(clientList, ServerWithUUID{
 			Name: c.Name,

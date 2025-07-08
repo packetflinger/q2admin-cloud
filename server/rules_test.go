@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/frontend"
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
@@ -12,7 +12,7 @@ func TestUserinfoMatches(t *testing.T) {
 	tests := []struct {
 		desc   string
 		ui     *pb.UserInfo
-		player client.Player
+		player frontend.Player
 		want   bool
 	}{
 		{
@@ -21,7 +21,7 @@ func TestUserinfoMatches(t *testing.T) {
 				Property: "pw",
 				Value:    "dingle[bB]err.+",
 			},
-			player: client.Player{
+			player: frontend.Player{
 				UserinfoMap: map[string]string{
 					"pw":   "dingleberry",
 					"skin": "female/jezebel",
@@ -36,7 +36,7 @@ func TestUserinfoMatches(t *testing.T) {
 				Property: "skin",
 				Value:    "cyborg/ps[0-9]+",
 			},
-			player: client.Player{
+			player: frontend.Player{
 				UserinfoMap: map[string]string{
 					"pw":   "blah",
 					"skin": "female/jezebel",
@@ -100,7 +100,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 	tests := []struct {
 		desc      string
 		exception *pb.Exception
-		player    *client.Player
+		player    *frontend.Player
 		want      bool
 	}{
 		{
@@ -108,7 +108,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 			exception: &pb.Exception{
 				ExpirationTime: 12345,
 			},
-			player: &client.Player{},
+			player: &frontend.Player{},
 			want:   false,
 		},
 		{
@@ -119,7 +119,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 					"cla..e.+",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				Name: "clairesucks",
 			},
 			want: true,
@@ -132,7 +132,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 					"cla..e.+",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				Name: "ts-claire",
 			},
 			want: false,
@@ -144,7 +144,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 					"192.168.1.0/24",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				IP: "192.168.1.244",
 			},
 			want: true,
@@ -156,7 +156,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 					"192.168.1.0/24",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				IP: "192.168.2.244",
 			},
 			want: false,
@@ -171,7 +171,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 					},
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				UserinfoMap: map[string]string{
 					"skin": "cyborg/ps9000",
 					"hand": "2",
@@ -189,7 +189,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 					},
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				UserinfoMap: map[string]string{
 					"pw":   "twatwaffle",
 					"hand": "2",
@@ -207,7 +207,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 					},
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				UserinfoMap: map[string]string{
 					"hand": "0",
 				},
@@ -224,7 +224,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 					},
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				UserinfoMap: map[string]string{
 					"hand": "2",
 				},
@@ -238,7 +238,7 @@ func TestRuleExceptionMatch(t *testing.T) {
 					"google.com",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				Hostname: "ip66xyz.google.COM",
 			},
 			want: true,
@@ -259,7 +259,7 @@ func TestCheckRule(t *testing.T) {
 	tests := []struct {
 		desc   string
 		rule   *pb.Rule
-		player *client.Player
+		player *frontend.Player
 		when   time.Time
 		want   bool
 	}{
@@ -268,7 +268,7 @@ func TestCheckRule(t *testing.T) {
 			rule: &pb.Rule{
 				ExpirationTime: 12345,
 			},
-			player: &client.Player{},
+			player: &frontend.Player{},
 			when:   time.Now(),
 			want:   false,
 		},
@@ -280,7 +280,7 @@ func TestCheckRule(t *testing.T) {
 					"100.64.0.0/17",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				IP: "100.64.3.16",
 			},
 			when: time.Now(),
@@ -297,7 +297,7 @@ func TestCheckRule(t *testing.T) {
 					"snooder",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				IP:   "100.64.3.16",
 				Name: "claire",
 			},
@@ -316,7 +316,7 @@ func TestCheckRule(t *testing.T) {
 					"sn00der",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				IP:   "100.64.3.16",
 				Name: "snoodersmith",
 			},
@@ -345,7 +345,7 @@ func TestCheckRule(t *testing.T) {
 					},
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				IP:   "100.64.3.16",
 				Name: "snoodersmith",
 				UserinfoMap: map[string]string{
@@ -362,7 +362,7 @@ func TestCheckRule(t *testing.T) {
 					"rh.rit.edu",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				Hostname: "192-0-2-44.cpe.rh.rit.edu",
 				Name:     "snoodersmith",
 				UserinfoMap: map[string]string{
@@ -379,7 +379,7 @@ func TestCheckRule(t *testing.T) {
 					"^192.+rh.rit.edu$",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				Hostname: "192-0-2-44.cpe.rh.rit.EDU",
 				Name:     "snoodersmith",
 				UserinfoMap: map[string]string{
@@ -394,7 +394,7 @@ func TestCheckRule(t *testing.T) {
 			rule: &pb.Rule{
 				Vpn: true,
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				Name: "snoodersmith",
 				VPN:  true,
 			},
@@ -415,7 +415,7 @@ func TestCheckRule(t *testing.T) {
 					},
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				Name: "snoodersmith",
 				VPN:  true,
 				UserinfoMap: map[string]string{
@@ -434,7 +434,7 @@ func TestCheckRule(t *testing.T) {
 					After: "2:00PM",
 				},
 			},
-			player: &client.Player{},
+			player: &frontend.Player{},
 			// 4:30pm on 10/5/2024
 			when: time.Date(2024, time.October, 5, 16, 30, 0, 0, time.UTC),
 			want: true,
@@ -446,7 +446,7 @@ func TestCheckRule(t *testing.T) {
 					Before: "9:30PM",
 				},
 			},
-			player: &client.Player{},
+			player: &frontend.Player{},
 			// 4:30pm on 10/5/2024
 			when: time.Date(2024, time.October, 5, 16, 30, 0, 0, time.UTC),
 			want: true,
@@ -459,7 +459,7 @@ func TestCheckRule(t *testing.T) {
 					Before: "10:30PM",
 				},
 			},
-			player: &client.Player{},
+			player: &frontend.Player{},
 			// 4:30pm on 10/5/2024
 			when: time.Date(2024, time.October, 5, 16, 30, 0, 0, time.UTC),
 			want: true,
@@ -472,7 +472,7 @@ func TestCheckRule(t *testing.T) {
 					Before: "10:30PM",
 				},
 			},
-			player: &client.Player{},
+			player: &frontend.Player{},
 			// 11:30pm on 10/5/2024
 			when: time.Date(2024, time.October, 5, 23, 30, 0, 0, time.UTC),
 			want: false,
@@ -482,7 +482,7 @@ func TestCheckRule(t *testing.T) {
 			rule: &pb.Rule{
 				Disabled: true,
 			},
-			player: &client.Player{},
+			player: &frontend.Player{},
 			when:   time.Now(),
 			want:   false,
 		},
@@ -493,7 +493,7 @@ func TestCheckRule(t *testing.T) {
 					PlayTime: "4h",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				ConnectTime: time.Date(2024, time.October, 5, 8, 0, 0, 0, time.UTC).Unix(),
 			},
 			when: time.Date(2024, time.October, 5, 10, 0, 0, 0, time.UTC),
@@ -506,7 +506,7 @@ func TestCheckRule(t *testing.T) {
 					PlayTime: "4h",
 				},
 			},
-			player: &client.Player{
+			player: &frontend.Player{
 				ConnectTime: time.Date(2024, time.October, 5, 8, 0, 0, 0, time.UTC).Unix(),
 			},
 			when: time.Date(2024, time.October, 5, 16, 0, 0, 0, time.UTC),

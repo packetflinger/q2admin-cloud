@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/packetflinger/libq2/message"
-	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/crypto"
+	"github.com/packetflinger/q2admind/frontend"
 )
 
 type greeting struct {
@@ -23,13 +23,12 @@ type greeting struct {
 	challenge  []byte
 }
 
-// Loop through all the data from the client
-// and act accordingly
-func ParseMessage(cl *client.Client) {
-	if cl == nil {
+// Loop through all the data from the frontend and act accordingly
+func ParseMessage(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
-	msg := &cl.Message
+	msg := &fe.Message
 	for {
 		if msg.Index >= len(msg.Data) {
 			break
@@ -37,28 +36,28 @@ func ParseMessage(cl *client.Client) {
 
 		switch b := msg.ReadByte(); b {
 		case CMDPing:
-			Pong(cl)
+			Pong(fe)
 
 		case CMDPrint:
-			ParsePrint(cl)
+			ParsePrint(fe)
 
 		case CMDMap:
-			ParseMap(cl)
+			ParseMap(fe)
 
 		case CMDPlayerList:
-			ParsePlayerlist(cl)
+			ParsePlayerlist(fe)
 
 		case CMDPlayerUpdate:
-			ParsePlayerUpdate(cl)
+			ParsePlayerUpdate(fe)
 
 		case CMDConnect:
-			ParseConnect(cl)
+			ParseConnect(fe)
 
 		case CMDDisconnect:
-			ParseDisconnect(cl)
+			ParseDisconnect(fe)
 
 		case CMDCommand:
-			ParseCommand(cl)
+			ParseCommand(fe)
 		}
 	}
 }
@@ -82,63 +81,62 @@ func ParseGreeting(msg *message.Buffer) (greeting, error) {
 
 // Parse the client's response to the server's auth challenge and compare the
 // results.
-func (s *Server) AuthenticateClient(msg *message.Buffer, cl *client.Client) (bool, error) {
+func (s *Server) AuthenticateClient(msg *message.Buffer, fe *frontend.Frontend) (bool, error) {
 	if msg == nil {
 		return false, fmt.Errorf("null msg buffer")
 	}
-	if cl == nil {
-		return false, fmt.Errorf("null client")
+	if fe == nil {
+		return false, fmt.Errorf("null frontend")
 	}
 	if msg.Length != crypto.RSAKeyLength+3 {
-		return false, fmt.Errorf("[%s] invalid client auth length (%d)", cl.Name, msg.Length)
+		return false, fmt.Errorf("[%s] invalid frontend auth length (%d)", fe.Name, msg.Length)
 	}
 
 	cmd := msg.ReadByte()
 	if cmd != CMDAuth {
-		return false, fmt.Errorf("[%s] not a client auth message", cl.Name)
+		return false, fmt.Errorf("[%s] not a frontend auth message", fe.Name)
 	}
 
 	cipher := msg.ReadData(msg.ReadShort())
 	if len(cipher) == 0 {
-		return false, fmt.Errorf("[%s] invalid cipher length", cl.Name)
+		return false, fmt.Errorf("[%s] invalid cipher length", fe.Name)
 	}
 
-	digestFromClient, err := crypto.PrivateDecrypt(s.privateKey, cipher)
+	digestFromFrontend, err := crypto.PrivateDecrypt(s.privateKey, cipher)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "[%s] private key error: %v", cl.Name, err)
+		srv.Logf(LogLevelNormal, "[%s] private key error: %v", fe.Name, err)
 	}
 
-	digestFromServer, err := crypto.MessageDigest(cl.Challenge)
+	digestFromServer, err := crypto.MessageDigest(fe.Challenge)
 	if err != nil {
-		srv.Logf(LogLevelInfo, "[%s] hashing error: %v\n", cl.Name, err)
+		srv.Logf(LogLevelInfo, "[%s] hashing error: %v\n", fe.Name, err)
 	}
 
-	return bytes.Equal(digestFromClient, digestFromServer), nil
+	return bytes.Equal(digestFromFrontend, digestFromServer), nil
 }
 
 // A player was fragged.
 //
-// Only two bytes are sent: the clientID of the victim,
-// and of the attacker. The means of death are determined
-// by parsing the obituary print. For self and environmental
-// frags, the attacker and victim will be the same.
-func ParseFrag(cl *client.Client) {
-	if cl == nil {
+// Only two bytes are sent: the clientID of the victim, and of the attacker.
+// The means of death are determined by parsing the obituary print. For self
+// and environmental frags, the attacker and victim will be the same.
+func ParseFrag(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
 	var aName string
-	msg := &cl.Message
+	msg := &fe.Message
 	v := msg.ReadByte()
 	a := msg.ReadByte()
 
-	victim, err := cl.FindPlayer(int(v))
+	victim, err := fe.FindPlayer(int(v))
 	if err != nil {
 		fmt.Println("ParseFrag():", err)
-		cl.Log.Println("error in ParseFrag():", err)
-		cl.SSHPrintln("error in ParseFrag(): " + err.Error())
+		fe.Log.Println("error in ParseFrag():", err)
+		fe.SSHPrintln("error in ParseFrag(): " + err.Error())
 		return
 	}
-	attacker, err := cl.FindPlayer(int(a))
+	attacker, err := fe.FindPlayer(int(a))
 	if err != nil {
 		aName = "World/Self"
 	} else {
@@ -152,24 +150,24 @@ func ParseFrag(cl *client.Client) {
 		attacker.Frags++
 	}
 	victim.Deaths++
-	cl.Log.Println("FRAG", aName, ">", victim.Name)
-	cl.SSHPrintln("FRAG " + aName + " > " + victim.Name)
+	fe.Log.Println("FRAG", aName, ">", victim.Name)
+	fe.SSHPrintln("FRAG " + aName + " > " + victim.Name)
 }
 
 // Received a ping from a client, send a pong to show we're alive
-func Pong(cl *client.Client) {
-	if cl == nil {
+func Pong(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
 	if srv.config.GetVerboseLevel() >= LogLevelDeveloperPlus {
-		log.Printf("[%s/PING]\n", cl.Name)
+		log.Printf("[%s/PING]\n", fe.Name)
 	}
-	cl.PingCount++
-	(&cl.MessageOut).WriteByte(SCMDPong)
+	fe.PingCount++
+	(&fe.MessageOut).WriteByte(SCMDPong)
 
 	// once per hour-ish
-	if (cl.PingCount & 63) == 0 {
-		RotateKeys(cl)
+	if (fe.PingCount & 63) == 0 {
+		RotateKeys(fe)
 	}
 }
 
@@ -177,11 +175,11 @@ func Pong(cl *client.Client) {
 //
 // 1 byte: print level
 // string: the actual message
-func ParsePrint(cl *client.Client) {
-	if cl == nil {
+func ParsePrint(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
-	msg := &cl.Message
+	msg := &fe.Message
 	level := msg.ReadByte()
 	text := msg.ReadString()
 
@@ -190,16 +188,16 @@ func ParsePrint(cl *client.Client) {
 
 	switch level {
 	case PRINT_CHAT:
-		cl.Log.Println("CHAT", stripped)
+		fe.Log.Println("CHAT", stripped)
 		msgColor := ansiCode{foreground: ColorGreen, bold: true}.Render()
 		msg := fmt.Sprintf("%s%s%s", msgColor, stripped, AnsiReset)
-		cl.SSHPrintln(msg)
+		fe.SSHPrintln(msg)
 	case PRINT_HIGH:
-		cl.Log.Println("PRINT", stripped)
+		fe.Log.Println("PRINT", stripped)
 		msgColor := ansiCode{foreground: ColorBlack, background: ColorLightGray}.Render()
-		cl.SSHPrintln(msgColor + stripped + AnsiReset)
+		fe.SSHPrintln(msgColor + stripped + AnsiReset)
 	case PRINT_MEDIUM:
-		ParseObituary(cl, stripped)
+		ParseObituary(fe, stripped)
 		//cl.Log.Println("PRINT", stripped)
 		//msgColor := ansiCode{foreground: ColorDarkGray, background: ColorWhite}.Render()
 		//cl.SSHPrintln(msgColor + stripped + AnsiReset)
@@ -207,14 +205,14 @@ func ParsePrint(cl *client.Client) {
 
 	// re-stifle if needed
 	if level == PRINT_CHAT {
-		players, err := cl.GetPlayerFromPrint(stripped)
+		players, err := fe.GetPlayerFromPrint(stripped)
 		if err != nil {
-			cl.Log.Println(err)
+			fe.Log.Println(err)
 			return
 		}
 		for _, p := range players {
 			if p.Stifled {
-				MutePlayer(cl, p, p.StifleLength)
+				MutePlayer(fe, p, p.StifleLength)
 			}
 		}
 	}
@@ -225,11 +223,11 @@ func ParsePrint(cl *client.Client) {
 // - look up their PTR record
 // - Log the connection
 // - Apply any rules that match them
-func ParseConnect(cl *client.Client) {
-	if cl == nil {
+func ParseConnect(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
-	p := ParsePlayer(cl)
+	p := ParsePlayer(fe)
 	if p == nil {
 		return
 	}
@@ -247,14 +245,14 @@ func ParseConnect(cl *client.Client) {
 			p.Hostname = ptr[0] // just take the first address
 		}
 
-		msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.ClientID, p.Name, p.IP)
-		cl.Log.Printf("%s", msg)
-		cl.SSHPrintln(msg)
+		msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.FrontendID, p.Name, p.IP)
+		fe.Log.Printf("%s", msg)
+		fe.SSHPrintln(msg)
 
 		// add a slight delay when processing rules
 		time.Sleep(1 * time.Second)
 
-		match, rules := CheckRules(p, append(cl.Rules, srv.rules...))
+		match, rules := CheckRules(p, append(fe.Rules, srv.rules...))
 		if match {
 			p.Rules = rules
 			ApplyMatchedRules(p, rules)
@@ -263,51 +261,51 @@ func ParseConnect(cl *client.Client) {
 }
 
 // A player disconnected from a q2 server
-func ParseDisconnect(cl *client.Client) {
-	if cl == nil {
+func ParseDisconnect(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
-	clientnum := int((&cl.Message).ReadByte())
+	clientnum := int((&fe.Message).ReadByte())
 
-	if clientnum < 0 || clientnum > cl.MaxPlayers {
-		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(cl.Message.Data))
+	if clientnum < 0 || clientnum > fe.MaxPlayers {
+		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(fe.Message.Data))
 		return
 	}
 
-	pl, err := cl.FindPlayer(clientnum)
+	pl, err := fe.FindPlayer(clientnum)
 	if err != nil {
-		cl.Log.Println("error in ParseDisconnect():", err)
+		fe.Log.Println("error in ParseDisconnect():", err)
 		return
 	}
 
-	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "DISCONNECT:", pl.ClientID, pl.Name, pl.IP)
-	cl.Log.Printf("%s", msg)
-	cl.SSHPrintln(msg)
-	cl.RemovePlayer(clientnum)
+	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "DISCONNECT:", pl.FrontendID, pl.Name, pl.IP)
+	fe.Log.Printf("%s", msg)
+	fe.SSHPrintln(msg)
+	fe.RemovePlayer(clientnum)
 }
 
-// Client told us what map is currently running. Typically happens
-// when the map changes
-func ParseMap(cl *client.Client) {
-	if cl == nil {
+// Frontend told us what map is currently running. Typically happens when the
+// map changes.
+func ParseMap(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
-	mapname := (&cl.Message).ReadString()
-	cl.PreviousMap = cl.CurrentMap
-	cl.CurrentMap = mapname
-	msg := fmt.Sprintf("%-20s %q (was %q)", "MAP_CHANGE:", cl.CurrentMap, cl.PreviousMap)
-	cl.Log.Println(msg)
-	cl.SSHPrintln(msg)
+	mapname := (&fe.Message).ReadString()
+	fe.PreviousMap = fe.CurrentMap
+	fe.CurrentMap = mapname
+	msg := fmt.Sprintf("%-20s %q (was %q)", "MAP_CHANGE:", fe.CurrentMap, fe.PreviousMap)
+	fe.Log.Println(msg)
+	fe.SSHPrintln(msg)
 }
 
 // An obit for every frag is sent from a client.
 //
 // Called from ParsePrint()
-func ParseObituary(cl *client.Client, obit string) {
-	if cl == nil || obit == "" {
+func ParseObituary(fe *frontend.Frontend, obit string) {
+	if fe == nil || obit == "" {
 		return
 	}
-	death, err := cl.CalculateDeath(obit)
+	death, err := fe.CalculateDeath(obit)
 	if err != nil {
 		return
 	}
@@ -316,60 +314,57 @@ func ParseObituary(cl *client.Client, obit string) {
 	if death.Murderer == nil {
 		logObit = fmt.Sprintf("DEATH: %s[%d] (%s)",
 			death.Victim.Name,
-			death.Victim.ClientID,
+			death.Victim.FrontendID,
 			death.MeansToString(),
 		)
 	} else {
 		logObit = fmt.Sprintf("DEATH: %s[%d] -> %s[%d] (%s)",
 			death.Murderer.Name,
-			death.Murderer.ClientID,
+			death.Murderer.FrontendID,
 			death.Victim.Name,
-			death.Victim.ClientID,
+			death.Victim.FrontendID,
 			death.MeansToString(),
 		)
 	}
-	cl.Log.Printf("%s", logObit)
-	cl.SSHPrintln(logObit)
+	fe.Log.Printf("%s", logObit)
+	fe.SSHPrintln(logObit)
 }
 
 // Client sent a playerlist message.
 // 1 byte is quantity
 // then that number of players are sent
-func ParsePlayerlist(cl *client.Client) {
-	if cl == nil {
+func ParsePlayerlist(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
-	count := (&cl.Message).ReadByte()
-	cl.Log.Println("PLAYERLIST", count)
+	count := (&fe.Message).ReadByte()
+	fe.Log.Println("PLAYERLIST", count)
 	for i := 0; i < int(count); i++ {
-		_ = ParsePlayer(cl)
+		_ = ParsePlayer(fe)
 	}
 }
 
-// Parse a player message from a client and build a
-// player struct here
-//
-// Called any time a player msg is sent, usually on
-// join or new map
-func ParsePlayer(cl *client.Client) *client.Player {
-	if cl == nil {
+// Parse a player message from a client and build a player struct here. Called
+// any time a player msg is sent, usually on join or new map.
+func ParsePlayer(fe *frontend.Frontend) *frontend.Player {
+	if fe == nil {
 		return nil
 	}
-	msg := &cl.Message
+	msg := &fe.Message
 	clientnum := msg.ReadByte()
 	userinfo := msg.ReadString()
 	clientVersion := msg.ReadString()
 
-	if int(clientnum) > cl.MaxPlayers {
-		cl.Log.Println("WARN: invalid client number:", clientnum)
+	if int(clientnum) > fe.MaxPlayers {
+		fe.Log.Println("WARN: invalid client number:", clientnum)
 		return nil
 	}
 
-	info := client.UserinfoMap(userinfo)
+	info := frontend.UserinfoMap(userinfo)
 	port, _ := strconv.Atoi(info["port"])
 	fov, _ := strconv.Atoi(info["fov"])
-	newplayer := client.Player{
-		ClientID:     int(clientnum),
+	newplayer := frontend.Player{
+		FrontendID:   int(clientnum),
 		Userinfo:     userinfo,
 		UserInfoHash: crypto.MD5Hash(userinfo),
 		UserinfoMap:  info,
@@ -379,48 +374,48 @@ func ParsePlayer(cl *client.Client) *client.Player {
 		FOV:          fov,
 		ConnectTime:  time.Now().Unix(),
 		Cookie:       info["cl_cookie"],
-		Client:       cl,
+		Frontend:     fe,
 		Version:      clientVersion,
 	}
 
-	cl.Log.Printf("PLAYER %d|%s|%s\n", clientnum, newplayer.UserInfoHash, userinfo)
+	fe.Log.Printf("PLAYER %d|%s|%s\n", clientnum, newplayer.UserInfoHash, userinfo)
 
-	cl.Players[newplayer.ClientID] = newplayer
-	cl.PlayerCount++
+	fe.Players[newplayer.FrontendID] = newplayer
+	fe.PlayerCount++
 
 	err := db.AddPlayer(&newplayer)
 	if err != nil {
 		log.Println(err)
 	}
-	return &cl.Players[newplayer.ClientID]
+	return &fe.Players[newplayer.FrontendID]
 }
 
 // A command was issued from a player on a client
-func ParseCommand(cl *client.Client) {
-	if cl == nil {
+func ParseCommand(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
-	cmd := (&cl.Message).ReadByte()
+	cmd := (&fe.Message).ReadByte()
 	switch cmd {
 	case PCMDTeleport:
-		Teleport(cl)
+		Teleport(fe)
 
 	case PCMDInvite:
-		Invite(cl)
+		Invite(fe)
 	}
 }
 
 // A player changed their userinfo, reparse it and re-apply rules
-func ParsePlayerUpdate(cl *client.Client) {
-	if cl == nil {
+func ParsePlayerUpdate(fe *frontend.Frontend) {
+	if fe == nil {
 		return
 	}
-	msg := &cl.Message
+	msg := &fe.Message
 	clientnum := msg.ReadByte()
 	userinfo := msg.ReadString()
 	hash := crypto.MD5Hash(userinfo)
 
-	player, err := cl.FindPlayer(int(clientnum))
+	player, err := fe.FindPlayer(int(clientnum))
 	if err != nil {
 		// sometimes player updates are sent before the actual player join
 		// message because the join message is waiting on things like the
@@ -434,7 +429,7 @@ func ParsePlayerUpdate(cl *client.Client) {
 		return
 	}
 
-	info := client.UserinfoMap(userinfo)
+	info := frontend.UserinfoMap(userinfo)
 	player.UserinfoMap = info
 	player.Name = info["name"]
 	player.FOV, _ = strconv.Atoi(info["fov"])
@@ -442,6 +437,6 @@ func ParsePlayerUpdate(cl *client.Client) {
 	player.UserInfoHash = hash
 
 	if player.Cookie == "" {
-		SetupPlayerCookie(cl, player)
+		SetupPlayerCookie(fe, player)
 	}
 }

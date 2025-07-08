@@ -4,15 +4,15 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/packetflinger/q2admind/client"
+	"github.com/packetflinger/q2admind/frontend"
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
 type IdentityContext struct {
-	user    *pb.User
-	apiKey  string
-	clients []*client.Client
-	srcIP   string
+	user      *pb.User
+	apiKey    string
+	frontends []*frontend.Frontend
+	srcIP     string
 }
 
 // CreateIdentContext will make a context based on the input request. This will
@@ -37,26 +37,26 @@ func CreateIdentContext(request *http.Request) (*IdentityContext, error) {
 		ctx.apiKey = apiKey
 	}
 
-	ctx.clients = ClientsByContext(&ctx)
+	ctx.frontends = FrontendsByContext(&ctx)
 	return &ctx, nil
 }
 
 // Is the supplied identity allowed to access this client identified by uuid?
 // If so, return a pointer to that client
-func identityAllowed(ident *IdentityContext, uuid string) (*client.Client, error) {
-	cl, err := srv.FindClient(uuid)
+func identityAllowed(ident *IdentityContext, uuid string) (*frontend.Frontend, error) {
+	fe, err := srv.FindFrontend(uuid)
 	if err != nil {
 		return nil, err
 	}
 
-	if ident.user.Email == cl.Owner {
-		return cl, nil
+	if ident.user.Email == fe.Owner {
+		return fe, nil
 	}
 
 	if len(ident.apiKey) > 0 {
-		for _, k := range cl.APIKeys.GetKey() {
+		for _, k := range fe.APIKeys.GetKey() {
 			if k.GetSecret() == ident.apiKey {
-				return cl, nil
+				return fe, nil
 			}
 		}
 	}

@@ -13,9 +13,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/packetflinger/q2admind/api"
-	"github.com/packetflinger/q2admind/client"
-	pb "github.com/packetflinger/q2admind/proto"
+	"github.com/packetflinger/q2admind/frontend"
 	"github.com/packetflinger/q2admind/util"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 const (
@@ -38,9 +39,9 @@ type PageResponse struct {
 	Title           string
 	HeaderTitle     string
 	SessionUser     *pb.User
-	Gameservers     []client.Client
+	Gameservers     []frontend.Frontend
 	GameserverCount int
-	Client          *client.Client
+	Frontend        *frontend.Frontend
 	NavHighlight    struct {
 		Dashboard string
 		Servers   string
@@ -74,9 +75,9 @@ type WebpageData struct {
 	Message           []WebpageMessage
 	MessageCount      int
 	SessionUser       *pb.User
-	Gameservers       []client.Client
+	Gameservers       []frontend.Frontend
 	GameserverCount   int
-	Client            *client.Client
+	Frontend          *frontend.Frontend
 	NavHighlight      struct {
 		Dashboard string
 		Servers   string
@@ -100,13 +101,13 @@ type WebUser struct {
 
 type DashboardPage struct {
 	WebUser      *api.User
-	MyServers    []client.Client
-	OtherServers []client.Client
+	MyServers    []frontend.Frontend
+	OtherServers []frontend.Frontend
 }
 
 type ServerPage struct {
 	WebUser  *pb.User
-	MyServer client.Client
+	MyServer frontend.Frontend
 }
 
 // Represents the website
@@ -128,9 +129,9 @@ var WSUpgrader = websocket.Upgrader{
 	WriteBufferSize: 1500,
 }
 
-// Gets a pointer to the user associated with the current
-// session. If no session exists, error will be set.
-// Session validit is also checked: expiration, user mismatch
+// Gets a pointer to the user associated with the current session. If no
+// session exists, error will be set. Session validit is also checked:
+// expiration, user mismatch.
 //
 // Called at the start of each website request
 func GetSessionUser(r *http.Request) (*pb.User, error) {
@@ -254,7 +255,7 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cl, err := srv.FindClient(uuid)
+	fe, err := srv.FindFrontend(uuid)
 	if err != nil {
 		log.Println("invalid server id:", uuid)
 		return
@@ -264,7 +265,7 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 		Title:       name + " management | Q2Admin CloudAdmin",
 		HeaderTitle: name,
 		SessionUser: user,
-		Client:      cl,
+		Frontend:    fe,
 	}
 	data.NavHighlight.Servers = "active"
 
@@ -318,7 +319,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	var activeservers []ActiveServer
-	for _, s := range srv.clients {
+	for _, s := range srv.frontends {
 		if s.Connected {
 			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
 			activeservers = append(activeservers, srv)
@@ -447,15 +448,15 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cls := ClientsByIdentity(user.Email)
+	fes := FrontendsByIdentity(user.Email)
 
 	data := PageResponse{}
 	data.Head.Title = "My Servers | Q2Admin CloudAdmin"
 	data.Head.Keywords = ""
 	data.Title = "My Servers"
 	data.SessionUser = user
-	data.Gameservers = cls
-	data.GameserverCount = len(cls)
+	data.Gameservers = fes
+	data.GameserverCount = len(fes)
 
 	data.NavHighlight.Servers = "active"
 

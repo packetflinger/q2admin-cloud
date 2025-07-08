@@ -15,8 +15,8 @@ import (
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
-	"github.com/packetflinger/q2admind/client"
 	"github.com/packetflinger/q2admind/database"
+	"github.com/packetflinger/q2admind/frontend"
 	"github.com/packetflinger/q2admind/util"
 	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -219,8 +219,8 @@ func CreateHostKeySigner(keyfile string) (ssh.Signer, error) {
 // terminal by using the "server" command. With no argument, all accessible
 // servers will be listed.
 func sessionHandler(s ssh.Session) {
-	var cl *client.Client
-	var activeClient *client.Client
+	var fe *frontend.Frontend
+	var activeFE *frontend.Frontend
 	var ctx context.Context
 	var cancel context.CancelFunc
 	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "> ")}
@@ -256,13 +256,13 @@ func sessionHandler(s ssh.Session) {
 		if err != nil {
 			break
 		}
-		if activeClient != nil && !activeClient.Connected { // server dropped
-			sshterm.Printf(yellow("** server connection to %s dropped **\n"), activeClient.Name)
+		if activeFE != nil && !activeFE.Connected { // server dropped
+			sshterm.Printf(yellow("** server connection to %s dropped **\n"), activeFE.Name)
 			if cancel != nil {
 				cancel()
 			}
 			sshterm.SetPrompt(TopLevelPrompt, true)
-			activeClient = nil
+			activeFE = nil
 			continue
 		}
 		c, err := ParseCmdArgs(line)
@@ -279,38 +279,38 @@ func sessionHandler(s ssh.Session) {
 					continue
 				}
 				var msg bytes.Buffer
-				cls := MyClients(u)
+				cls := MyFrontends(u)
 				if err := srvTmpl.Execute(&msg, cls); err != nil {
 					log.Println("error executing servers template:", err)
 				}
 				sshterm.Println(msg.String())
 			} else {
-				cl, err = srv.FindClientByName(c.argv[0])
+				fe, err = srv.FindFrontendByName(c.argv[0])
 				if err != nil {
 					sshterm.Printf("server: unable to locate %q\n", c.argv[0])
 					continue
 				}
-				if !(cl.Connected && cl.Trusted) {
+				if !(fe.Connected && fe.Trusted) {
 					sshterm.Printf("%q is offline, it can't be managed currently\n", c.argv[0])
 					continue
 				}
-				activeClient = cl
+				activeFE = fe
 				ctx, cancel = context.WithCancel(context.Background())
 
 				newterm := make(chan string)
-				cl.Terminals = append(cl.Terminals, &newterm)
+				fe.Terminals = append(fe.Terminals, &newterm)
 
-				go linkClientToTerminal(ctx, activeClient, &sshterm, &newterm)
+				go linkFrontendToTerminal(ctx, activeFE, &sshterm, &newterm)
 				defer cancel()
 
-				sshterm.SetPrompt(fmt.Sprintf("%s/%s", TopLevelPrompt, cl.Name), true)
+				sshterm.SetPrompt(fmt.Sprintf("%s/%s", TopLevelPrompt, fe.Name), true)
 			}
 			sshterm.Println(msg)
 
 		} else if c.command == "quit" || c.command == "exit" || c.command == "logout" || c.command == "q" {
 			break
 
-		} else if (c.command == "help" || c.command == "?") && activeClient == nil {
+		} else if (c.command == "help" || c.command == "?") && activeFE == nil {
 			help := HelpCommands{
 				Cmds: []struct {
 					Cmd  string
@@ -330,7 +330,7 @@ func sessionHandler(s ssh.Session) {
 			sshterm.Println(msg.String())
 		}
 
-		if activeClient == nil {
+		if activeFE == nil {
 			continue
 		}
 
@@ -340,7 +340,7 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			sshterm.Println(magenta(c.args))
-			SayEveryone(cl, PRINT_CHAT, c.args)
+			SayEveryone(fe, PRINT_CHAT, c.args)
 
 		} else if c.command == "help" || c.command == "?" {
 			help := HelpCommands{
@@ -377,7 +377,7 @@ func sessionHandler(s ssh.Session) {
 
 		} else if c.command == "whois" {
 			if len(c.args) == 0 {
-				activeClient.SSHPrintln("Usage: whois <id>")
+				activeFE.SSHPrintln("Usage: whois <id>")
 				continue
 			}
 			pid, err := strconv.Atoi(c.argv[0])
@@ -385,11 +385,11 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println("whois error: " + err.Error())
 				continue
 			}
-			if pid < 0 || pid > activeClient.MaxPlayers {
+			if pid < 0 || pid > activeFE.MaxPlayers {
 				sshterm.Printf("whois error: invalid player ID: %d\n", pid)
 				continue
 			}
-			p := activeClient.Players[pid]
+			p := activeFE.Players[pid]
 			if p.ConnectTime == 0 {
 				sshterm.Printf("whois: client_id %q not in use\n", c.argv[0])
 				continue
@@ -410,16 +410,16 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println("stuff error: " + err.Error())
 				continue
 			}
-			if pid < 0 || pid > activeClient.MaxPlayers {
+			if pid < 0 || pid > activeFE.MaxPlayers {
 				sshterm.Printf("stuff error: invalid player ID: %d\n", pid)
 				continue
 			}
-			p := &activeClient.Players[pid]
+			p := &activeFE.Players[pid]
 			if p.ConnectTime == 0 {
 				sshterm.Printf("stuff: client_id %q not in use\n", c.argv[0])
 				continue
 			}
-			StuffPlayer(cl, p, strings.Join(c.argv[1:], " "))
+			StuffPlayer(fe, p, strings.Join(c.argv[1:], " "))
 
 		} else if c.command == "rcon" {
 			// this is not a real rcon command (out-of-band over UDP), just
@@ -428,11 +428,11 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println("Usage: rcon <command>")
 				continue
 			}
-			ConsoleCommand(activeClient, c.args)
+			ConsoleCommand(activeFE, c.args)
 
 		} else if c.command == "status" {
 			var msg bytes.Buffer
-			if err := statusTmpl.Execute(&msg, cl); err != nil {
+			if err := statusTmpl.Execute(&msg, fe); err != nil {
 				log.Println("error executing status command template:", err)
 			}
 			sshterm.Println(msg.String())
@@ -442,8 +442,8 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println("Usage: consolesay <message>")
 				continue
 			}
-			ConsoleSay(cl, c.args)
-			cl.Log.Println("console:", c.args)
+			ConsoleSay(fe, c.args)
+			fe.Log.Println("console:", c.args)
 			sshterm.Println("console: " + c.args)
 
 		} else if c.command == "sayperson" {
@@ -456,16 +456,16 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("sayplayer: invalid client_id %q\n", c.argv[0])
 				continue
 			}
-			if id < 0 || id > activeClient.MaxPlayers {
+			if id < 0 || id > activeFE.MaxPlayers {
 				sshterm.Printf("sayplayer: invalid client_id %q\n", c.argv[0])
 				continue
 			}
-			p := &activeClient.Players[id]
+			p := &activeFE.Players[id]
 			if p.ConnectTime == 0 {
 				sshterm.Printf("sayperson: client_id %q not in use\n", c.argv[0])
 				continue
 			}
-			SayPlayer(cl, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
+			SayPlayer(fe, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
 
 		} else if c.command == "kick" {
 			if len(c.args) == 0 {
@@ -477,22 +477,22 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("kick: invalid client_id %q\n", c.argv[0])
 				continue
 			}
-			if id < 0 || id > activeClient.MaxPlayers {
+			if id < 0 || id > activeFE.MaxPlayers {
 				sshterm.Printf("kick: invalid client_id %q\n", c.argv[0])
 				continue
 			}
-			p := &activeClient.Players[id]
+			p := &activeFE.Players[id]
 			if p.ConnectTime == 0 {
 				sshterm.Printf("kick: client_id %q not in use\n", c.argv[0])
 				continue
 			}
-			KickPlayer(cl, p, strings.Join(c.argv[1:], " "))
+			KickPlayer(fe, p, strings.Join(c.argv[1:], " "))
 
 		} else if c.command == "mute" {
 			if len(c.args) == 0 { // list all mutes
 				sshterm.Println("Active mutes:")
 				details := ""
-				for _, m := range activeClient.Rules {
+				for _, m := range activeFE.Rules {
 					if m.Type != pb.RuleType_MUTE {
 						continue
 					}
@@ -511,7 +511,7 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("mute: invalid client_id %q\n", c.argv[0])
 				continue
 			}
-			if id < 0 || id > activeClient.MaxPlayers {
+			if id < 0 || id > activeFE.MaxPlayers {
 				sshterm.Printf("mute: invalid client_id %q\n", c.argv[0])
 				continue
 			}
@@ -520,12 +520,12 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("mute: invalid seconds %q\n", c.argv[1])
 				continue
 			}
-			p := &activeClient.Players[id]
+			p := &activeFE.Players[id]
 			if p.ConnectTime == 0 {
 				sshterm.Printf("mute: client_id %q not in use\n", c.argv[0])
 				continue
 			}
-			MutePlayer(cl, p, secs)
+			MutePlayer(fe, p, secs)
 
 		} else if c.command == "pause" {
 			if sshterm.paused > 0 {
@@ -568,20 +568,20 @@ func sessionHandler(s ssh.Session) {
 			continue
 		} else if c.command == "rules" {
 			if c.argc == 0 {
-				sshterm.Printf("CLIENT-level rules in affect on %q:\n", cl.Name)
+				sshterm.Printf("CLIENT-level rules in affect on %q:\n", fe.Name)
 				var msg bytes.Buffer
-				if err := rulesTmpl.Execute(&msg, cl.Rules); err != nil {
+				if err := rulesTmpl.Execute(&msg, fe.Rules); err != nil {
 					log.Println("error executing rules template:", err)
 				}
 				sshterm.Println(msg.String())
 				msg.Reset()
-				sshterm.Printf("SERVER-level rules in affect on %q:\n", cl.Name)
+				sshterm.Printf("SERVER-level rules in affect on %q:\n", fe.Name)
 				if err := rulesTmpl.Execute(&msg, srv.rules); err != nil {
 					log.Println("error executing rules template:", err)
 				}
 				sshterm.Println(msg.String())
 			} else if c.argc > 1 && c.argv[0] == "show" {
-				for _, r := range append(cl.Rules, srv.rules...) {
+				for _, r := range append(fe.Rules, srv.rules...) {
 					if strings.HasPrefix(r.GetUuid(), c.argv[1]) {
 						sshterm.Printf("Detail for rule [%s]:\n\n", c.argv[1])
 						sshterm.Println(prototext.Format(r))
@@ -607,19 +607,19 @@ func sessionHandler(s ssh.Session) {
 				}
 				var found *pb.Rule
 				var newrules []*pb.Rule
-				for i, r := range cl.Rules {
+				for i, r := range fe.Rules {
 					if strings.HasPrefix(r.Uuid, id) {
 						found = r
 						continue
 					}
-					newrules = append(newrules, cl.Rules[i])
+					newrules = append(newrules, fe.Rules[i])
 				}
 				if found == nil {
 					sshterm.Printf("error: no client-scoped rule found with ID %q\n", id)
 					continue
 				}
-				cl.Rules = newrules
-				err = cl.MaterializeRules(cl.Rules)
+				fe.Rules = newrules
+				err = fe.MaterializeRules(fe.Rules)
 				if err != nil {
 					log.Println(err)
 					sshterm.Println("error writing rules to persistent storage")
@@ -627,40 +627,41 @@ func sessionHandler(s ssh.Session) {
 				}
 				sshterm.Printf("Rule %q removed.\n", found.Uuid)
 			} else if c.argc == 1 && c.argv[0] == "add" {
-				r, err := AddRuleWizard(&sshterm, cl)
+				r, err := AddRuleWizard(&sshterm, fe)
 				if err != nil {
 					sshterm.Println(err.Error())
 					continue
 				}
 				sshterm.Printf("Adding rule proto:\n%s\n", prototext.Format(r))
-				cl.Rules = append(cl.Rules, r)
-				err = cl.MaterializeRules(cl.Rules)
+				fe.Rules = append(fe.Rules, r)
+				err = fe.MaterializeRules(fe.Rules)
 				if err != nil {
 					sshterm.Printf("%s", err.Error())
 				}
 			}
 		} else if c.command == "settings" {
-			sshterm.Printf("%s\n", prototext.Format(activeClient.ToProto()))
+			sshterm.Printf("%s\n", prototext.Format(activeFE.ToProto()))
 		}
-		SendMessages(cl)
+		SendMessages(fe)
 	}
 }
 
-// linkClientToTerminal connects the client to the the ssh terminal to receive and
-// display console messages. This is one-way from Q2 server to terminal to
-// show things like connects, disconnects, chats, and internal q2admin stuff.
+// linkFrontendToTerminal connects the frontend to the the ssh terminal to
+// receive and display console messages. This is one-way from frontend to
+// terminal to show things like connects, disconnects, chats, and internal
+// q2admin stuff.
 //
 // The ssh user can select which client to watch. This is run concurrently
-// and is stopped when the user switches clients.
+// and is stopped when the user switches frontends.
 //
 // The context arg is a "withCancel" context, so the calling func can terminate
 // this go routine even when it's blocking waiting for input if needed.
-func linkClientToTerminal(ctx context.Context, cl *client.Client, t *SSHTerminal, stream *chan string) {
-	if cl == nil || t == nil {
+func linkFrontendToTerminal(ctx context.Context, fe *frontend.Frontend, t *SSHTerminal, stream *chan string) {
+	if fe == nil || t == nil {
 		return
 	}
 	var now, msg string
-	msg = fmt.Sprintf("* connecting to %s's console stream *", cl.Name)
+	msg = fmt.Sprintf("* connecting to %s's console stream *", fe.Name)
 	t.Println(yellow(msg))
 
 	for {
@@ -674,7 +675,7 @@ func linkClientToTerminal(ctx context.Context, cl *client.Client, t *SSHTerminal
 				t.Println(msg)
 			}
 		case <-ctx.Done(): // cancel() called from SSH thread
-			cl.Terminals = cl.TerminalDisconnected(stream)
+			fe.Terminals = fe.TerminalDisconnected(stream)
 			return
 		}
 	}
@@ -745,57 +746,58 @@ func (t SSHTerminal) Printf(format string, a ...any) {
 	t.terminal.Write([]byte(str))
 }
 
-// ClientsByUser will get a list of clients this particular user has access to.
-func ClientsByUser(user *pb.User) []*client.Client {
-	var cls []*client.Client
+// FrontendsByUser will get a list of clients this particular user has access
+// to.
+func FrontendsByUser(user *pb.User) []*frontend.Frontend {
+	var fes []*frontend.Frontend
 	if user == nil {
-		return cls
+		return fes
 	}
-	for i := range srv.clients {
-		c := &srv.clients[i]
+	for i := range srv.frontends {
+		c := &srv.frontends[i]
 		for k := range c.Users {
 			if user.Email == k.Email {
-				cls = append(cls, c)
+				fes = append(fes, c)
 			}
 		}
 	}
-	return cls
+	return fes
 }
 
-// Get the clients owned by this user
-func MyClients(u *pb.User) []*client.Client {
-	var cls []*client.Client
+// Get the frontends owned by this user
+func MyFrontends(u *pb.User) []*frontend.Frontend {
+	var fes []*frontend.Frontend
 	if u == nil {
-		return cls
+		return fes
 	}
-	for i := range srv.clients {
-		c := &srv.clients[i]
+	for i := range srv.frontends {
+		c := &srv.frontends[i]
 		if c.Owner == u.Email {
-			cls = append(cls, &srv.clients[i])
+			fes = append(fes, &srv.frontends[i])
 		}
 	}
-	return cls
+	return fes
 }
 
-// Get the clients who have access delegated to me
-func MyDelegates(u *pb.User) []*client.Client {
-	var cls []*client.Client
+// Get the frontends who have access delegated to the user
+func MyDelegates(u *pb.User) []*frontend.Frontend {
+	var fes []*frontend.Frontend
 	if u == nil {
-		return cls
+		return fes
 	}
-	for i := range srv.clients {
-		c := &srv.clients[i]
-		roles, ok := c.Users[u]
+	for i := range srv.frontends {
+		f := &srv.frontends[i]
+		roles, ok := f.Users[u]
 		if !ok {
 			continue
 		}
 		for _, r := range roles {
 			if r.Context == pb.Context_SSH {
-				cls = append(cls, &srv.clients[i])
+				fes = append(fes, &srv.frontends[i])
 			}
 		}
 	}
-	return cls
+	return fes
 }
 
 // User returns a user proto for the given email address
@@ -861,10 +863,10 @@ func MyServersResponse(s ssh.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	mycls := MyClients(u)
+	mycls := MyFrontends(u)
 	if len(mycls) > 0 {
 		var status string
-		output = "Your Servers:\n"
+		output = "Your Frontends:\n"
 		for _, c := range mycls {
 			status = ""
 			if c.Connected && c.Trusted {
@@ -879,7 +881,7 @@ func MyServersResponse(s ssh.Session) (string, error) {
 	mydels := MyDelegates(u)
 	if len(mydels) > 0 {
 		var status string
-		output = "Delegated Servers:\n"
+		output = "Delegated Frontends:\n"
 		for _, c := range mydels {
 			status = ""
 			if c.Connected && c.Trusted {
@@ -895,9 +897,9 @@ func MyServersResponse(s ssh.Session) (string, error) {
 
 // AddRuleWizard will prompt the user to enter all the data needed to construct
 // a rule proto affecting players.
-func AddRuleWizard(t *SSHTerminal, cl *client.Client) (*pb.Rule, error) {
-	if t == nil || cl == nil {
-		return nil, fmt.Errorf("null terminal or client")
+func AddRuleWizard(t *SSHTerminal, fe *frontend.Frontend) (*pb.Rule, error) {
+	if t == nil || fe == nil {
+		return nil, fmt.Errorf("null terminal or frontend")
 	}
 	var r pb.Rule
 	t.SetPrompt("", false)
@@ -948,11 +950,11 @@ gettype:
 }
 
 // Helper func for using in templates
-func connectionIndicator(c *client.Client) string {
-	if c == nil {
+func connectionIndicator(f *frontend.Frontend) string {
+	if f == nil {
 		return "error"
 	}
-	if c.Connected && c.Trusted {
+	if f.Connected && f.Trusted {
 		return green("connected")
 	}
 	return red("offline  ") // pad with 2 space to match length

@@ -1,6 +1,6 @@
-// In this system, a "client" is a Quake 2 game server. They are servers to
+// In this system, a frontend is a Quake 2 game server. They are servers to
 // their connected players, but clients to us.
-package client
+package frontend
 
 import (
 	"crypto/rsa"
@@ -23,7 +23,7 @@ import (
 // This struct is partially populated by parsing a config file
 // on disk during init and the rest is filled in when the game
 // server actually connects
-type Client struct {
+type Frontend struct {
 	ID            int                     // this is the database index, remove later
 	UUID          string                  // random identifier
 	Owner         string                  // email addr
@@ -95,12 +95,12 @@ func (b *InviteBucket) InviteBucketAdd() {
 }
 
 // Read rules from disk and return a scoped slice of them
-func (cl *Client) FetchRules() ([]*pb.Rule, error) {
+func (fe *Frontend) FetchRules() ([]*pb.Rule, error) {
 	var rules []*pb.Rule
-	if cl == nil {
+	if fe == nil {
 		return rules, fmt.Errorf("error fetching rules: null receiver")
 	}
-	filename := path.Join(cl.Path, "rules.pb")
+	filename := path.Join(fe.Path, "rules.pb")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -111,15 +111,15 @@ func (cl *Client) FetchRules() ([]*pb.Rule, error) {
 		return nil, err
 	}
 	rules = rl.GetRule()
-	cl.ScopeRules("client", rules)
+	fe.ScopeRules("client", rules)
 	return rules, nil
 }
 
 // ScopeRules will add a token to the `Scope` property all the rules in a set.
 // This is used to mark rules in different contexts (server-level vs client-
 // level)
-func (cl *Client) ScopeRules(scope string, rules []*pb.Rule) {
-	if cl == nil || scope == "" {
+func (fe *Frontend) ScopeRules(scope string, rules []*pb.Rule) {
+	if fe == nil || scope == "" {
 		return
 	}
 	for i := range rules {
@@ -127,17 +127,17 @@ func (cl *Client) ScopeRules(scope string, rules []*pb.Rule) {
 	}
 }
 
-// MaterializeRules will write the current list of rules to disk. Client rules
-// are always found in the <client>/rules.pb file.
-func (cl *Client) MaterializeRules(rules []*pb.Rule) error {
-	if cl == nil {
+// MaterializeRules will write the current list of rules to disk. Frontend
+// rules are always found in the <frontend>/rules.pb file.
+func (fe *Frontend) MaterializeRules(rules []*pb.Rule) error {
+	if fe == nil {
 		return fmt.Errorf("error writing rules: null receiver")
 	}
 	if len(rules) == 0 {
 		return nil
 	}
 	collection := &pb.Rules{Rule: rules}
-	filename := path.Join(cl.Path, "rules.pb")
+	filename := path.Join(fe.Path, "rules.pb")
 	data, err := prototext.MarshalOptions{Indent: "  "}.Marshal(collection)
 	if err != nil {
 		return fmt.Errorf("error marshalling rules: %v", err)
@@ -153,50 +153,50 @@ func (cl *Client) MaterializeRules(rules []*pb.Rule) error {
 
 // Read settings file for client from disk and make a *Client struct
 // from them.
-func LoadSettings(name string, clientsDir string) (Client, error) {
-	var client Client
+func LoadSettings(name string, clientsDir string) (Frontend, error) {
+	var fe Frontend
 	if name == "" {
-		return client, fmt.Errorf("error loading settings: blank client name supplied")
+		return fe, fmt.Errorf("error loading settings: blank client name supplied")
 	}
 	if clientsDir == "" {
-		return client, fmt.Errorf("error loading settings: blank client directly supplied")
+		return fe, fmt.Errorf("error loading settings: blank client directly supplied")
 	}
 	filename := path.Join(clientsDir, name, "settings.pb")
 	contents, err := os.ReadFile(filename)
 	if err != nil {
-		return client, err
+		return fe, err
 	}
-	cls := pb.Clients{}
-	err = prototext.Unmarshal(contents, &cls)
+	fes := pb.Frontends{}
+	err = prototext.Unmarshal(contents, &fes)
 	if err != nil {
-		return client, err
+		return fe, err
 	}
 
-	for _, c := range cls.GetClient() {
-		if c.GetName() != name {
+	for _, f := range fes.GetFrontend() {
+		if f.GetName() != name {
 			continue
 		}
-		client.Name = c.GetName()
-		client.Owner = c.GetOwner()
-		client.Description = c.GetDescription()
-		client.UUID = c.GetUuid()
-		client.Path = path.Join(clientsDir, client.Name)
-		client.Enabled = !c.GetDisabled()
-		client.AllowInvite = c.GetAllowInvite()
-		client.AllowTeleport = c.GetAllowTeleport()
+		fe.Name = f.GetName()
+		fe.Owner = f.GetOwner()
+		fe.Description = f.GetDescription()
+		fe.UUID = f.GetUuid()
+		fe.Path = path.Join(clientsDir, fe.Name)
+		fe.Enabled = !f.GetDisabled()
+		fe.AllowInvite = f.GetAllowInvite()
+		fe.AllowTeleport = f.GetAllowTeleport()
 
-		tokens := strings.Split(c.GetAddress(), ":")
+		tokens := strings.Split(f.GetAddress(), ":")
 		if len(tokens) == 2 {
-			client.Port, err = strconv.Atoi(tokens[1])
+			fe.Port, err = strconv.Atoi(tokens[1])
 			if err != nil {
-				client.Port = 27910
+				fe.Port = 27910
 			}
 		} else {
-			client.Port = 27910
+			fe.Port = 27910
 		}
-		client.IPAddress = tokens[0]
+		fe.IPAddress = tokens[0]
 	}
-	return client, nil
+	return fe, nil
 }
 
 // GetPlayerFromPrint attempts to identify a player object associated with a
@@ -216,10 +216,10 @@ func LoadSettings(name string, clientsDir string) (Client, error) {
 //
 // So, if there is only 1 ": " in the string, it's easy. If more than one, loop
 // through the known players on the map and try to
-func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
+func (fe *Frontend) GetPlayerFromPrint(txt string) ([]*Player, error) {
 	var players []*Player
 	var name string
-	if cl == nil {
+	if fe == nil {
 		return players, fmt.Errorf("error getting player from print: null receiver")
 	}
 	if txt == "" {
@@ -233,60 +233,60 @@ func (cl *Client) GetPlayerFromPrint(txt string) ([]*Player, error) {
 		if len(tokens) > 1 {
 			name = tokens[0]
 		}
-		for i, p := range cl.Players {
+		for i, p := range fe.Players {
 			if p.Name == name {
-				players = append(players, &cl.Players[i])
+				players = append(players, &fe.Players[i])
 			}
 		}
 	}
 	return players, nil
 }
 
-// ToProto will convert a Client struct into the corresponding protobuf. This
-// is used when materializing the clients to disk.
-func (cl *Client) ToProto() *pb.Client {
-	if cl == nil {
-		return &pb.Client{}
+// ToProto will convert a Frontend struct into the corresponding protobuf. This
+// is used when materializing the frontends to disk.
+func (fe *Frontend) ToProto() *pb.Frontend {
+	if fe == nil {
+		return &pb.Frontend{}
 	}
-	return &pb.Client{
-		Address:       fmt.Sprintf("%s:%d", cl.IPAddress, cl.Port),
-		Name:          cl.Name,
-		Uuid:          cl.UUID,
-		Description:   cl.Description,
-		Owner:         cl.Owner,
-		Verified:      cl.Verified,
-		AllowTeleport: cl.AllowTeleport,
-		AllowInvite:   cl.AllowInvite,
+	return &pb.Frontend{
+		Address:       fmt.Sprintf("%s:%d", fe.IPAddress, fe.Port),
+		Name:          fe.Name,
+		Uuid:          fe.UUID,
+		Description:   fe.Description,
+		Owner:         fe.Owner,
+		Verified:      fe.Verified,
+		AllowTeleport: fe.AllowTeleport,
+		AllowInvite:   fe.AllowInvite,
 	}
 }
 
 // Find all players that match the name provided. Multiple players
 // are allowed to have the same name at the same time, this will
 // return all of them.
-func (cl *Client) PlayersByName(name string) ([]*Player, error) {
+func (fe *Frontend) PlayersByName(name string) ([]*Player, error) {
 	var players []*Player
-	if cl == nil {
+	if fe == nil {
 		return players, fmt.Errorf("error getting players by name: null receiver")
 	}
 	if name == "" {
 		return players, errors.New("blank name argument")
 	}
-	for i, p := range cl.Players {
+	for i, p := range fe.Players {
 		if p.Name == name {
-			players = append(players, &cl.Players[i])
+			players = append(players, &fe.Players[i])
 		}
 	}
 	return players, nil
 }
 
 // SSHPrintln will send the value of text to all the SSH-connected clients.
-func (cl *Client) SSHPrintln(text string) {
-	if cl == nil || text == "" {
+func (fe *Frontend) SSHPrintln(text string) {
+	if fe == nil || text == "" {
 		return
 	}
-	for i := range cl.Terminals {
+	for i := range fe.Terminals {
 		select {
-		case *cl.Terminals[i] <- text:
+		case *fe.Terminals[i] <- text:
 			log.Printf("Sending %q to ssh client %d\n", text, i)
 		default:
 			log.Println("doing nothing")
@@ -294,19 +294,19 @@ func (cl *Client) SSHPrintln(text string) {
 	}
 }
 
-// The terminal goroutine will call this when disconnecting so the client can
+// The terminal goroutine will call this when disconnecting so the frontend can
 // close the console stream channel.
-func (cl *Client) TerminalDisconnected(t *chan string) []*chan string {
+func (fe *Frontend) TerminalDisconnected(t *chan string) []*chan string {
 	var terms []*chan string
-	if cl == nil {
+	if fe == nil {
 		return terms
 	}
-	for i := range cl.Terminals {
-		if cl.Terminals[i] == t {
-			close(*cl.Terminals[i])
+	for i := range fe.Terminals {
+		if fe.Terminals[i] == t {
+			close(*fe.Terminals[i])
 			continue
 		}
-		terms = append(terms, cl.Terminals[i])
+		terms = append(terms, fe.Terminals[i])
 	}
 	return terms
 }
