@@ -1,4 +1,4 @@
-package server
+package backend
 
 import (
 	"context"
@@ -229,7 +229,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := srv.GetUserByEmail(profres.Email)
+	user, err := be.GetUserByEmail(profres.Email)
 	if err != nil {
 		log.Println(err)
 	} else {
@@ -318,7 +318,7 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := srv.GetUserByEmail(profres.Email)
+	user, err := be.GetUserByEmail(profres.Email)
 	if err != nil {
 		log.Println(err)
 	} else {

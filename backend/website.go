@@ -1,4 +1,4 @@
-package server
+package backend
 
 import (
 	"encoding/json"
@@ -183,8 +183,8 @@ func CreateSession() *pb.Session {
 // 1. Current date is after the session creation date
 // 2. Current date is before the session expiration
 func ValidateSession(sess string) (*pb.User, error) {
-	for i := range srv.users {
-		u := srv.users[i]
+	for i := range be.users {
+		u := be.users[i]
 		if u.GetSession().GetId() == sess {
 			now := util.GetUnixTimestamp()
 			if now >= u.GetSession().GetCreation() && now < u.GetSession().GetExpiration() {
@@ -196,7 +196,7 @@ func ValidateSession(sess string) (*pb.User, error) {
 }
 
 // Load everything needed to start the web interface
-func (s *Server) RunHTTPServer(ip string, port int, creds []*pb.OAuth) {
+func (s *Backend) RunHTTPServer(ip string, port int, creds []*pb.OAuth) {
 	Website.Creds = creds
 
 	listen := fmt.Sprintf("%s:%d", ip, port)
@@ -229,9 +229,9 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	data.SessionUser = u
 
 	tmpl, e := template.ParseFiles(
-		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "new", "dashboard.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "dashboard.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
 	)
 
 	if e != nil {
@@ -255,7 +255,7 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fe, err := srv.FindFrontend(uuid)
+	fe, err := be.FindFrontend(uuid)
 	if err != nil {
 		log.Println("invalid server id:", uuid)
 		return
@@ -270,9 +270,9 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Servers = "active"
 
 	tmpl, e := template.ParseFiles(
-		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "server-view.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "server-view.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 
 	if e != nil {
@@ -298,7 +298,7 @@ func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 
 // Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
-	infile := path.Join(srv.config.GetWebRoot(), "templates", "new", "sign-in.tmpl")
+	infile := path.Join(be.config.GetWebRoot(), "templates", "new", "sign-in.tmpl")
 	tmpl, e := template.ParseFiles(infile)
 
 	var page PageResponse
@@ -319,7 +319,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	var activeservers []ActiveServer
-	for _, s := range srv.frontends {
+	for _, s := range be.frontends {
 		if s.Connected {
 			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
 			activeservers = append(activeservers, srv)
@@ -426,9 +426,9 @@ func GroupsHandler(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Groups = "active"
 
 	tmpl, e := template.ParseFiles(
-		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "my-groups.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "my-groups.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 	if e != nil {
 		log.Println(e)
@@ -461,9 +461,9 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 	data.NavHighlight.Servers = "active"
 
 	tmpl, e := template.ParseFiles(
-		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "new", "servers.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "servers.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
 	)
 
 	if e != nil {
@@ -490,9 +490,9 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl, e := template.ParseFiles(
-		path.Join(srv.config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "privacy-policy.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "footer.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "header-main.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "privacy-policy.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "footer.tmpl"),
 	)
 
 	if e != nil {
@@ -518,9 +518,9 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 	data.SessionUser = user
 
 	tmpl, e := template.ParseFiles(
-		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "new", "terms-of-use.tmpl"),
-		path.Join(srv.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "terms-of-use.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
 	)
 	if e != nil {
 		log.Println(e)

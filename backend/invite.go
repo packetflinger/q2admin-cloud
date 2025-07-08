@@ -1,4 +1,4 @@
-package server
+package backend
 
 import (
 	"fmt"
@@ -52,7 +52,7 @@ func Invite(fe *frontend.Frontend) {
 	}
 
 	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, fe.Name, fe.IPAddress, fe.Port)
-	for _, s := range srv.frontends {
+	for _, s := range be.frontends {
 		if s.Enabled && s.Connected && s.AllowInvite {
 			SayEveryone(&s, PRINT_CHAT, inv)
 		}

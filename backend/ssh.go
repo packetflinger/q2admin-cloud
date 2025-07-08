@@ -1,5 +1,5 @@
 // An SSH server is used to provide interactive access to Quake 2 server operators
-package server
+package backend
 
 import (
 	"bytes"
@@ -163,15 +163,15 @@ type TerminalMessage struct {
 }
 
 // Start listening for SSH connections
-func (s *Server) startSSHServer() {
-	hostkey, err := CreateHostKeySigner(srv.config.GetSshHostkey())
+func (b *Backend) startSSHServer() {
+	hostkey, err := CreateHostKeySigner(be.config.GetSshHostkey())
 	if err != nil {
-		s.Logf(LogLevelNormal, "SSH host key error: %v", err)
+		b.Logf(LogLevelNormal, "SSH host key error: %v", err)
 	}
 	sv := &ssh.Server{
 		Addr: fmt.Sprintf("%s:%d",
-			srv.config.GetSshAddress(),
-			srv.config.GetSshPort(),
+			be.config.GetSshAddress(),
+			be.config.GetSshPort(),
 		),
 		Handler:          sessionHandler,
 		PublicKeyHandler: publicKeyHandler,
@@ -179,7 +179,7 @@ func (s *Server) startSSHServer() {
 	if hostkey != nil {
 		sv.AddHostKey(hostkey) // has to be set outside server config creation
 	}
-	s.Logf(LogLevelNormal, "listening for SSH connections on %s", sv.Addr)
+	b.Logf(LogLevelNormal, "listening for SSH connections on %s", sv.Addr)
 	log.Fatal(sv.ListenAndServe())
 }
 
@@ -285,7 +285,7 @@ func sessionHandler(s ssh.Session) {
 				}
 				sshterm.Println(msg.String())
 			} else {
-				fe, err = srv.FindFrontendByName(c.argv[0])
+				fe, err = be.FindFrontendByName(c.argv[0])
 				if err != nil {
 					sshterm.Printf("server: unable to locate %q\n", c.argv[0])
 					continue
@@ -576,12 +576,12 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println(msg.String())
 				msg.Reset()
 				sshterm.Printf("SERVER-level rules in affect on %q:\n", fe.Name)
-				if err := rulesTmpl.Execute(&msg, srv.rules); err != nil {
+				if err := rulesTmpl.Execute(&msg, be.rules); err != nil {
 					log.Println("error executing rules template:", err)
 				}
 				sshterm.Println(msg.String())
 			} else if c.argc > 1 && c.argv[0] == "show" {
-				for _, r := range append(fe.Rules, srv.rules...) {
+				for _, r := range append(fe.Rules, be.rules...) {
 					if strings.HasPrefix(r.GetUuid(), c.argv[1]) {
 						sshterm.Printf("Detail for rule [%s]:\n\n", c.argv[1])
 						sshterm.Println(prototext.Format(r))
@@ -595,7 +595,7 @@ func sessionHandler(s ssh.Session) {
 					continue
 				}
 				notAllowed := false
-				for _, r := range srv.rules {
+				for _, r := range be.rules {
 					if strings.HasPrefix(r.Uuid, id) {
 						sshterm.Printf("Rule %q is applied globally, you can't remove it\n", r.Uuid)
 						notAllowed = true
@@ -692,7 +692,7 @@ func linkFrontendToTerminal(ctx context.Context, fe *frontend.Frontend, t *SSHTe
 //
 // Return true to allow the connection, false to deny.
 func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
-	for _, u := range srv.users {
+	for _, u := range be.users {
 		if u.GetEmail() == ctx.User() {
 			pub, _, _, _, err := ssh.ParseAuthorizedKey([]byte(u.GetPublicKey()))
 			if err != nil {
@@ -753,8 +753,8 @@ func FrontendsByUser(user *pb.User) []*frontend.Frontend {
 	if user == nil {
 		return fes
 	}
-	for i := range srv.frontends {
-		c := &srv.frontends[i]
+	for i := range be.frontends {
+		c := &be.frontends[i]
 		for k := range c.Users {
 			if user.Email == k.Email {
 				fes = append(fes, c)
@@ -770,10 +770,10 @@ func MyFrontends(u *pb.User) []*frontend.Frontend {
 	if u == nil {
 		return fes
 	}
-	for i := range srv.frontends {
-		c := &srv.frontends[i]
+	for i := range be.frontends {
+		c := &be.frontends[i]
 		if c.Owner == u.Email {
-			fes = append(fes, &srv.frontends[i])
+			fes = append(fes, &be.frontends[i])
 		}
 	}
 	return fes
@@ -785,15 +785,15 @@ func MyDelegates(u *pb.User) []*frontend.Frontend {
 	if u == nil {
 		return fes
 	}
-	for i := range srv.frontends {
-		f := &srv.frontends[i]
+	for i := range be.frontends {
+		f := &be.frontends[i]
 		roles, ok := f.Users[u]
 		if !ok {
 			continue
 		}
 		for _, r := range roles {
 			if r.Context == pb.Context_SSH {
-				fes = append(fes, &srv.frontends[i])
+				fes = append(fes, &be.frontends[i])
 			}
 		}
 	}
@@ -805,9 +805,9 @@ func User(email string) (*pb.User, error) {
 	if email == "" {
 		return nil, fmt.Errorf("blank email input")
 	}
-	for i := range srv.users {
-		if srv.users[i].Email == email {
-			return srv.users[i], nil
+	for i := range be.users {
+		if be.users[i].Email == email {
+			return be.users[i], nil
 		}
 	}
 	return nil, fmt.Errorf("User(%q): unable to locate user", email)

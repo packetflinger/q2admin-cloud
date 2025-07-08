@@ -1,4 +1,4 @@
-package server
+package backend
 
 import (
 	"crypto/rsa"
@@ -26,7 +26,7 @@ import (
 )
 
 // "This" admin server
-type Server struct {
+type Backend struct {
 	users      []*pb.User          // website users
 	config     pb.Config           // global config
 	frontends  []frontend.Frontend // managed quake 2 servers
@@ -37,8 +37,8 @@ type Server struct {
 }
 
 var (
-	srv Server // this server
-	db  database.Database
+	be Backend // this server
+	db database.Database
 )
 
 const (
@@ -53,7 +53,7 @@ const (
 	InviteTokenInterval = 300 // seconds per token added
 )
 
-// Commands sent from the Q2 server to us
+// Commands sent from a frontend to us
 const (
 	_             = iota
 	CMDHello      // frontend connect
@@ -71,7 +71,7 @@ const (
 	CMDAuth
 )
 
-// Commands we send back to the Q2 server
+// Commands we send back to a frontend
 const (
 	_ = iota
 	SCMDHelloAck
@@ -122,37 +122,37 @@ const (
 )
 
 // Locate the struct of the frontend for a particular ID, get a pointer to it
-func (s *Server) FindFrontend(lookup string) (*frontend.Frontend, error) {
+func (b *Backend) FindFrontend(lookup string) (*frontend.Frontend, error) {
 	if lookup == "" {
 		return nil, fmt.Errorf("empty uuid looking up client")
 	}
-	for i := range s.frontends {
-		if s.frontends[i].UUID == lookup {
-			return &s.frontends[i], nil
+	for i := range b.frontends {
+		if b.frontends[i].UUID == lookup {
+			return &b.frontends[i], nil
 		}
 	}
 	return nil, fmt.Errorf("unknown client: %q", lookup)
 }
 
 // Locate the struct of the frontend for a particular name, get a pointer to it
-func (s *Server) FindFrontendByName(name string) (*frontend.Frontend, error) {
+func (b *Backend) FindFrontendByName(name string) (*frontend.Frontend, error) {
 	if name == "" {
 		return nil, fmt.Errorf("empty name looking up client")
 	}
-	for i := range s.frontends {
-		if s.frontends[i].Name == name {
-			return &s.frontends[i], nil
+	for i := range b.frontends {
+		if b.frontends[i].Name == name {
+			return &b.frontends[i], nil
 		}
 	}
 	return nil, fmt.Errorf("unknown client: %q", name)
 }
 
 // Get a pointer to a user based on their email
-func (s *Server) GetUserByEmail(email string) (*pb.User, error) {
+func (b *Backend) GetUserByEmail(email string) (*pb.User, error) {
 	if email == "" {
 		return nil, fmt.Errorf("empty email getting user")
 	}
-	for _, u := range s.users {
+	for _, u := range b.users {
 		if u.GetEmail() == email {
 			return u, nil
 		}
@@ -169,14 +169,14 @@ func FrontendsByContext(ctx *IdentityContext) []*frontend.Frontend {
 	if ctx == nil {
 		return cls
 	}
-	for i, cl := range srv.frontends {
+	for i, cl := range be.frontends {
 		if cl.Owner == ctx.user.Email {
-			cls = append(cls, &srv.frontends[i])
+			cls = append(cls, &be.frontends[i])
 			continue
 		}
 		for _, key := range cl.APIKeys.GetKey() {
 			if key.GetSecret() == ctx.apiKey {
-				cls = append(cls, &srv.frontends[i])
+				cls = append(cls, &be.frontends[i])
 			}
 		}
 	}
@@ -190,7 +190,7 @@ func FrontendsByIdentity(ident string) []frontend.Frontend {
 	if ident == "" {
 		return list
 	}
-	for _, cl := range srv.frontends {
+	for _, cl := range be.frontends {
 		if strings.EqualFold(cl.Owner, ident) {
 			list = append(list, cl)
 		}
@@ -221,13 +221,13 @@ func RotateKeys(fe *frontend.Frontend) {
 // disk. Each frontend is in its own directory in the client directory. The
 // clients directory is specified in the main server config. Only clients with
 // a valid "settings.pb" file and not disabled will be loaded.
-func (s *Server) ParseFrontends() ([]frontend.Frontend, error) {
+func (b *Backend) ParseFrontends() ([]frontend.Frontend, error) {
 	var frontends []frontend.Frontend
-	if s == nil {
+	if b == nil {
 		return frontends, fmt.Errorf("null receiver")
 	}
 	// this essentially loops through each file in the directory
-	err := filepath.WalkDir(s.config.GetClientDirectory(), func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(b.config.GetClientDirectory(), func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("error walking client directory: %v", err)
 		}
@@ -236,16 +236,16 @@ func (s *Server) ParseFrontends() ([]frontend.Frontend, error) {
 			if err != nil {
 				return err
 			}
-			fe, err := frontend.LoadSettings(info.Name(), s.config.GetClientDirectory())
+			fe, err := frontend.LoadSettings(info.Name(), b.config.GetClientDirectory())
 			if err != nil {
 				return nil
 			}
 			rules, err := fe.FetchRules()
 			if err != nil {
-				s.Logf(LogLevelInfo, "error fetching rules for %q: %v\n", fe.Name, err)
+				b.Logf(LogLevelInfo, "error fetching rules for %q: %v\n", fe.Name, err)
 			}
 			fe.Rules = rules
-			fe.Server = s
+			fe.Server = b
 			if fe.Enabled {
 				frontends = append(frontends, fe)
 			}
@@ -329,67 +329,67 @@ func SendError(fe *frontend.Frontend, pl *frontend.Player, severity int, err str
 //     match the client will be trusted by the server.
 //
 // Called from main loop when a new connection is made
-func (s *Server) HandleConnection(c net.Conn) {
+func (b *Backend) HandleConnection(c net.Conn) {
 	defer c.Close()
 
 	input := make([]byte, NetReadLength)
 	count, err := c.Read(input)
 	if err != nil {
-		srv.Logf(LogLevelDebug, "Frontend read error: %v\n", err)
+		be.Logf(LogLevelDebug, "Frontend read error: %v\n", err)
 		return
 	}
 	msg := message.NewBuffer(input[:count])
 	if msg.Length < 5 {
-		srv.Logf(LogLevelDebug, "short read before greeting\n")
+		be.Logf(LogLevelDebug, "short read before greeting\n")
 		return
 	}
 
 	if msg.ReadLong() != ProtocolMagic {
-		srv.Logf(LogLevelDebug, "invalid frontend\n")
-		srv.Logf(LogLevelDeveloper, "\n%s", hex.Dump(msg.Data))
+		be.Logf(LogLevelDebug, "invalid frontend\n")
+		be.Logf(LogLevelDeveloper, "\n%s", hex.Dump(msg.Data))
 		return
 	}
 
-	srv.Logf(LogLevelNormal, "serving %s\n", c.RemoteAddr().String())
+	be.Logf(LogLevelNormal, "serving %s\n", c.RemoteAddr().String())
 	if msg.ReadByte() != CMDHello {
-		srv.Logf(LogLevelNormal, "bad message type, closing connection")
-		srv.Logf(LogLevelDeveloper, "\n%s", hex.Dump(msg.Data))
+		be.Logf(LogLevelNormal, "bad message type, closing connection")
+		be.Logf(LogLevelDeveloper, "\n%s", hex.Dump(msg.Data))
 		return
 	}
 
 	greeting, err := ParseGreeting(&msg)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "%v\n", err)
+		be.Logf(LogLevelNormal, "%v\n", err)
 		return
 	}
 
-	clNonce, err := crypto.PrivateDecrypt(srv.privateKey, greeting.challenge)
+	clNonce, err := crypto.PrivateDecrypt(be.privateKey, greeting.challenge)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "%v\n", err)
+		be.Logf(LogLevelNormal, "%v\n", err)
 		return
 	}
 	hash, err := crypto.MessageDigest(clNonce)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "%v\n", err)
+		be.Logf(LogLevelNormal, "%v\n", err)
 		return
 	}
 
-	fe, err := srv.FindFrontend(greeting.uuid)
+	fe, err := be.FindFrontend(greeting.uuid)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	fe.Path = path.Join(srv.config.GetClientDirectory(), fe.Name)
+	fe.Path = path.Join(be.config.GetClientDirectory(), fe.Name)
 
 	fe.Log, err = NewFrontendLogger(fe)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "[%s] error creating logger: %v\n", fe.Name, err)
+		be.Logf(LogLevelNormal, "[%s] error creating logger: %v\n", fe.Name, err)
 	}
 	fe.Log.Printf("[%s] connecting...\n", fe.IPAddress)
 
 	if greeting.version < versionRequired {
-		srv.Logf(LogLevelNormal, "game version < %d required, found %d\n", versionRequired, greeting.version)
+		be.Logf(LogLevelNormal, "game version < %d required, found %d\n", versionRequired, greeting.version)
 		fe.Log.Printf("game version < %d required, found %d\n", versionRequired, greeting.version)
 		return
 	}
@@ -401,12 +401,12 @@ func (s *Server) HandleConnection(c net.Conn) {
 	fe.Version = greeting.version
 	fe.MaxPlayers = greeting.maxPlayers
 
-	keyFile := path.Join(srv.config.ClientDirectory, fe.Name, "key")
+	keyFile := path.Join(be.config.ClientDirectory, fe.Name, "key")
 
-	srv.Logf(LogLevelInfo, "[%s] Loading public key: %s\n", fe.Name, keyFile)
+	be.Logf(LogLevelInfo, "[%s] Loading public key: %s\n", fe.Name, keyFile)
 	pubkey, err := crypto.LoadPublicKey(keyFile)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "error loading public key: %v\n", err)
+		be.Logf(LogLevelNormal, "error loading public key: %v\n", err)
 		return
 	}
 	fe.PublicKey = pubkey
@@ -426,7 +426,7 @@ func (s *Server) HandleConnection(c net.Conn) {
 	// possibly decrypt it.
 	blobCipher, err := crypto.PublicEncrypt(fe.PublicKey, blob)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "[%s] auth failed: %v\n", fe.Name, err)
+		be.Logf(LogLevelNormal, "[%s] auth failed: %v\n", fe.Name, err)
 		return
 	}
 
@@ -439,24 +439,24 @@ func (s *Server) HandleConnection(c net.Conn) {
 	// read the client signature
 	count, err = c.Read(input)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "error reading client auth response: %v\n", err)
+		be.Logf(LogLevelNormal, "error reading client auth response: %v\n", err)
 		return
 	}
 
 	msg = message.NewBuffer(input[:count])
-	verified, err := s.AuthenticateClient(&msg, fe)
+	verified, err := b.AuthenticateClient(&msg, fe)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "%v", err)
+		be.Logf(LogLevelNormal, "%v", err)
 		SendError(fe, nil, 500, err.Error())
 	}
 
 	if !verified {
-		srv.Logf(LogLevelNormal, "[%s] authentication failed\n", fe.Name)
+		be.Logf(LogLevelNormal, "[%s] authentication failed\n", fe.Name)
 		fe.Log.Println("authentication failed, disconnecting")
 		return
 	}
 
-	srv.Logf(LogLevelNormal, "[%s] authenticated\n", fe.Name)
+	be.Logf(LogLevelNormal, "[%s] authenticated\n", fe.Name)
 	fe.Log.Println("authenticated")
 
 	out.WriteByte(SCMDTrusted)
@@ -478,21 +478,21 @@ func (s *Server) HandleConnection(c net.Conn) {
 		input := make([]byte, NetReadLength)
 		size, err := c.Read(input)
 		if err != nil {
-			srv.Logf(LogLevelInfo, "[%s] read error: %v\n", fe.Name, err)
+			be.Logf(LogLevelInfo, "[%s] read error: %v\n", fe.Name, err)
 			fe.Log.Println("read error:", err)
 			break
 		}
 		if fe.Encrypted && fe.Trusted {
-			srv.Logf(LogLevelDeveloperPlus, "encrypted packet received:\n%s", hex.Dump(input[:size]))
+			be.Logf(LogLevelDeveloperPlus, "encrypted packet received:\n%s", hex.Dump(input[:size]))
 			input, size = crypto.SymmetricDecrypt(fe.SymmetricKey, fe.InitVector, input[:size])
 			if size == 0 {
-				srv.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nIV: %s\n", hex.Dump(fe.SymmetricKey), hex.Dump(fe.InitVector))
+				be.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nIV: %s\n", hex.Dump(fe.SymmetricKey), hex.Dump(fe.InitVector))
 				// try again with the previous IV in case this message was sent
 				// prior to receiving our last.
 				input, size = crypto.SymmetricDecrypt(fe.SymmetricKey, fe.PreviousIV, input[:size])
 				if size == 0 {
-					srv.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nPrevIV: %s\n", hex.Dump(fe.SymmetricKey), hex.Dump(fe.PreviousIV))
-					srv.Logf(LogLevelNormal, "[%s] error decrypting packet from frontend, disconnecting.\n", fe.Name)
+					be.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nPrevIV: %s\n", hex.Dump(fe.SymmetricKey), hex.Dump(fe.PreviousIV))
+					be.Logf(LogLevelNormal, "[%s] error decrypting packet from frontend, disconnecting.\n", fe.Name)
 					fe.Log.Println("error decrypting packet, disconnecting.")
 					return
 				}
@@ -514,7 +514,7 @@ func SendMessages(fe *frontend.Frontend) {
 	if fe == nil || fe.MessageOut.Size() == 0 {
 		return
 	}
-	fe.Server.(*Server).Logf(LogLevelDeveloperPlus, "Sending to client:\n%s\n", hex.Dump(fe.MessageOut.Data))
+	fe.Server.(*Backend).Logf(LogLevelDeveloperPlus, "Sending to client:\n%s\n", hex.Dump(fe.MessageOut.Data))
 	if fe.Trusted && fe.Encrypted {
 		cipher := crypto.SymmetricEncrypt(fe.SymmetricKey, fe.InitVector, fe.MessageOut.Data[:fe.MessageOut.Index])
 		fe.MessageOut = message.NewBuffer(cipher)
@@ -528,38 +528,38 @@ func SendMessages(fe *frontend.Frontend) {
 // Gracefully shut everything down. Close database connection, write states to
 // disk, etc
 func Shutdown() {
-	srv.Logf(LogLevelNormal, "Shutting down...")
+	be.Logf(LogLevelNormal, "Shutting down...")
 	db.Handle.Close() // not sure if this is necessary
 }
 
 // Context logging for server. Will output the date/time, source file name and
 // line number, and a formatted string. Logging is dependant on verbosity level
 // from the config.
-func (s *Server) Logf(level int, format string, args ...any) {
+func (b *Backend) Logf(level int, format string, args ...any) {
 	if format == "" {
 		return
 	}
-	if int(s.config.GetVerboseLevel()) < level {
+	if int(b.config.GetVerboseLevel()) < level {
 		return
 	}
 	msg := fmt.Sprintf(format, args...)
 	_, src, line, ok := runtime.Caller(1) // from parent, not here
-	if ok && s.config.GetVerboseLevel() > LogLevelNormal {
+	if ok && b.config.GetVerboseLevel() > LogLevelNormal {
 		log.Printf("%s:%d] %s", path.Base(src), line, msg)
 		return
 	}
 	log.Print(msg)
 }
 
-// context logging for server. Will output the date/time, source file name and
+// context logging for backend. Will output the date/time, source file name and
 // line number, and any included args. Logging is dependant on verbosity level
 // from the config. Newline is included.
-func (s *Server) Logln(level int, args ...any) {
-	if int(s.config.GetVerboseLevel()) < level {
+func (b *Backend) Logln(level int, args ...any) {
+	if int(b.config.GetVerboseLevel()) < level {
 		return
 	}
 	_, src, line, ok := runtime.Caller(1) // from parent, not here
-	if ok && s.config.GetVerboseLevel() > LogLevelNormal {
+	if ok && b.config.GetVerboseLevel() > LogLevelNormal {
 		preamble := fmt.Sprintf("%s:%d]", path.Base(src), line)
 		log.Println(preamble, args)
 		return
@@ -567,7 +567,7 @@ func (s *Server) Logln(level int, args ...any) {
 	log.Println(args...)
 }
 
-// Start the cloud admin server
+// Start the cloud admin server backend
 func Startup(configFile string, foreground bool) {
 	if configFile == "" {
 		log.Fatalln("no config file specified")
@@ -577,13 +577,13 @@ func Startup(configFile string, foreground bool) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = prototext.Unmarshal(textpb, &srv.config)
+	err = prototext.Unmarshal(textpb, &be.config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if !foreground {
-		f, err := os.OpenFile(srv.config.GetLogFile(), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		f, err := os.OpenFile(be.config.GetLogFile(), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			panic(err)
 		}
@@ -591,54 +591,54 @@ func Startup(configFile string, foreground bool) {
 		log.SetOutput(f)
 	}
 
-	srv.Logf(LogLevelInfo, "%-21s %s\n", "loading private key:", srv.config.GetPrivateKey())
-	privkey, err := crypto.LoadPrivateKey(srv.config.GetPrivateKey())
+	be.Logf(LogLevelInfo, "%-21s %s\n", "loading private key:", be.config.GetPrivateKey())
+	privkey, err := crypto.LoadPrivateKey(be.config.GetPrivateKey())
 	if err != nil {
 		log.Fatalf("error loading private key: %v\n", err)
 	}
 
 	pubkey := privkey.Public().(*rsa.PublicKey)
-	srv.privateKey = privkey
-	srv.publicKey = pubkey
+	be.privateKey = privkey
+	be.publicKey = pubkey
 
-	srv.Logf(LogLevelInfo, "%-21s %s\n", "opening database:", srv.config.Database)
-	db, err = database.Open(srv.config.Database)
+	be.Logf(LogLevelInfo, "%-21s %s\n", "opening database:", be.config.Database)
+	db, err = database.Open(be.config.Database)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	srv.Logf(LogLevelInfo, "%-21s %s\n", "loading global rules:", srv.config.GetRuleFile())
-	rules, err := FetchRules(srv.config.GetRuleFile())
+	be.Logf(LogLevelInfo, "%-21s %s\n", "loading global rules:", be.config.GetRuleFile())
+	rules, err := FetchRules(be.config.GetRuleFile())
 	if err != nil {
 		log.Println(err)
 	} else {
-		srv.rules = rules
+		be.rules = rules
 	}
 
-	srv.Logf(LogLevelInfo, "%-21s %s\n", "loading users:", srv.config.GetUserFile())
-	users, err := api.ReadUsersFromDisk(srv.config.GetUserFile())
+	be.Logf(LogLevelInfo, "%-21s %s\n", "loading users:", be.config.GetUserFile())
+	users, err := api.ReadUsersFromDisk(be.config.GetUserFile())
 	if err != nil {
 		log.Println(err)
 	} else {
-		srv.users = users
+		be.users = users
 	}
 
-	srv.Logf(LogLevelNormal, "loading clients from %q\n", srv.config.ClientDirectory)
-	frontends, err := srv.ParseFrontends()
+	be.Logf(LogLevelNormal, "loading clients from %q\n", be.config.ClientDirectory)
+	frontends, err := be.ParseFrontends()
 	if err != nil {
 		log.Println(err)
 	} else {
 		slices.SortFunc(frontends, func(a, b frontend.Frontend) int {
 			return strings.Compare(a.Name, b.Name)
 		})
-		srv.frontends = frontends
-		for _, c := range srv.frontends {
-			srv.Logf(LogLevelNormal, "  %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
+		be.frontends = frontends
+		for _, c := range be.frontends {
+			be.Logf(LogLevelNormal, "  %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 		}
 	}
 
-	port := fmt.Sprintf("%s:%d", srv.config.Address, srv.config.Port)
+	port := fmt.Sprintf("%s:%d", be.config.Address, be.config.Port)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
 		log.Println(err)
@@ -646,19 +646,19 @@ func Startup(configFile string, foreground bool) {
 	}
 	defer listener.Close()
 
-	srv.Logf(LogLevelNormal, "listening for gameservers on %s\n", port)
+	be.Logf(LogLevelNormal, "listening for gameservers on %s\n", port)
 
-	if srv.config.GetApiEnabled() {
-		creds, err := ReadOAuthCredsFromDisk(srv.config.GetAuthFile())
+	if be.config.GetApiEnabled() {
+		creds, err := ReadOAuthCredsFromDisk(be.config.GetAuthFile())
 		if err != nil {
 			log.Println(err)
 		}
-		go srv.RunHTTPServer(srv.config.GetApiAddress(), int(srv.config.GetApiPort()), creds)
+		go be.RunHTTPServer(be.config.GetApiAddress(), int(be.config.GetApiPort()), creds)
 	}
 
-	go srv.startMaintenance()
-	go srv.startManagement()
-	go srv.startSSHServer()
+	go be.startMaintenance()
+	go be.startManagement()
+	go be.startSSHServer()
 
 	for {
 		c, err := listener.Accept()
@@ -666,6 +666,6 @@ func Startup(configFile string, foreground bool) {
 			log.Println(err)
 			return
 		}
-		go srv.HandleConnection(c)
+		go be.HandleConnection(c)
 	}
 }

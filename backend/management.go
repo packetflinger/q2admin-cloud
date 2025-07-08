@@ -1,4 +1,4 @@
-package server
+package backend
 
 import (
 	"fmt"
@@ -9,8 +9,8 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
-func (s *Server) startManagement() {
-	port := fmt.Sprintf("%s:%d", srv.config.ManagementAddress, srv.config.ManagementPort)
+func (s *Backend) startManagement() {
+	port := fmt.Sprintf("%s:%d", be.config.ManagementAddress, be.config.ManagementPort)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
 		log.Println(err)

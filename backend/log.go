@@ -1,4 +1,4 @@
-package server
+package backend
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ func NewFrontendLogger(fe *frontend.Frontend) (*log.Logger, error) {
 	if fe == nil {
 		return nil, fmt.Errorf("null client")
 	}
-	logfile := path.Join(srv.config.ClientDirectory, fe.Name, "log")
+	logfile := path.Join(be.config.ClientDirectory, fe.Name, "log")
 	fp, err := os.OpenFile(logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, err

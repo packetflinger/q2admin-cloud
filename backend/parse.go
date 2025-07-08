@@ -1,4 +1,4 @@
-package server
+package backend
 
 import (
 	"bytes"
@@ -81,7 +81,7 @@ func ParseGreeting(msg *message.Buffer) (greeting, error) {
 
 // Parse the client's response to the server's auth challenge and compare the
 // results.
-func (s *Server) AuthenticateClient(msg *message.Buffer, fe *frontend.Frontend) (bool, error) {
+func (s *Backend) AuthenticateClient(msg *message.Buffer, fe *frontend.Frontend) (bool, error) {
 	if msg == nil {
 		return false, fmt.Errorf("null msg buffer")
 	}
@@ -104,12 +104,12 @@ func (s *Server) AuthenticateClient(msg *message.Buffer, fe *frontend.Frontend) 
 
 	digestFromFrontend, err := crypto.PrivateDecrypt(s.privateKey, cipher)
 	if err != nil {
-		srv.Logf(LogLevelNormal, "[%s] private key error: %v", fe.Name, err)
+		be.Logf(LogLevelNormal, "[%s] private key error: %v", fe.Name, err)
 	}
 
 	digestFromServer, err := crypto.MessageDigest(fe.Challenge)
 	if err != nil {
-		srv.Logf(LogLevelInfo, "[%s] hashing error: %v\n", fe.Name, err)
+		be.Logf(LogLevelInfo, "[%s] hashing error: %v\n", fe.Name, err)
 	}
 
 	return bytes.Equal(digestFromFrontend, digestFromServer), nil
@@ -159,7 +159,7 @@ func Pong(fe *frontend.Frontend) {
 	if fe == nil {
 		return
 	}
-	if srv.config.GetVerboseLevel() >= LogLevelDeveloperPlus {
+	if be.config.GetVerboseLevel() >= LogLevelDeveloperPlus {
 		log.Printf("[%s/PING]\n", fe.Name)
 	}
 	fe.PingCount++
@@ -252,7 +252,7 @@ func ParseConnect(fe *frontend.Frontend) {
 		// add a slight delay when processing rules
 		time.Sleep(1 * time.Second)
 
-		match, rules := CheckRules(p, append(fe.Rules, srv.rules...))
+		match, rules := CheckRules(p, append(fe.Rules, be.rules...))
 		if match {
 			p.Rules = rules
 			ApplyMatchedRules(p, rules)

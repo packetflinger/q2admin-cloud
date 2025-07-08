@@ -1,4 +1,4 @@
-package server
+package backend
 
 import (
 	"errors"
@@ -44,7 +44,7 @@ func CreateIdentContext(request *http.Request) (*IdentityContext, error) {
 // Is the supplied identity allowed to access this client identified by uuid?
 // If so, return a pointer to that client
 func identityAllowed(ident *IdentityContext, uuid string) (*frontend.Frontend, error) {
-	fe, err := srv.FindFrontend(uuid)
+	fe, err := be.FindFrontend(uuid)
 	if err != nil {
 		return nil, err
 	}

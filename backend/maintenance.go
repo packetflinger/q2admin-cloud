@@ -1,4 +1,4 @@
-package server
+package backend
 
 import (
 	"time"
@@ -12,13 +12,13 @@ import (
 // up.
 //
 // Called from Startup() in a goroutine
-func (s *Server) startMaintenance() {
+func (s *Backend) startMaintenance() {
 	for {
-		time.Sleep(time.Duration(srv.config.MaintenanceTime) * time.Second)
+		time.Sleep(time.Duration(be.config.MaintenanceTime) * time.Second)
 
 		s.Logf(LogLevelDeveloperPlus, "running maintenance")
 		// check time-based player rules
-		for i, cl := range srv.frontends {
+		for i, cl := range be.frontends {
 			if !cl.Connected && !cl.Trusted {
 				continue
 			}
@@ -47,6 +47,6 @@ func (s *Server) startMaintenance() {
 				ApplyMatchedRules(&p, SortRules(matches))
 			}
 		}
-		srv.maintCount++
+		be.maintCount++
 	}
 }

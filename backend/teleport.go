@@ -3,7 +3,7 @@
 // frontends are available with info about current map and players. They can
 // also join those frontends using the same command. The cloud admin server
 // will stuff a connect message to the appropriate ip:port to the player.
-package server
+package backend
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ Empty servers:
 )
 
 // Build the proto to render using the output template.
-func (s *Server) teleportDestinations() (*pb.TeleportReply, error) {
+func (s *Backend) teleportDestinations() (*pb.TeleportReply, error) {
 	var reply pb.TeleportReply
 	var empty []string
 	for _, fe := range s.frontends {
@@ -72,7 +72,7 @@ func Teleport(fe *frontend.Frontend) {
 		log.Println("teleport problem: frontend was nil")
 		return
 	}
-	sv := fe.Server.(*Server)
+	sv := fe.Server.(*Backend)
 	player := (&fe.Message).ReadByte()
 	target := (&fe.Message).ReadString()
 	p, err := fe.FindPlayer(int(player))

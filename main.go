@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/packetflinger/q2admind/server"
+	"github.com/packetflinger/q2admind/backend"
 )
 
 var (
@@ -24,9 +24,9 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		<-c
-		server.Shutdown()
+		backend.Shutdown()
 		os.Exit(0)
 	}()
 
-	server.Startup(*config, *foreground)
+	backend.Startup(*config, *foreground)
 }
