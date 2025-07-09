@@ -236,9 +236,13 @@ func (b *Backend) ParseFrontends() ([]frontend.Frontend, error) {
 			if err != nil {
 				return err
 			}
+			// the parent folder itself
+			if info.Name() == b.config.GetClientDirectory() {
+				return nil
+			}
 			fe, err := frontend.LoadSettings(info.Name(), b.config.GetClientDirectory())
 			if err != nil {
-				return nil
+				return err
 			}
 			rules, err := fe.FetchRules()
 			if err != nil {
