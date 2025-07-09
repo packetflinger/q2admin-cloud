@@ -66,14 +66,14 @@ type Frontend struct {
 	TeleportCount int                     // how many times teleport was used
 }
 
-// Each client has a small collection of invite tokens available. As players
-// use the invite command, tokens removed. The command won't work once token
-// count reaches 0. The bucket is refilled by the maintenance thread one token
-// at a time at a specific interval (every 5 minutes).
+// Each frontend has a small collection of invite tokens available. As players
+// use the invite command, tokens are removed. The command won't work once the
+// token count reaches 0. The bucket is refilled by the maintenance thread one
+// token at a time at a specific interval (every 5 minutes).
 //
 // Why? Because invites have a high likelihood of being abused. Either players
 // spamming them or cross-server shit-talking via invite is expected. Players
-// also have a token bucket for invites
+// also each have their own token bucket for invites.
 type InviteBucket struct {
 	Tokens       int
 	Max          int
@@ -82,6 +82,9 @@ type InviteBucket struct {
 	UseCount     int   // how many times invite has been used
 }
 
+// Add a token to a particular invite bucket. A token will only be added if
+// it's appropriate: below max level and it's been long enough since the last
+// addition.
 func (b *InviteBucket) InviteBucketAdd() {
 	if b == nil {
 		return
@@ -151,7 +154,7 @@ func (fe *Frontend) MaterializeRules(rules []*pb.Rule) error {
 	return nil
 }
 
-// Read settings file for client from disk and make a *Client struct
+// Read settings file for client from disk and make a Frontend struct
 // from them.
 func LoadSettings(name string, clientsDir string) (Frontend, error) {
 	var fe Frontend
