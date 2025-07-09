@@ -168,6 +168,5 @@ func (fe *Frontend) FindPlayerByName(name string) *Player {
 			return &fe.Players[i]
 		}
 	}
-
 	return nil
 }
