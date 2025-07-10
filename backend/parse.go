@@ -309,6 +309,9 @@ func ParseObituary(fe *frontend.Frontend, obit string) {
 	if err != nil {
 		return
 	}
+	if death.Victim == nil {
+		return
+	}
 	var logObit string
 	// single-sided frag
 	if death.Murderer == nil {
