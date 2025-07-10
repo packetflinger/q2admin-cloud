@@ -12,7 +12,7 @@ import (
 // Each player on a game server has one of these.
 // Each game server has a slice of all current players
 type Player struct {
-	FrontendID       int // ID on the gameserver (0-maxplayers)
+	ClientID         int // ID on the gameserver (0-maxplayers)
 	Database_ID      int64
 	Name             string
 	Version          string // q2 client flavor + version
@@ -52,7 +52,7 @@ func (fe *Frontend) FindPlayer(client int) (*Player, error) {
 		return nil, fmt.Errorf("invalid player id %q", client)
 	}
 	for i, p := range fe.Players {
-		if p.FrontendID == client && p.ConnectTime > 0 {
+		if p.ClientID == client && p.ConnectTime > 0 {
 			return &fe.Players[i], nil
 		}
 	}
@@ -120,7 +120,7 @@ func (fe *Frontend) RemovePlayer(client int) {
 	}
 
 	for i := range fe.Players {
-		if fe.Players[i].FrontendID == client {
+		if fe.Players[i].ClientID == client {
 			fe.Players[i] = Player{}
 			fe.PlayerCount--
 			return

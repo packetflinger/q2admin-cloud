@@ -308,7 +308,7 @@ func SendError(fe *frontend.Frontend, pl *frontend.Player, severity int, err str
 	if pl == nil {
 		out.WriteByte(-1)
 	} else {
-		out.WriteByte(pl.FrontendID)
+		out.WriteByte(pl.ClientID)
 	}
 	out.WriteByte(severity)
 	out.WriteString(err)

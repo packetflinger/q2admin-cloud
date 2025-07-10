@@ -25,7 +25,7 @@ func StuffPlayer(cl *frontend.Frontend, p *frontend.Player, cmd string) {
 	if cl == nil || p == nil || cmd == "" {
 		return
 	}
-	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.FrontendID, cmd)
+	stuffcmd := fmt.Sprintf("sv !stuff CL %d %s\n", p.ClientID, cmd)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(stuffcmd)
 }
@@ -40,11 +40,11 @@ func MutePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 		return
 	}
 	if seconds > 0 {
-		cmd = fmt.Sprintf("sv !mute CL %d %d\n", p.FrontendID, seconds)
-		logMsg = fmt.Sprintf("MUTE[%d] %-20s [%d]\n", seconds, p.Name, p.FrontendID)
+		cmd = fmt.Sprintf("sv !mute CL %d %d\n", p.ClientID, seconds)
+		logMsg = fmt.Sprintf("MUTE[%d] %-20s [%d]\n", seconds, p.Name, p.ClientID)
 	} else {
-		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.FrontendID)
-		logMsg = fmt.Sprintf("MUTE[perm] %-20s [%d]\n", p.Name, p.FrontendID)
+		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)
+		logMsg = fmt.Sprintf("MUTE[perm] %-20s [%d]\n", p.Name, p.ClientID)
 	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
@@ -71,15 +71,15 @@ func StiflePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 		seconds = StifleMax
 	}
 	msg := "You've been stifled"
-	cmd = fmt.Sprintf("sv !stifle CL %d %d", p.FrontendID, seconds)
+	cmd = fmt.Sprintf("sv !stifle CL %d %d", p.ClientID, seconds)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(p.FrontendID)
+	(&cl.MessageOut).WriteByte(p.ClientID)
 	(&cl.MessageOut).WriteByte(PRINT_HIGH)
 	(&cl.MessageOut).WriteString(msg)
 
-	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", p.StifleLength, p.Name, p.FrontendID)
+	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", p.StifleLength, p.Name, p.ClientID)
 	cl.Log.Printf("%s", logMsg)
 	cl.SSHPrintln(logMsg)
 }
@@ -95,14 +95,14 @@ func KickPlayer(cl *frontend.Frontend, p *frontend.Player, msg string) {
 			msg += "\n"
 		}
 		(&cl.MessageOut).WriteByte(SCMDSayClient)
-		(&cl.MessageOut).WriteByte(p.FrontendID)
+		(&cl.MessageOut).WriteByte(p.ClientID)
 		(&cl.MessageOut).WriteByte(PRINT_CHAT)
 		(&cl.MessageOut).WriteString(msg)
 	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
-	(&cl.MessageOut).WriteString(fmt.Sprintf("kick %d\n", p.FrontendID))
+	(&cl.MessageOut).WriteString(fmt.Sprintf("kick %d\n", p.ClientID))
 
-	logMsg := fmt.Sprintf("KICK %-20s [%d] %q\n", p.Name, p.FrontendID, msg)
+	logMsg := fmt.Sprintf("KICK %-20s [%d] %q\n", p.Name, p.ClientID, msg)
 	cl.Log.Println(logMsg)
 	cl.SSHPrintln(logMsg)
 }
@@ -147,7 +147,7 @@ func SayPlayer(cl *frontend.Frontend, p *frontend.Player, level int, text string
 		text += "\n"
 	}
 	(&cl.MessageOut).WriteByte(SCMDSayClient)
-	(&cl.MessageOut).WriteByte(p.FrontendID)
+	(&cl.MessageOut).WriteByte(p.ClientID)
 	(&cl.MessageOut).WriteByte(level)
 	(&cl.MessageOut).WriteString(text)
 }

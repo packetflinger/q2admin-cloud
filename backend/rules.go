@@ -476,7 +476,7 @@ func ApplyMatchedRules(p *frontend.Player, rules []*pb.Rule) {
 		return
 	}
 	fe := p.Frontend
-	fe.Log.Printf("%s|%d matched the following rules:\n", p.Name, p.FrontendID)
+	fe.Log.Printf("%s|%d matched the following rules:\n", p.Name, p.ClientID)
 	for _, rule := range rules {
 		fe.Log.Printf("  - %s (%s)\n", strings.Join(rule.GetDescription(), " "), rule.GetType())
 	}

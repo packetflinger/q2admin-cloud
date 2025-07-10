@@ -245,7 +245,7 @@ func ParseConnect(fe *frontend.Frontend) {
 			p.Hostname = ptr[0] // just take the first address
 		}
 
-		msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.FrontendID, p.Name, p.IP)
+		msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.ClientID, p.Name, p.IP)
 		fe.Log.Printf("%s", msg)
 		fe.SSHPrintln(msg)
 
@@ -278,7 +278,7 @@ func ParseDisconnect(fe *frontend.Frontend) {
 		return
 	}
 
-	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "DISCONNECT:", pl.FrontendID, pl.Name, pl.IP)
+	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "DISCONNECT:", pl.ClientID, pl.Name, pl.IP)
 	fe.Log.Printf("%s", msg)
 	fe.SSHPrintln(msg)
 	fe.RemovePlayer(clientnum)
@@ -317,15 +317,15 @@ func ParseObituary(fe *frontend.Frontend, obit string) {
 	if death.Murderer == nil {
 		logObit = fmt.Sprintf("DEATH: %s[%d] (%s)",
 			death.Victim.Name,
-			death.Victim.FrontendID,
+			death.Victim.ClientID,
 			death.MeansToString(),
 		)
 	} else {
 		logObit = fmt.Sprintf("DEATH: %s[%d] -> %s[%d] (%s)",
 			death.Murderer.Name,
-			death.Murderer.FrontendID,
+			death.Murderer.ClientID,
 			death.Victim.Name,
-			death.Victim.FrontendID,
+			death.Victim.ClientID,
 			death.MeansToString(),
 		)
 	}
@@ -367,7 +367,7 @@ func ParsePlayer(fe *frontend.Frontend) *frontend.Player {
 	port, _ := strconv.Atoi(info["port"])
 	fov, _ := strconv.Atoi(info["fov"])
 	newplayer := frontend.Player{
-		FrontendID:   int(clientnum),
+		ClientID:     int(clientnum),
 		Userinfo:     userinfo,
 		UserInfoHash: crypto.MD5Hash(userinfo),
 		UserinfoMap:  info,
@@ -383,14 +383,14 @@ func ParsePlayer(fe *frontend.Frontend) *frontend.Player {
 
 	fe.Log.Printf("PLAYER %d|%s|%s\n", clientnum, newplayer.UserInfoHash, userinfo)
 
-	fe.Players[newplayer.FrontendID] = newplayer
+	fe.Players[newplayer.ClientID] = newplayer
 	fe.PlayerCount++
 
 	err := db.AddPlayer(&newplayer)
 	if err != nil {
 		log.Println(err)
 	}
-	return &fe.Players[newplayer.FrontendID]
+	return &fe.Players[newplayer.ClientID]
 }
 
 // A command was issued from a player on a client
