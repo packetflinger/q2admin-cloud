@@ -218,7 +218,7 @@ func ParsePrint(fe *frontend.Frontend) {
 	}
 }
 
-// A player connected to the a q2 client.
+// A player connected to the a frontend.
 //
 // - look up their PTR record
 // - Log the connection
@@ -364,8 +364,14 @@ func ParsePlayer(fe *frontend.Frontend) *frontend.Player {
 	}
 
 	info := frontend.UserinfoMap(userinfo)
-	port, _ := strconv.Atoi(info["port"])
-	fov, _ := strconv.Atoi(info["fov"])
+	port, err := strconv.Atoi(info["port"])
+	if err != nil {
+		port = 0
+	}
+	fov, err := strconv.Atoi(info["fov"])
+	if err != nil {
+		fov = 0
+	}
 	newplayer := frontend.Player{
 		ClientID:     int(clientnum),
 		Userinfo:     userinfo,
@@ -386,7 +392,7 @@ func ParsePlayer(fe *frontend.Frontend) *frontend.Player {
 	fe.Players[newplayer.ClientID] = newplayer
 	fe.PlayerCount++
 
-	err := db.AddPlayer(&newplayer)
+	err = db.AddPlayer(&newplayer)
 	if err != nil {
 		log.Println(err)
 	}
