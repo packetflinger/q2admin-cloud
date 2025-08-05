@@ -1,5 +1,19 @@
 {{define "dashboard"}}
 {{template "header" .}}
 
+<div class="container">
+    <h1>Dashboard</h1>
+    <p>{{.SessionUser.GetEmail}}</p>
+    <h3>My Servers <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addServerModal">Add</button></h3>
+    <p id="my-servers">
+        <img src="/static/img/loading.svg" style="width:32px; height: 32px;">
+        <ul>
+        {{range .Frontends}}
+            <li><a href="/my-servers/{{.UUID}}/{{.Name}}">{{.Name}}</a></li>
+        {{end}}
+        </ul>
+    </p>
+</div>
+
 {{template "footer" .}}
 {{end}}

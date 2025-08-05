@@ -249,7 +249,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 		user.Session = &session
 
 		cookie := http.Cookie{
-			Name:     SessionName,
+			Name:     WebCookieName,
 			Value:    session.GetId(),
 			SameSite: http.SameSiteLaxMode,
 			Expires:  token.Expiry,
@@ -337,7 +337,7 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 		user.Session = &session
 
 		cookie := http.Cookie{
-			Name:     SessionName,
+			Name:     WebCookieName,
 			Value:    session.GetId(),
 			SameSite: http.SameSiteLaxMode,
 			Expires:  token.Expiry,

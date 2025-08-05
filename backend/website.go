@@ -10,21 +10,24 @@ import (
 	"path"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/frontend"
-	"github.com/packetflinger/q2admind/util"
 
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
 const (
-	SessionName = "q2asess" // website cookie name
+	WebCookieName = "q2asess"
 )
 
 var (
 	Website = WebInterface{}
+	funcMap = template.FuncMap{
+		"yesno": boolToYesNo,
+	}
 )
 
 // PageResponse holds all the possible data to render the pages fort he site.
@@ -36,13 +39,13 @@ type PageResponse struct {
 		Keywords    string
 		Title       string
 	}
-	Title           string
-	HeaderTitle     string
-	SessionUser     *pb.User
-	Gameservers     []frontend.Frontend
-	GameserverCount int
-	Frontend        *frontend.Frontend
-	NavHighlight    struct {
+	Title         string
+	HeaderTitle   string
+	SessionUser   *pb.User
+	Frontends     []*frontend.Frontend
+	FrontendCount int
+	Frontend      *frontend.Frontend
+	NavHighlight  struct {
 		Dashboard string
 		Servers   string
 		Groups    string
@@ -50,7 +53,6 @@ type PageResponse struct {
 	AuthProviders []AuthProvider
 }
 
-// a
 type SessionUser struct {
 }
 
@@ -139,7 +141,7 @@ func GetSessionUser(r *http.Request) (*pb.User, error) {
 	var cookie *http.Cookie
 	var e error
 
-	if cookie, e = r.Cookie(SessionName); e != nil {
+	if cookie, e = r.Cookie(WebCookieName); e != nil {
 		return nil, e
 	}
 	if user, e = ValidateSession(cookie.Value); e != nil {
@@ -148,33 +150,12 @@ func GetSessionUser(r *http.Request) (*pb.User, error) {
 	return user, nil
 }
 
-/*
-func GetUser(id int) WebUser {
-	niluser := &WebUser{}
-	sql := "SELECT id, uuid, email, server_count, admin FROM user WHERE id = ? LIMIT 1"
-	r, e := db.Query(sql, id)
-	if e != nil {
-		log.Println(e)
-		return *niluser
-	}
-
-	var user WebUser
-	for r.Next() {
-		r.Scan(&user.ID, &user.UUID, &user.Email, &user.ServerCount, &user.Admin)
-		r.Close()
-		return user
-	}
-
-	return *niluser
-}
-*/
-
 // Make a new session for a user
 func CreateSession() *pb.Session {
 	sess := pb.Session{
-		Id:         util.GenerateUUID(),
-		Creation:   util.GetUnixTimestamp(),
-		Expiration: util.GetUnixTimestamp() + (86400 * 2), // 2 days from now
+		Id:         uuid.NewString(),
+		Creation:   time.Now().Unix(),
+		Expiration: time.Now().Unix() + (86400 * 2), // 2 days from now
 	}
 	return &sess
 }
@@ -186,7 +167,7 @@ func ValidateSession(sess string) (*pb.User, error) {
 	for i := range be.users {
 		u := be.users[i]
 		if u.GetSession().GetId() == sess {
-			now := util.GetUnixTimestamp()
+			now := time.Now().Unix()
 			if now >= u.GetSession().GetCreation() && now < u.GetSession().GetExpiration() {
 				return u, nil
 			}
@@ -222,13 +203,14 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := PageResponse{}
-	data.Head.Title = "Dashboard | Q2Admin CloudAdmin"
-	data.Head.Keywords = ""
-	data.Title = ""
-	data.SessionUser = u
+	page, err := dashboardPage(u)
+	if err != nil {
+		log.Println(err)
+		fmt.Fprintln(w, "error 500")
+		return
+	}
 
-	tmpl, e := template.ParseFiles(
+	tmpl, e := template.New("dashboard").Funcs(funcMap).ParseFiles(
 		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
 		path.Join(be.config.GetWebRoot(), "templates", "new", "dashboard.tmpl"),
 		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
@@ -237,18 +219,28 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "dashboard", data)
+		err = tmpl.ExecuteTemplate(w, "dashboard", page)
 		if err != nil {
 			log.Println(err)
 		}
 	}
 }
 
+func dashboardPage(user *pb.User) (PageResponse, error) {
+	var out PageResponse
+	if user == nil {
+		return out, fmt.Errorf("null user building dashboard page")
+	}
+	out.SessionUser = user
+	out.Head.Title = "Dashboard | CloudAdmin"
+	out.Frontends = FrontendsByIdentity(user.GetEmail())
+	return out, nil
+}
+
 // Displays info page for a particular client
 func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["ServerUUID"]
-	name := vars["ServerName"]
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
@@ -261,18 +253,28 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := WebpageData{
-		Title:       name + " management | Q2Admin CloudAdmin",
-		HeaderTitle: name,
-		SessionUser: user,
-		Frontend:    fe,
-	}
-	data.NavHighlight.Servers = "active"
+	/*
+		data := WebpageData{
+			Title:       fe.Name + " management | Q2Admin CloudAdmin",
+			HeaderTitle: fe.Name,
+			SessionUser: user,
+			Frontend:    fe,
+		}
+		data.NavHighlight.Servers = "active"
+	*/
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "server-view.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "footer.tmpl"),
+	data := PageResponse{}
+	data.Head.Title = fmt.Sprintf("%s | Q2Admin CloudAdmin", fe.Name)
+	data.Head.Keywords = ""
+	data.Title = fe.Name
+	data.SessionUser = user
+	data.Frontend = fe
+
+	data.NavHighlight.Servers = "active"
+	tmpl, e := template.New("dashboard").Funcs(funcMap).ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "server-view.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
 	)
 
 	if e != nil {
@@ -401,7 +403,7 @@ func AuthLogout(w http.ResponseWriter, r *http.Request) {
 
 	// remove the client's cookie
 	expire := time.Now()
-	cookie := http.Cookie{Name: SessionName, Value: "", Expires: expire}
+	cookie := http.Cookie{Name: WebCookieName, Value: "", Expires: expire}
 	http.SetCookie(w, &cookie)
 }
 
@@ -455,8 +457,8 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 	data.Head.Keywords = ""
 	data.Title = "My Servers"
 	data.SessionUser = user
-	data.Gameservers = fes
-	data.GameserverCount = len(fes)
+	data.Frontends = fes
+	data.FrontendCount = len(fes)
 
 	data.NavHighlight.Servers = "active"
 
@@ -534,4 +536,11 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 
 func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, Routes.AuthLogin, http.StatusSeeOther) // 303
+}
+
+func boolToYesNo(val bool) string {
+	if val {
+		return fmt.Sprintf("<span class=%q>yes</span>", "text-success")
+	}
+	return fmt.Sprintf("<span class=%q>no</span>", "text-danger")
 }

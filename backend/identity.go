@@ -24,7 +24,7 @@ func CreateIdentContext(request *http.Request) (*IdentityContext, error) {
 	ctx := IdentityContext{}
 	ctx.srcIP = request.RemoteAddr
 	// first check for active session
-	if cookie, err := request.Cookie(SessionName); err == nil {
+	if cookie, err := request.Cookie(WebCookieName); err == nil {
 		user, err := ValidateSession(cookie.Value)
 		if err != nil {
 			return nil, err

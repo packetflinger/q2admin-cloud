@@ -1,7 +1,45 @@
 {{define "my-servers"}}
 {{template "header" .}}
 
-<h1>Servers</h1>
+<h1>Servers  <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addServerModal">Add</button></h1>
+<p id="my-servers">
+    <ul>
+    {{range .Frontends}}
+        <li><a href="/sv/{{.UUID}}/{{.Name}}">{{.Name}}</a></li>
+    {{end}}
+    </ul>
+</p>
+
+<div class="modal fade" id="addServerModal" tabindex="-1" aria-labelledby="addServerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="/add-server" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">Add Server</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="servername" class="form-label">Name</label>
+                        <input type="text" class="form-control" name="servername" id="servername" placeholder="pf-tdm-antartica">
+                    </div>
+                    <div class="mb-3">
+                        <label for="ipaddr" class="form-label">IP Address</label>
+                        <input type="text" class="form-control" name="ipaddr" id="ipaddr" placeholder="100.64.2.5">
+                    </div>
+                    <div class="mb-3">
+                        <label for="port" class="form-label">Port</label>
+                        <input type="text" class="form-control" name="port" id="port" placeholder="27910">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Add</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
 {{template "footer" .}}
 {{end}}

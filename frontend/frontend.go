@@ -290,9 +290,9 @@ func (fe *Frontend) SSHPrintln(text string) {
 	for i := range fe.Terminals {
 		select {
 		case *fe.Terminals[i] <- text:
-			log.Printf("Sending %q to ssh client %d\n", text, i)
+			// log.Printf("Sending %q to ssh client %d\n", text, i)
 		default:
-			log.Println("doing nothing")
+			// log.Println("doing nothing")
 		}
 	}
 }
