@@ -185,14 +185,14 @@ func FrontendsByContext(ctx *IdentityContext) []*frontend.Frontend {
 
 // Acquire a slice of client pointers that a particular identity has access to
 // (owners and delegates)
-func FrontendsByIdentity(ident string) []frontend.Frontend {
-	list := []frontend.Frontend{}
+func FrontendsByIdentity(ident string) []*frontend.Frontend {
+	list := []*frontend.Frontend{}
 	if ident == "" {
 		return list
 	}
-	for _, cl := range be.frontends {
+	for i, cl := range be.frontends {
 		if strings.EqualFold(cl.Owner, ident) {
-			list = append(list, cl)
+			list = append(list, &be.frontends[i])
 		}
 	}
 	return list
