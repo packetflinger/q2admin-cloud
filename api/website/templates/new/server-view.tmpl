@@ -1,0 +1,39 @@
+{{define "server-view"}}
+{{template "header" .}}
+
+		<h1 class="h3 mb-3">{{.Title}} <a href="#"><i class="align-middle me-1" data-feather="edit"></i></a></h1>
+		<div class="row">
+{{if .Frontend.Connected}}
+			<div class="col-12 col-sm-4">
+				<div class="card">
+					<div class="card-header">
+						<h4>Server Info</h4>
+					</div>
+					<div class="card-body">
+						<p>Address: {{.Frontend.IPAddress}}:{{.Frontend.Port}}</p>
+						<p>Encrypted: {{ .Frontend.Encrypted | yesno }}
+					</div>
+				</div>
+			</div>
+			<div class="col-12 col-sm-4">
+				<div class="card">
+					<div class="card-header"><h4>Current Players</h4></div>
+					<div class="card-body">
+
+					</div>
+				</div>
+			</div>
+{{else}}
+			<div class="col">
+				<div class="card">
+					<div class="card-header">
+						Quake 2 server not connected
+					</div>
+				</div>
+			</div>
+{{end}}
+		</div>
+	</div>
+
+{{template "footer" .}}
+{{end}}
