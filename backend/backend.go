@@ -614,8 +614,7 @@ func Startup(configFile string, foreground bool) {
 	be.Logf(LogLevelInfo, "%-21s %s\n", "opening database:", be.config.Database)
 	db, err = database.Open(be.config.Database)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatalln(err)
 	}
 
 	be.Logf(LogLevelInfo, "%-21s %s\n", "loading global rules:", be.config.GetRuleFile())
@@ -651,8 +650,7 @@ func Startup(configFile string, foreground bool) {
 	port := fmt.Sprintf("%s:%d", be.config.Address, be.config.Port)
 	listener, err := net.Listen("tcp", port) // v4 + v6
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatalln(err)
 	}
 	defer listener.Close()
 
@@ -673,8 +671,7 @@ func Startup(configFile string, foreground bool) {
 	for {
 		c, err := listener.Accept()
 		if err != nil {
-			log.Println(err)
-			return
+			log.Fatalln(err)
 		}
 		go be.HandleConnection(c)
 	}
