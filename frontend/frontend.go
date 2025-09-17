@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/packetflinger/libq2/message"
+	"github.com/packetflinger/libq2/state"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -64,6 +65,7 @@ type Frontend struct {
 	Invites       InviteBucket            // Invite throttling
 	AllowTeleport bool                    // enable teleport functionality
 	TeleportCount int                     // how many times teleport was used
+	ServerVars    map[string]string       // public server cvars
 }
 
 // Each frontend has a small collection of invite tokens available. As players
@@ -312,4 +314,11 @@ func (fe *Frontend) TerminalDisconnected(t *chan string) []*chan string {
 		terms = append(terms, fe.Terminals[i])
 	}
 	return terms
+}
+
+// Query the frontend for all the server vars
+func (fe *Frontend) FetchServerVars() (map[string]string, error) {
+	s := &state.Server{Address: fe.IPAddress, Port: fe.Port}
+	vars, err := s.FetchInfo()
+	return vars.Server, err
 }

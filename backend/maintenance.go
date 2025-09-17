@@ -46,6 +46,12 @@ func (s *Backend) startMaintenance() {
 				}
 				ApplyMatchedRules(&p, SortRules(matches))
 			}
+
+			vars, err := cl.FetchServerVars()
+			if err != nil {
+				be.Logf(LogLevelInfo, "error fetching %q vars: %v", cl.Name, err)
+			}
+			cl.ServerVars = vars
 		}
 		be.maintCount++
 	}

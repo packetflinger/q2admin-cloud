@@ -474,6 +474,12 @@ func (b *Backend) HandleConnection(c net.Conn) {
 		Freq:   30,
 	}
 
+	vars, err := fe.FetchServerVars()
+	if err != nil {
+		be.Logf(LogLevelInfo, "error fetching %q vars: %v", fe.Name, err)
+	}
+	fe.ServerVars = vars
+
 	// main connection loop for this frontend
 	// - wait for input
 	// - parse any messages received, react as necessary

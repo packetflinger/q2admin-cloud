@@ -23,6 +23,16 @@
 					</div>
 				</div>
 			</div>
+			<div class="col-12 col-sm-4">
+				<div class="card">
+					<div class="card-header"><h4>Server Vars</h4></div>
+					<div class="card-body">
+{{ range $key, $value := .Frontend.ServerVars }}
+   <div class="row"><div class="col"><strong>{{ $key }}</strong>:</div><div class="col">{{ $value }}</div></div>
+{{ end }}
+					</div>
+				</div>
+			</div>
 {{else}}
 			<div class="col">
 				<div class="card">
