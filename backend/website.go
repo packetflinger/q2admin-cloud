@@ -10,6 +10,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -114,8 +115,9 @@ type ServerPage struct {
 
 // Represents the website
 type WebInterface struct {
-	Creds []*pb.OAuth
-	Auths []AuthProvider
+	Creds  []*pb.OAuth
+	Auths  []AuthProvider
+	Secret []byte // for signing/verifying JWTs
 }
 
 type AuthProvider struct {
@@ -137,14 +139,12 @@ var WSUpgrader = websocket.Upgrader{
 //
 // Called at the start of each website request
 func GetSessionUser(r *http.Request) (*pb.User, error) {
-	var user *pb.User
-	var cookie *http.Cookie
-	var e error
-
-	if cookie, e = r.Cookie(WebCookieName); e != nil {
+	cookie, e := r.Cookie(WebCookieName)
+	if e != nil {
 		return nil, e
 	}
-	if user, e = ValidateSession(cookie.Value); e != nil {
+	user, e := ValidateSessionToken(cookie.Value, Website.Secret)
+	if e != nil {
 		return nil, e
 	}
 	return user, nil
@@ -160,10 +160,65 @@ func CreateSession() *pb.Session {
 	return &sess
 }
 
+// Create a JSON web token to write as the cookie data for the session. The `u`
+// parameter is the user this session is for, `id` is just a unique identifier
+// for the session, `length` is the number of seconds from now the session
+// should be valid for, and `secret` is a key used to cryptographically sign
+// the token to ensure the integrity of the claims.
+func CreateSessionToken(u *pb.User, id string, length int64, secret []byte) (string, error) {
+	if u == nil {
+		return "", fmt.Errorf("can't create session token: nil user")
+	}
+	if len(secret) == 0 {
+		return "", fmt.Errorf("can't create session token: empty secret")
+	}
+	now := time.Now().Unix()
+	claims := jwt.StandardClaims{
+		ExpiresAt: now + length,
+		Id:        id,
+		IssuedAt:  now,
+		Subject:   u.Email,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	ss, err := token.SignedString(secret)
+	if err != nil {
+		return "", err
+	}
+	return ss, nil
+}
+
+// Ensure the JWT is valid
+// 1. Crypto signature matches
+// 2. Token is not yet expired
+// 3. Token Id is not in our internal revocation list (todo)
+func ValidateSessionToken(token string, secret []byte) (*pb.User, error) {
+	claims := &jwt.StandardClaims{}
+	t, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
+		return secret, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse session token")
+	}
+	if t.Valid {
+		for i := range be.users {
+			u := be.users[i]
+			if u.Email == claims.Subject {
+				return u, nil
+			}
+		}
+		return nil, fmt.Errorf("unknown session user: %s", claims.Subject)
+	}
+	return nil, fmt.Errorf("invalid session token")
+}
+
 // Make sure the session presented is valid.
 // 1. Current date is after the session creation date
 // 2. Current date is before the session expiration
 func ValidateSession(sess string) (*pb.User, error) {
+	_, err := ValidateSessionToken(sess, Website.Secret)
+	if err != nil {
+		return nil, err
+	}
 	for i := range be.users {
 		u := be.users[i]
 		if u.GetSession().GetId() == sess {
@@ -177,8 +232,9 @@ func ValidateSession(sess string) (*pb.User, error) {
 }
 
 // Load everything needed to start the web interface
-func (s *Backend) RunHTTPServer(ip string, port int, creds []*pb.OAuth) {
+func (s *Backend) RunHTTPServer(ip string, port int, creds []*pb.OAuth, secret []byte) {
 	Website.Creds = creds
+	Website.Secret = secret
 
 	listen := fmt.Sprintf("%s:%d", ip, port)
 	r := LoadWebsiteRoutes()

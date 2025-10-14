@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,14 +13,16 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
-	pb "github.com/packetflinger/q2admind/proto"
 	"github.com/packetflinger/q2admind/util"
 	"github.com/ravener/discord-oauth2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/protobuf/encoding/prototext"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 type AuthResponse struct {
@@ -216,30 +219,37 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	profres := ProfileResponse{}
-	err = json.Unmarshal(body, &profres)
+	profile := ProfileResponse{}
+	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	user, err := be.GetUserByEmail(profres.Email)
+	user, err := be.GetUserByEmail(profile.Email)
 	if err != nil {
 		log.Println(err)
 	} else {
-		alias := profres.Username
+		alias := profile.Username
 		if len(user.Name) > 0 {
 			alias = user.Name
 		}
-		pic := fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", profres.ID, profres.Avatar)
+		pic := fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", profile.ID, profile.Avatar)
+		id := uuid.NewString()
+		ttl := int64(time.Second * 86400) // 1 day from now
+		signedJWT, err := CreateSessionToken(user, id, ttl, Website.Secret)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 		session := pb.Session{
-			Id:         uuid.New().String(),
+			Id:         id,
 			Creation:   util.GetUnixTimestamp(),
 			Expiration: token.Expiry.Unix(),
 			AuthToken:  token.AccessToken,
@@ -250,7 +260,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 
 		cookie := http.Cookie{
 			Name:     WebCookieName,
-			Value:    session.GetId(),
+			Value:    signedJWT,
 			SameSite: http.SameSiteLaxMode,
 			Expires:  token.Expiry,
 			Path:     "/",
@@ -305,45 +315,52 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	profres := GoogleProfileResponse{}
-	err = json.Unmarshal(body, &profres)
+	profile := GoogleProfileResponse{}
+	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	user, err := be.GetUserByEmail(profres.Email)
+	user, err := be.GetUserByEmail(profile.Email)
 	if err != nil {
 		log.Println(err)
 	} else {
-		alias := profres.GivenName
+		alias := profile.GivenName
 		if len(user.Name) > 0 {
 			alias = user.Name
 		}
+		id := uuid.NewString()
+		ttl := int64(86400) // 1 day from now
+		signedJWT, err := CreateSessionToken(user, id, ttl, Website.Secret)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 		session := pb.Session{
-			Id:         uuid.New().String(),
-			Creation:   util.GetUnixTimestamp(),
+			Id:         id,
+			Creation:   time.Now().Unix(),
 			Expiration: token.Expiry.Unix(),
 			AuthToken:  token.AccessToken,
-			Avatar:     profres.Picture,
+			Avatar:     profile.Picture,
 			Name:       alias,
 		}
 		user.Session = &session
 
 		cookie := http.Cookie{
 			Name:     WebCookieName,
-			Value:    session.GetId(),
+			Value:    signedJWT,
 			SameSite: http.SameSiteLaxMode,
 			Expires:  token.Expiry,
 			Path:     "/",
 		}
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, Routes.Dashboard, http.StatusFound) // 302
+		http.Redirect(w, r, Routes.Dashboard, http.StatusFound)
 	}
 }

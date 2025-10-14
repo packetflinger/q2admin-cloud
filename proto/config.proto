@@ -1,5 +1,5 @@
 // compile with:
-// protoc --go_out=. --go_opt=paths=source_relative *.proto
+// protoc --go_out=. --go_opt=paths=source_relative config.proto
 syntax="proto3";
 
 option go_package = "github.com/packetflinger/q2admind/proto";
@@ -31,4 +31,5 @@ message Config {
     uint32 ssh_port = 23;
     string ssh_hostkey = 24;
     int32 verbose_level = 25;
+    string api_secret = 26; // for signing JWTs, leave blank to autogenerate
 }

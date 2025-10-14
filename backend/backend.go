@@ -661,7 +661,11 @@ func Startup(configFile string, foreground bool) {
 		if err != nil {
 			log.Println(err)
 		}
-		go be.RunHTTPServer(be.config.GetApiAddress(), int(be.config.GetApiPort()), creds)
+		secret := []byte(be.config.GetApiSecret())
+		if len(secret) < 16 {
+			secret = crypto.RandomBytes(16)
+		}
+		go be.RunHTTPServer(be.config.GetApiAddress(), int(be.config.GetApiPort()), creds, secret)
 	}
 
 	go be.startMaintenance()

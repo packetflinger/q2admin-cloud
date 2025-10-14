@@ -1,5 +1,5 @@
 // compile with:
-// protoc --go_out=. --go_opt=paths=source_relative *.proto
+// protoc --go_out=. --go_opt=paths=source_relative user.proto
 syntax="proto3";
 
 option go_package = "github.com/packetflinger/q2admind/proto";
@@ -29,4 +29,5 @@ message Session {
     string auth_token = 4;
     string avatar = 5;      // url to profile pic
     string name = 6;        // either first name or q2 alias
+    string jwt = 7;         // the cookie data, signed with secret 
 }
