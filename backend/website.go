@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	WebCookieName = "q2asess"
+	CookieName = "q2asess"
 )
 
 var (
@@ -139,7 +139,7 @@ var WSUpgrader = websocket.Upgrader{
 //
 // Called at the start of each website request
 func GetSessionUser(r *http.Request) (*pb.User, error) {
-	cookie, e := r.Cookie(WebCookieName)
+	cookie, e := r.Cookie(CookieName)
 	if e != nil {
 		return nil, e
 	}
@@ -459,7 +459,7 @@ func AuthLogout(w http.ResponseWriter, r *http.Request) {
 
 	// remove the client's cookie
 	expire := time.Now()
-	cookie := http.Cookie{Name: WebCookieName, Value: "", Expires: expire}
+	cookie := http.Cookie{Name: CookieName, Value: "", Expires: expire}
 	http.SetCookie(w, &cookie)
 }
 
