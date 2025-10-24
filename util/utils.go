@@ -40,13 +40,13 @@ func TimeAgo(ts int64) string {
 	if elapsed < 86400 {
 		return fmt.Sprintf("%dh ago", elapsed/3600)
 	}
-	if elapsed < 86400*7 {
+	if elapsed < (86400 * 7) {
 		return fmt.Sprintf("%dd ago", elapsed/86400)
 	}
-	if elapsed < 86400*30 {
+	if elapsed < (86400 * 30) {
 		return fmt.Sprintf("%dw ago", elapsed/(86400*7))
 	}
-	if elapsed < 86400*30*52 {
+	if elapsed < (86400 * 30 * 52) {
 		return fmt.Sprintf("%dy ago", elapsed/(86400*30))
 	}
 	return "forever ago"
