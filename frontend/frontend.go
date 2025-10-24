@@ -4,6 +4,7 @@ package frontend
 
 import (
 	"crypto/rsa"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/libq2/state"
+	"github.com/packetflinger/q2admind/database"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -66,6 +68,7 @@ type Frontend struct {
 	AllowTeleport bool                    // enable teleport functionality
 	TeleportCount int                     // how many times teleport was used
 	ServerVars    map[string]string       // public server cvars
+	Data          *database.Database      // pointer to database
 }
 
 // Each frontend has a small collection of invite tokens available. As players
@@ -321,4 +324,74 @@ func (fe *Frontend) FetchServerVars() (map[string]string, error) {
 	s := &state.Server{Address: fe.IPAddress, Port: fe.Port}
 	vars, err := s.FetchInfo()
 	return vars.Server, err
+}
+
+// AddPlayer will insert the player into the database
+func (fe *Frontend) AddPlayer(pl *Player) error {
+	if pl == nil {
+		return fmt.Errorf("error adding player to db: null player")
+	}
+	qry := `
+		INSERT INTO player (server, name, ip, hostname, vpn, cookie, version, userinfo, time) 
+		VALUES (?,?,?,?,?,?,?,?,?)`
+	_, err := fe.Data.Handle.Exec(
+		qry, pl.Frontend.Name, pl.Name, pl.IP, pl.Hostname, pl.VPN,
+		pl.Cookie, pl.Version, pl.Userinfo, time.Now().Unix(),
+	)
+	if err != nil {
+		return fmt.Errorf("error inserting player %s[%s]: %v", pl.Name, pl.IP, err)
+	}
+	return nil
+}
+
+// Get the ID used in the database of a particular frontend. If this is a new
+// frontend, ensure it's setup correctly in the database whether it's an old
+// existing one or brand new.
+func (fe *Frontend) GetDatabaseID() (int, error) {
+	var id int
+	qry := "SELECT id FROM frontend WHERE uuid = ? LIMIT 1"
+	err := fe.Data.Handle.QueryRow(qry, fe.UUID).Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			qry = "INSERT INTO frontend (uuid) VALUES (?)"
+			res, err := fe.Data.Handle.Exec(qry, fe.UUID)
+			if err != nil {
+				return -1, fmt.Errorf("error inserting frontend %q in database: %v", fe.UUID, err)
+			}
+			liid, err := res.LastInsertId()
+			if err != nil {
+				return -1, fmt.Errorf("error getting frontend id for %q in database: %v", fe.UUID, err)
+			}
+			id = int(liid)
+
+			qry = "INSERT INTO connection (frontend, last_seen) VALUES (?,?)"
+			res, err = fe.Data.Handle.Exec(qry, id, time.Now().Unix())
+			if err != nil {
+				return -1, fmt.Errorf("error inserting frontend last seen %q in database: %v", fe.UUID, err)
+			}
+		} else {
+			return -1, fmt.Errorf("error setting up frontend %q in database: %v", fe.UUID, err)
+		}
+	}
+	return id, nil
+}
+
+// Record when this frontend was last seen in the database
+func (fe *Frontend) Seen() error {
+	qry := "UPDATE connection SET last_seen = ? WHERE frontend = ?"
+	_, err := fe.Data.Handle.Exec(qry, time.Now().Unix(), fe.ID)
+	if err != nil {
+		return fmt.Errorf("error writing last_seen to database: %v", err)
+	}
+	return nil
+}
+
+func (fe *Frontend) GetLastSeen() int64 {
+	var seen int64
+	qry := "SELECT last_seen FROM connection WHERE frontend = ? LIMIT 1"
+	err := fe.Data.Handle.QueryRow(qry, fe.ID).Scan(seen)
+	if errors.Is(err, sql.ErrNoRows) {
+		return -1
+	}
+	return seen
 }

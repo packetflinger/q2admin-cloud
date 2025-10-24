@@ -392,7 +392,7 @@ func ParsePlayer(fe *frontend.Frontend) *frontend.Player {
 	fe.Players[newplayer.ClientID] = newplayer
 	fe.PlayerCount++
 
-	err = db.AddPlayer(&newplayer)
+	err = fe.AddPlayer(&newplayer)
 	if err != nil {
 		log.Println(err)
 	}

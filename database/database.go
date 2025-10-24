@@ -3,9 +3,8 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
-	"github.com/packetflinger/q2admind/frontend"
+	// "github.com/packetflinger/q2admind/frontend"
 	"github.com/packetflinger/q2admind/util"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -27,9 +26,9 @@ CREATE TABLE IF NOT EXISTS "player" (
 	PRIMARY KEY("id" AUTOINCREMENT)
 );`
 
-	insertPlayer = `
-INSERT INTO player (server, name, ip, hostname, vpn, cookie, version, userinfo, time) 
-VALUES (?,?,?,?,?,?,?,?,?)`
+	//	insertPlayer = `
+	// INSERT INTO player (server, name, ip, hostname, vpn, cookie, version, userinfo, time)
+	// VALUES (?,?,?,?,?,?,?,?,?)`
 
 	search = `SELECT * FROM player WHERE
 	(name LIKE ? OR ip LIKE ? OR hostname LIKE ? OR userinfo LIKE ?)`
@@ -57,21 +56,6 @@ type SearchResult struct {
 
 func (d Database) Begin() (*sql.Tx, error) {
 	return d.Handle.Begin()
-}
-
-// AddPlayer will insert the player into the database
-func (d Database) AddPlayer(pl *frontend.Player) error {
-	if pl == nil {
-		return fmt.Errorf("error adding player to db: null player")
-	}
-	_, err := d.Handle.Exec(
-		insertPlayer, pl.Frontend.Name, pl.Name, pl.IP, pl.Hostname, pl.VPN,
-		pl.Cookie, pl.Version, pl.Userinfo, time.Now().Unix(),
-	)
-	if err != nil {
-		return fmt.Errorf("error inserting player %s[%s]: %v", pl.Name, pl.IP, err)
-	}
-	return nil
 }
 
 // Open will open the database file and return a struct that holds the handle

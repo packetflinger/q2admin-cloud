@@ -244,12 +244,17 @@ func (b *Backend) ParseFrontends() ([]frontend.Frontend, error) {
 			if err != nil {
 				return err
 			}
+			fe.Data = &db
 			rules, err := fe.FetchRules()
 			if err != nil {
 				b.Logf(LogLevelInfo, "error fetching rules for %q: %v\n", fe.Name, err)
 			}
 			fe.Rules = rules
 			fe.Server = b
+			fe.ID, err = fe.GetDatabaseID()
+			if err != nil {
+				b.Logln(LogLevelInfo, err)
+			}
 			if fe.Enabled {
 				frontends = append(frontends, fe)
 			}
@@ -511,6 +516,10 @@ func (b *Backend) HandleConnection(c net.Conn) {
 		fe.Message = message.NewBuffer(input[:size])
 		ParseMessage(fe)
 		SendMessages(fe)
+	}
+	err = fe.Seen()
+	if err != nil {
+		be.Logln(LogLevelInfo, err)
 	}
 	fe.Connection = nil
 	fe.Connected = false
