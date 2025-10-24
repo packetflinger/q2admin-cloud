@@ -92,7 +92,7 @@ func WriteOAuthCredsToDisk(creds []*pb.OAuth, filename string) error {
 //
 // Called from WebsiteHandlerSignin() for each provider
 func BuildAuthURL(cred *pb.OAuth, index int) string {
-	state := fmt.Sprintf("%s|%d|%s", cred.GetType().String(), index, util.GenerateUUID())
+	state := fmt.Sprintf("%s|%d|%s", cred.GetType().String(), index, uuid.NewString())
 	url := fmt.Sprintf(
 		"%s?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s",
 		cred.GetAuthUrl(),
