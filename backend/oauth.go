@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/packetflinger/q2admind/util"
 	"github.com/ravener/discord-oauth2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -250,7 +249,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		session := pb.Session{
 			Id:         id,
-			Creation:   util.GetUnixTimestamp(),
+			Creation:   time.Now().Unix(),
 			Expiration: token.Expiry.Unix(),
 			AuthToken:  token.AccessToken,
 			Avatar:     pic,

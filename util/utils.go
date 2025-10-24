@@ -7,11 +7,6 @@ import (
 	"time"
 )
 
-// Dates are stored in the database as unix timestamps
-func GetUnixTimestamp() int64 {
-	return time.Now().Unix()
-}
-
 // Obtain an HH:MM:SS formated string for a given unix timestamp
 func TimeString(ts int64) string {
 	when := time.Unix(ts, 0)
