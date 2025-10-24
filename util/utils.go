@@ -5,13 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"time"
-
-	uuid "github.com/google/uuid"
 )
-
-func GenerateUUID() string {
-	return uuid.NewString()
-}
 
 // Dates are stored in the database as unix timestamps
 func GetUnixTimestamp() int64 {
