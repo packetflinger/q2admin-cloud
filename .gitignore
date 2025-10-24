@@ -6,4 +6,6 @@
 *.pub
 *.key
 .DS_Store
-
+*.log
+*.backup
+clients/*
