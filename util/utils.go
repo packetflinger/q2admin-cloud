@@ -18,54 +18,47 @@ func GetUnixTimestamp() int64 {
 	return time.Now().Unix()
 }
 
-// Get current time in HH:MM:SS format
-func GetTimeNow() string {
-	now := time.Now()
-	return fmt.Sprintf("%02d:%02d:%02d", now.Hour(), now.Minute(), now.Second())
+// Obtain an HH:MM:SS formated string for a given unix timestamp
+func TimeString(ts int64) string {
+	when := time.Unix(ts, 0)
+	return fmt.Sprintf("%02d:%02d:%02d", when.Hour(), when.Minute(), when.Second())
 }
 
-// Convert unix timestamp to a time struct
-func GetTimeFromTimestamp(ts int64) time.Time {
-	return time.Unix(ts, 0)
-}
-
-// TimeAgo gives you a string of how long ago something was
-// based on a unix timestamp.
+// TimeAgo gives you a string of how long ago something was based on a unix
+// timestamp. The longer ago the timestamp the less accurate we get.
 // Examples:
 //
+//	never
 //	just now
 //	30s ago
-//	5m ago
 //	2h ago
 //	3d ago
-//	8w ago
 //	2mo ago
-//	3yr ago
 func TimeAgo(ts int64) string {
-	elapsed := GetUnixTimestamp() - ts
+	elapsed := time.Now().Unix() - ts
 	if elapsed < 0 {
-		return "soon"
+		return "never"
 	}
 	if elapsed < 5 {
 		return "just now"
 	}
 	if elapsed < 60 {
-		return fmt.Sprintf("%ds", elapsed)
+		return fmt.Sprintf("%ds ago", elapsed)
 	}
 	if elapsed < 3600 {
-		return fmt.Sprintf("%dm", elapsed/60)
+		return fmt.Sprintf("%dm ago", elapsed/60)
 	}
 	if elapsed < 86400 {
-		return fmt.Sprintf("%dh", elapsed/3600)
+		return fmt.Sprintf("%dh ago", elapsed/3600)
 	}
 	if elapsed < 86400*7 {
-		return fmt.Sprintf("%dd", elapsed/86400)
+		return fmt.Sprintf("%dd ago", elapsed/86400)
 	}
 	if elapsed < 86400*30 {
-		return fmt.Sprintf("%dw", elapsed/(86400*7))
+		return fmt.Sprintf("%dw ago", elapsed/(86400*7))
 	}
 	if elapsed < 86400*30*52 {
-		return fmt.Sprintf("%dy", elapsed/(86400*30))
+		return fmt.Sprintf("%dy ago", elapsed/(86400*30))
 	}
 	return "forever ago"
 }
