@@ -1,7 +1,6 @@
 package maprotator
 
 import (
-	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -58,11 +57,18 @@ func Next(rot *pb.MapRotation) *pb.Map {
 	if rot.GetSize() == 0 {
 		return nil
 	}
-	fmt.Println("map len", len(rot.GetMaps()))
-	fmt.Println("size", rot.GetSize())
-	nextIndex := rot.GetIndex() + 1
-	if nextIndex == rot.GetSize() {
-		nextIndex = 0
+	var nextIndex int32
+	switch rot.Direction {
+	case pb.MapRotationDirection_MapRotationDirectionForward:
+		nextIndex = rot.GetIndex() + 1
+		if nextIndex == rot.GetSize() {
+			nextIndex = 0
+		}
+	case pb.MapRotationDirection_MapRotationDirectionReverse:
+		nextIndex = rot.GetIndex() - 1
+		if nextIndex == -1 {
+			nextIndex = rot.GetSize() - 1
+		}
 	}
 	return rot.GetMaps()[nextIndex]
 }

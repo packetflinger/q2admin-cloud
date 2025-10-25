@@ -83,11 +83,12 @@ func TestNext(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "dm1 to dm2",
+			name: "forward",
 			rot: &pb.MapRotation{
-				Name:  "name",
-				Size:  3,
-				Index: 0,
+				Name:      "name",
+				Size:      3,
+				Index:     0,
+				Direction: pb.MapRotationDirection_MapRotationDirectionForward,
 				Maps: []*pb.Map{
 					{Name: "q2dm1"},
 					{Name: "q2dm2"},
@@ -96,6 +97,57 @@ func TestNext(t *testing.T) {
 			},
 			want: &pb.Map{
 				Name: "q2dm2",
+			},
+		},
+		{
+			name: "forward wrap",
+			rot: &pb.MapRotation{
+				Name:      "name",
+				Size:      3,
+				Index:     2,
+				Direction: pb.MapRotationDirection_MapRotationDirectionForward,
+				Maps: []*pb.Map{
+					{Name: "q2dm1"},
+					{Name: "q2dm2"},
+					{Name: "q2dm3"},
+				},
+			},
+			want: &pb.Map{
+				Name: "q2dm1",
+			},
+		},
+		{
+			name: "reverse",
+			rot: &pb.MapRotation{
+				Name:      "name",
+				Size:      3,
+				Index:     2,
+				Direction: pb.MapRotationDirection_MapRotationDirectionReverse,
+				Maps: []*pb.Map{
+					{Name: "q2dm1"},
+					{Name: "q2dm2"},
+					{Name: "q2dm3"},
+				},
+			},
+			want: &pb.Map{
+				Name: "q2dm2",
+			},
+		},
+		{
+			name: "reverse wrap",
+			rot: &pb.MapRotation{
+				Name:      "name",
+				Size:      3,
+				Index:     0,
+				Direction: pb.MapRotationDirection_MapRotationDirectionReverse,
+				Maps: []*pb.Map{
+					{Name: "q2dm1"},
+					{Name: "q2dm2"},
+					{Name: "q2dm3"},
+				},
+			},
+			want: &pb.Map{
+				Name: "q2dm3",
 			},
 		},
 	}
