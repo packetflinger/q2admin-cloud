@@ -1,0 +1,43 @@
+// compile with:
+// protoc --go_out=. --go_opt=paths=source_relative maprotator.proto
+syntax="proto3";
+
+option go_package = "github.com/packetflinger/q2admind/proto";
+
+package proto;
+
+message Map {
+    string name = 1;
+    int32 minimum_players = 2;
+    int32 maximum_players = 3;
+    int64 flags = 4;
+    repeated int64 play_times = 5;
+}
+
+enum MapRotationDirection {
+    MapRotationDirectionForward = 0;
+    MapRotationDirectionReverse = 1;
+}
+
+message MapRotation {
+    // arbitrary name
+    string name = 1;
+
+    // unique
+    string uuid = 2;
+
+    // the list of maps
+    repeated Map maps = 3;
+
+    // which map are we on?
+    int32 index = 4;
+
+    // forward or reverse
+    MapRotationDirection direction = 5;
+
+    // how many full rotations have we done?
+    int32 iterations = 6;
+
+    // how many maps are in this rotation?
+    int32 size = 7;
+}
