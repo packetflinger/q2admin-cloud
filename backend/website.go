@@ -8,14 +8,18 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/packetflinger/libq2/flags"
 	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/frontend"
+	"github.com/packetflinger/q2admind/util"
 
 	pb "github.com/packetflinger/q2admind/proto"
 )
@@ -27,7 +31,11 @@ const (
 var (
 	Website = WebInterface{}
 	funcMap = template.FuncMap{
-		"yesno": boolToYesNo,
+		"yesno":      boolToYesNo,
+		"yesnoemoji": boolToEmoji,
+		"checked":    boolToChecked,
+		"ago":        util.TimeAgo,
+		"dmflags":    dmflags,
 	}
 )
 
@@ -309,16 +317,6 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*
-		data := WebpageData{
-			Title:       fe.Name + " management | Q2Admin CloudAdmin",
-			HeaderTitle: fe.Name,
-			SessionUser: user,
-			Frontend:    fe,
-		}
-		data.NavHighlight.Servers = "active"
-	*/
-
 	data := PageResponse{}
 	data.Head.Title = fmt.Sprintf("%s | Q2Admin CloudAdmin", fe.Name)
 	data.Head.Keywords = ""
@@ -590,13 +588,214 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func ChangeUUIDHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	currentUUID := mux.Vars(r)["ServerUUID"]
+	f, err := be.FindFrontend(currentUUID)
+	if err != nil {
+		fmt.Fprintln(w, "error 500 - error finding frontend")
+		return
+	}
+	if f.Owner != user.Email {
+		fmt.Fprintln(w, "403 - unauthorized")
+		return
+	}
+	newUUID := uuid.NewString()
+	qry := `UPDATE frontend SET uuid = ? WHERE uuid = ?`
+	res, err := db.Handle.Exec(qry, newUUID, currentUUID)
+	if err != nil {
+		ar, err := res.RowsAffected()
+		if err != nil {
+			fmt.Fprintln(w, "500 - db update failed")
+			log.Println("Error updating UUID:", err)
+			return
+		}
+		if ar != 1 {
+			fmt.Fprintln(w, "500 - db update failed")
+			log.Println("Error updating UUID: affected row != 1")
+			return
+		}
+	}
+	f.UUID = newUUID
+	if err = f.Materialize(); err != nil {
+		fmt.Fprintln(w, "error 500 - error saving frontend")
+		return
+	}
+	http.Redirect(w, r, path.Join("/sv", f.UUID, f.Name), http.StatusSeeOther)
+}
+
+func WebEditServer(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	uuid := r.PostFormValue("uuid")
+	if uuid == "" {
+		fmt.Fprintln(w, "error 500 - bad form submission")
+		return
+	}
+	name := r.PostFormValue("srvname")
+	if name == "" {
+		fmt.Fprintln(w, "error 500 - bad form submission")
+		return
+	}
+	addr := r.PostFormValue("serveraddr")
+	if addr == "" {
+		fmt.Fprintln(w, "500 - empty frontend address")
+		return
+	}
+	enabled := r.PostFormValue("switchenabled") == "on"
+	teleport := r.PostFormValue("switchteleport") == "on"
+	invite := r.PostFormValue("switchinvite") == "on"
+	f, err := be.FindFrontend(uuid)
+	if err != nil {
+		log.Println(err)
+		fmt.Fprintln(w, "error 500 - bad frontend lookup")
+		return
+	}
+
+	if f.Owner != user.Email {
+		fmt.Fprintln(w, "403 - permission denied")
+		return
+	}
+	tokens := strings.Split(addr, ":")
+	if len(tokens) == 2 {
+		f.IPAddress = tokens[0]
+		port, err := strconv.Atoi(tokens[1])
+		if err != nil {
+			port = 27910
+		}
+		f.Port = port
+	}
+	f.Enabled = enabled
+	f.AllowTeleport = teleport
+	f.AllowInvite = invite
+	if err = f.Materialize(); err != nil {
+		fmt.Fprintln(w, "error 500 - error saving frontend")
+		return
+	}
+	http.Redirect(w, r, path.Join("/sv", uuid, name), http.StatusSeeOther)
+}
+
+func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	data := PageResponse{}
+	data.Head.Title = "Player View | Q2Admin CloudAdmin"
+	data.Head.Keywords = "Player"
+	data.Title = "Player View"
+	data.SessionUser = user
+
+	tmpl, e := template.ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "player-view.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "player-view", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func ServerConsoleHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	data := PageResponse{}
+	data.Head.Title = "Server Console | Q2Admin CloudAdmin"
+	data.Head.Keywords = "console"
+	data.Title = "Server Console"
+	data.SessionUser = user
+
+	tmpl, e := template.ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "terminal.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "terminal", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func SearchHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	data := PageResponse{}
+	data.Head.Title = "Search | Q2Admin CloudAdmin"
+	data.Title = "Search"
+	data.SessionUser = user
+
+	tmpl, e := template.ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "search.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "search", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
 func RedirectToSignon(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, Routes.AuthLogin, http.StatusSeeOther) // 303
 }
 
-func boolToYesNo(val bool) string {
+// Given a boolean, return html for a green "yes" or red "no"
+func boolToYesNo(val bool) template.HTML {
 	if val {
-		return fmt.Sprintf("<span class=%q>yes</span>", "text-success")
+		return template.HTML(fmt.Sprintf("<span class=%q>yes</span>", "text-success"))
 	}
-	return fmt.Sprintf("<span class=%q>no</span>", "text-danger")
+	return template.HTML(fmt.Sprintf("<span class=%q>no</span>", "text-danger"))
+}
+
+// Given a boolean, return a green checkbox emoji or red X
+func boolToEmoji(val bool) template.HTML {
+	if val {
+		return template.HTML("&#x2705;") // green checkmark
+	}
+	// &#x2715; also good
+	return template.HTML("&#10006;")
+}
+
+// for translating boolean value from struct to an HTML checkbox value
+func boolToChecked(val bool) string {
+	if val {
+		return "checked"
+	}
+	return ""
+}
+
+// convert a string representation of dmflags bitmask and show the values.
+func dmflags(val string) string {
+	fl, err := strconv.Atoi(val)
+	if err != nil {
+		return "invalid"
+	}
+	return flags.ToString(fl)
 }

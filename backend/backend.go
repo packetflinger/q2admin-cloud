@@ -20,6 +20,7 @@ import (
 	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/database"
 	"github.com/packetflinger/q2admind/frontend"
+	"github.com/packetflinger/q2admind/maprotator"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -255,13 +256,19 @@ func (b *Backend) ParseFrontends() ([]frontend.Frontend, error) {
 			if err != nil {
 				b.Logln(LogLevelInfo, err)
 			}
-			if fe.Enabled {
-				frontends = append(frontends, fe)
-			}
 			fe.Invites = frontend.InviteBucket{
 				Tokens: MaxInviteTokens,
 				Max:    MaxInviteTokens,
 				Freq:   InviteTokenInterval,
+			}
+			fe.Maplist = maprotator.NewMapRotation("default", []string{
+				"q2dm7",
+				"tltf",
+				"q2rdm2",
+				"q2dm8",
+			})
+			if fe.Enabled {
+				frontends = append(frontends, fe)
 			}
 		}
 		return nil

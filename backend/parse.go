@@ -12,6 +12,7 @@ import (
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/frontend"
+	"github.com/packetflinger/q2admind/maprotator"
 )
 
 type greeting struct {
@@ -196,6 +197,21 @@ func ParsePrint(fe *frontend.Frontend) {
 		fe.Log.Println("PRINT", stripped)
 		msgColor := ansiCode{foreground: ColorBlack, background: ColorLightGray}.Render()
 		fe.SSHPrintln(msgColor + stripped + AnsiReset)
+
+		// change the map
+		fmt.Println(stripped)
+		if stripped == "Timelimit hit." || stripped == "Fraglimit hit." {
+			fmt.Println("CHANGE MAP SOON")
+			if fe.Maplist != nil {
+				fmt.Println("MAPLIST ISNT NIL")
+				go func() {
+					next := maprotator.Next(fe.Maplist)
+					fmt.Printf("changing map to %q in a few seconds\n", next.GetName())
+					time.Sleep(time.Second * 5)
+					ConsoleCommand(fe, fmt.Sprintf("gamemap %s", next.GetName()))
+				}()
+			}
+		}
 	case PRINT_MEDIUM:
 		ParseObituary(fe, stripped)
 		//cl.Log.Println("PRINT", stripped)

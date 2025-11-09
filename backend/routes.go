@@ -22,7 +22,13 @@ type WebRoutes struct {
 	ServerRemove     string
 	Servers          string
 	ServerView       string
+	ServerEdit       string
+	ServerChangeUUID string
 	Terms            string
+	PlayerView       string
+	ServerConsole    string
+	Search           string
+	SearchServer     string
 }
 
 type APIRoutes struct {
@@ -56,7 +62,13 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.ServerRemove = "/dashboard/rm/{id}"
 	Routes.Servers = "/my-servers"
 	Routes.ServerView = "/sv/{ServerUUID}/{ServerName}"
+	Routes.ServerEdit = Routes.ServerView + "/edit"
+	Routes.ServerChangeUUID = Routes.ServerView + "/changeuuid"
 	Routes.Terms = "/terms-of-use"
+	Routes.PlayerView = "/sv/{ServerUUID}/{ServerName}/player/{ClientNum}"
+	Routes.ServerConsole = "/sv/{ServerUUID}/{ServerName}/console"
+	Routes.Search = "/search"
+	Routes.SearchServer = "/search/{UUID}"
 
 	r := mux.NewRouter()
 	r.HandleFunc(Routes.Index, WebsiteHandlerIndex)
@@ -73,6 +85,11 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.Privacy, PrivacyHandler)
 	r.HandleFunc(Routes.Servers, ServersHandler)
 	r.HandleFunc(Routes.Terms, TermsHandler)
+	r.HandleFunc(Routes.ServerEdit, WebEditServer).Methods("POST")
+	r.HandleFunc(Routes.ServerChangeUUID, ChangeUUIDHandler)
+	r.HandleFunc(Routes.PlayerView, PlayerViewHandler)
+	r.HandleFunc(Routes.ServerConsole, ServerConsoleHandler)
+	r.HandleFunc(Routes.Search, SearchHandler)
 
 	r.PathPrefix(Routes.Static).Handler(http.FileServer(http.Dir("./api/website")))
 	r.PathPrefix(Routes.Static2).Handler(http.FileServer(http.Dir("./api/website")))

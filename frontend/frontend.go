@@ -69,6 +69,7 @@ type Frontend struct {
 	TeleportCount int                     // how many times teleport was used
 	ServerVars    map[string]string       // public server cvars
 	Data          *database.Database      // pointer to database
+	Maplist       *pb.MapRotation         // the maps for the frontend
 }
 
 // Each frontend has a small collection of invite tokens available. As players
@@ -394,4 +395,26 @@ func (fe *Frontend) GetLastSeen() int64 {
 		return -1
 	}
 	return seen
+}
+
+// Materialize will write the current frontend to disk as a textproto.
+func (fe *Frontend) Materialize() error {
+	if fe == nil {
+		return fmt.Errorf("error writing rules: null receiver")
+	}
+	p := &pb.Frontends{
+		Frontend: []*pb.Frontend{fe.ToProto()},
+	}
+	filename := path.Join(fe.Path, "settings.pb")
+	data, err := prototext.MarshalOptions{Indent: "  "}.Marshal(p)
+	if err != nil {
+		return fmt.Errorf("error marshalling rules: %v", err)
+	}
+	header := []byte("# proto-file: proto/frontend.proto\n# proto-message: Frontends\n\n")
+	data = append(header, data...)
+	err = os.WriteFile(filename, data, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing rules to %q: %v", filename, err)
+	}
+	return nil
 }

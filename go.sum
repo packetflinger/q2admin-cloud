@@ -33,6 +33,8 @@ github.com/packetflinger/libq2 v1.0.274 h1:ok9/6QIIxXB71hvh5TcNncBloY40UZx9HnHqA
 github.com/packetflinger/libq2 v1.0.274/go.mod h1:ltl3snZJ6WELsrIB4BhgC3A+qzvQnA0MxdUaHrINIFA=
 github.com/packetflinger/libq2 v1.0.275 h1:sUbJIH0yp5/3aYjTi/uKNDKdYTuzczvEvIv9j193giQ=
 github.com/packetflinger/libq2 v1.0.275/go.mod h1:ltl3snZJ6WELsrIB4BhgC3A+qzvQnA0MxdUaHrINIFA=
+github.com/packetflinger/libq2 v1.0.277 h1:YRqmvxtMoR3u8v8Y0YOrG0U5BDdKmZLcFjpzS4ES6A4=
+github.com/packetflinger/libq2 v1.0.277/go.mod h1:ltl3snZJ6WELsrIB4BhgC3A+qzvQnA0MxdUaHrINIFA=
 github.com/ravener/discord-oauth2 v0.0.0-20220615092331-f6a9839c223e h1:7t1Ur+etUw2hE1GgSNWJGNi/D8zBMqwwkGwTiE/mWTE=
 github.com/ravener/discord-oauth2 v0.0.0-20220615092331-f6a9839c223e/go.mod h1:P/mZMYLZ87lqRSECEWsOqywGrO1hlZkk9RTwEw35IP4=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=

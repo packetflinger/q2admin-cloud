@@ -1,25 +1,59 @@
 {{define "server-view"}}
 {{template "header" .}}
 
-		<h1 class="h3 mb-3">{{.Title}} <a href="#"><i class="align-middle me-1" data-feather="edit"></i></a></h1>
+		<h1 class="h3 mb-3">{{.Title}}</h1>
 		<div class="row">
+			<div>
+				<div class="input-group mb-3">
+					<input type="text" class="form-control" placeholder="Search IPs, player names, more" aria-label="Example text with button addon" aria-describedby="searchbutton">
+					<button class="btn btn-primary" type="button" id="searchbutton">Search</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-12 col-sm-4">
+				<div class="card">
+					<div class="card-header">
+						<h4>Settings <a href="#" data-bs-toggle="modal" data-bs-target="#edit-server-modal"><i class="float-end" data-feather="edit-2"></i></a></h4>
+					</div>
+					<div class="card-body">
+						<div>Unique ID: {{.Frontend.UUID}} <a href="#" data-bs-toggle="modal" data-bs-target="#changeuuid"><i data-feather="refresh-cw"></i></a></div>
+						<div>Address: <a href="quake2://{{.Frontend.IPAddress}}:{{.Frontend.Port}}">{{.Frontend.IPAddress}}:{{.Frontend.Port}}</a></div>
+						<div>Enabled: {{ .Frontend.Enabled | yesnoemoji }}</div>
+						<div>Teleport Allowed: {{ .Frontend.AllowTeleport | yesnoemoji }}</div>
+						<div>Invite Allowed: {{ .Frontend.AllowInvite | yesnoemoji }}</div>
+					</div>
+				</div>
+			</div>
 {{if .Frontend.Connected}}
 			<div class="col-12 col-sm-4">
 				<div class="card">
 					<div class="card-header">
-						<h4>Server Info</h4>
+						<h4>Frontend Info</h4>
 					</div>
 					<div class="card-body">
-						<p>Address: {{.Frontend.IPAddress}}:{{.Frontend.Port}}</p>
-						<p>Encrypted: {{ .Frontend.Encrypted | yesno }}
+						<div>Peer Address: {{.Frontend.Connection.RemoteAddr.String}} {{if .Frontend.Encrypted}}<i data-feather="lock"></i>{{end}}</div>
+						<div>Last connected: {{.Frontend.ConnectTime | ago}}</div>
+						<!-- <div>Encrypted: {{ .Frontend.Encrypted | yesno }}</div> -->
+						<div>Flags: {{ index .Frontend.ServerVars "dmflags" | dmflags}}</div>
+						<div>Current Map: {{ .Frontend.CurrentMap }}</div>
 					</div>
 				</div>
 			</div>
 			<div class="col-12 col-sm-4">
 				<div class="card">
-					<div class="card-header"><h4>Current Players</h4></div>
+					<div class="card-header"><h4>Current Players [{{ .Frontend.PlayerCount}}/{{ .Frontend.MaxPlayers}}]</h4></div>
 					<div class="card-body">
-
+					{{ if .Frontend.PlayerCount}}
+					  {{ range $index, $val := .Frontend.Players}}
+					    {{ if .IP }}
+						<p><a href="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/player/{{$index}}">{{ $val.Name }}</a> [{{$val.IP}}]</p>
+					    {{ end }}
+					  {{ end }}
+					{{ else }}
+					  <p>none</p>
+					{{ end }}
 					</div>
 				</div>
 			</div>
@@ -30,6 +64,16 @@
 {{ range $key, $value := .Frontend.ServerVars }}
    <div class="row"><div class="col"><strong>{{ $key }}</strong>:</div><div class="col">{{ $value }}</div></div>
 {{ end }}
+					</div>
+				</div>
+			</div>
+			<div class="col-12 col-sm-4">
+				<div class="card">
+					<div class="card-header"><h4>Actions</h4></div>
+					<div class="card-body">
+						<div><i data-feather="command"></i> <a href="#" data-bs-toggle="modal" data-bs-target="#runcmd">Run a command</a></div>
+						<div><i data-feather="map"></i> <a href="#">Change the map</a> [{{ .Frontend.CurrentMap}}]</div>
+						<div><i data-feather="terminal"></i> <a href="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/console">Console</a></div>
 					</div>
 				</div>
 			</div>
@@ -45,5 +89,88 @@
 		</div>
 	</div>
 
+	<div class="modal fade" id="edit-server-modal" tabindex="-1" aria-labelledby="edit-server-modal" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<form method="post" action="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/edit">
+					<div class="modal-header">
+						<h5 class="modal-title">Edit Frontend Settings</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<div>
+							<label for="serveraddr" class="form-label">Frontend Address</label>
+							<input type="text" class="form-control" id="serveraddr" name="serveraddr" placeholder="100.64.55.4:27910" value="{{.Frontend.IPAddress}}:{{.Frontend.Port}}">
+						</div>
+						<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" id="switchEnabled" name="switchenabled" {{.Frontend.Enabled | checked}}>
+							<label class="form-check-label" for="switchEnabled">Enabled</label>
+						</div>
+						<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" id="switchTeleport" name="switchteleport" {{.Frontend.AllowTeleport | checked}}>
+							<label class="form-check-label" for="switchTeleport">Allow player teleporting to other frontends</label>
+						</div>
+						<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" id="switchInvite" name="switchinvite" {{.Frontend.AllowInvite | checked}}>
+							<label class="form-check-label" for="switchInvite">Allow player invite broadcasts</label>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+						<button type="submit" class="btn btn-primary">Save</button>
+					</div>
+					<input type="hidden" name="uuid" value="{{.Frontend.UUID}}">
+					<input type="hidden" name="srvname" value="{{.Frontend.Name}}">
+				</form>
+			 </div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="changeuuid" tabindex="-1" aria-labelledby="changeuuid" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Generate new unique ID?</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<p>Are you sure you want to change your frontend's UUID?</p>
+					<p>Any active frontend using the current UUID will disconnect from CloudAdmin and require an update to its config. This change can't be reverted as UUIDs are auto-generated.</p>
+					<p>The primary use-case for regenerating IDs is when someone else knows the ID and is trying to use it.</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No!</button>
+					<a href="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/changeuuid" type="button" class="btn btn-primary">Sure</a>
+				</div>
+			 </div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="runcmd" tabindex="-1" aria-labelledby="runcmd" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Run a command</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<div class="mb-3">
+						<label for="cmdinput" class="form-label">Command</label>
+						<input type="text" class="form-control" id="cmdinput" placeholder="">
+					</div>
+					<div class="mb-3">
+						<label for="cmdoutput" class="form-label">Output</label>
+						<textarea class="form-control" id="cmdoutput" rows="3"></textarea>
+					</div>
+					<div>
+						<button type="button" class="btn btn-primary float-end">Run</button>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+				</div>
+			 </div>
+		</div>
+	</div>
 {{template "footer" .}}
 {{end}}

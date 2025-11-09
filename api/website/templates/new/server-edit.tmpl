@@ -1,0 +1,24 @@
+{{define "server-edit"}}
+{{template "header" .}}
+    <form action="" method="post">
+		<!-- <h1 class="h3 mb-3">{{.Title}} <a href="#"><i class="align-middle me-1" data-feather="edit"></i></a></h1> -->
+		<div class="row">
+			<div class="col-12 col-sm-4">
+				<div class="card">
+					<div class="card-header">
+						<h4>Edit Settings</h4>
+					</div>
+					<div class="card-body">
+                        <p>ID: {{ .UUID }}</p>
+						<p>Address: <a href="quake2://{{.Frontend.IPAddress}}:{{.Frontend.Port}}">{{.Frontend.IPAddress}}:{{.Frontend.Port}}</a></p>
+						<p>Port: <input type="text" name="port" value="{{ .Port }}"></p>
+                        <p>Enabled: {{ .Frontend.Enabled | yesnoemoji }}</p>
+						<p>Teleport Allowed: {{ .Frontend.AllowTeleport | yesnoemoji }}</p>
+						<p>Invite Allowed: {{ .Frontend.AllowInvite | yesnoemoji }}</p>
+					</div>
+				</div>
+			</div>
+		</div>
+    </form>
+{{template "footer" .}}
+{{end}}
