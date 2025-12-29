@@ -21,6 +21,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/protobuf/encoding/prototext"
 
+	"github.com/packetflinger/q2admind/api"
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
@@ -330,36 +331,49 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	user, err := be.GetUserByEmail(profile.Email)
 	if err != nil {
 		log.Println(err)
-	} else {
-		alias := profile.GivenName
-		if len(user.Name) > 0 {
-			alias = user.Name
+		return
+	}
+	if user == nil { // wasn't found, create a new one
+		user = &pb.User{
+			Uuid:  uuid.NewString(),
+			Email: profile.Email,
 		}
-		id := uuid.NewString()
-		ttl := int64(86400) // 1 day from now
-		signedJWT, err := CreateSessionToken(user, id, ttl, Website.Secret)
+		log.Printf("creating user %q\n", user.GetEmail())
+		be.users = append(be.users, user)
+		err := api.WriteUsers(be.users, be.config.GetUserFile())
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		session := pb.Session{
-			Id:         id,
-			Creation:   time.Now().Unix(),
-			Expiration: token.Expiry.Unix(),
-			AuthToken:  token.AccessToken,
-			Avatar:     profile.Picture,
-			Name:       alias,
-		}
-		user.Session = &session
-
-		cookie := http.Cookie{
-			Name:     CookieName,
-			Value:    signedJWT,
-			SameSite: http.SameSiteLaxMode,
-			Expires:  token.Expiry,
-			Path:     "/",
-		}
-		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, Routes.Dashboard, http.StatusFound)
 	}
+	alias := profile.GivenName
+	if len(user.Name) > 0 {
+		alias = user.Name
+	}
+	id := uuid.NewString()
+	ttl := int64(86400) // 1 day from now
+	signedJWT, err := CreateSessionToken(user, id, ttl, Website.Secret)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	session := pb.Session{
+		Id:         id,
+		Creation:   time.Now().Unix(),
+		Expiration: token.Expiry.Unix(),
+		AuthToken:  token.AccessToken,
+		Avatar:     profile.Picture,
+		Name:       alias,
+	}
+	user.Session = &session
+
+	cookie := http.Cookie{
+		Name:     CookieName,
+		Value:    signedJWT,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  token.Expiry,
+		Path:     "/",
+	}
+	http.SetCookie(w, &cookie)
+	http.Redirect(w, r, Routes.Dashboard, http.StatusFound)
 }
