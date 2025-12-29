@@ -685,24 +685,39 @@ func linkFrontendToTerminal(ctx context.Context, fe *frontend.Frontend, t *SSHTe
 // server. Keys are generated as users are created via the website. The user
 // can login and download their private key to use for SSH access. Transfering
 // the private key is not the best idea, but there really isn't a way of
-// getting around that if the keys are generated on the server.
+// getting around that if the keys are generated on the server. The user needs
+// to not be `disabled` and the `allow_ssh` property needs to be true.
 //
 // key argument is derived from the private key on the SSH client's side. The
 // username is passed in via the context.
 //
 // Return true to allow the connection, false to deny.
 func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
+	var usr *pb.User
 	for _, u := range be.users {
 		if u.GetEmail() == ctx.User() {
-			pub, _, _, _, err := ssh.ParseAuthorizedKey([]byte(u.GetPublicKey()))
-			if err != nil {
-				fmt.Printf("publicKeyHandler error: %v\n", err)
-				return false
-			}
-			if ssh.KeysEqual(key, pub) {
-				return true
-			}
+			usr = u
 		}
+	}
+	if usr == nil {
+		return false
+	}
+	if usr.GetDisabled() {
+		be.Logf(LogLevelInfo, "login from disabled user %q disallowed\n", usr.GetEmail())
+		return false
+	}
+	if !usr.GetAllowSsh() {
+		be.Logf(LogLevelInfo, "login from %q disallowed via config\n", usr.GetEmail())
+		return false
+	}
+	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(usr.GetPublicKey()))
+	if err != nil {
+		be.Logf(LogLevelAll, "error parsing public key: %v\n", err)
+		return false
+	}
+	if ssh.KeysEqual(key, pub) {
+		be.Logf(LogLevelInfo, "user %q allowed using key %q\n", ctx.User(), comment)
+		return true
 	}
 	return false
 }
