@@ -702,7 +702,7 @@ func Startup(configFile string, foreground bool) {
 	}
 
 	go be.startMaintenance()
-	go be.startManagement()
+	go be.startRPCServer()
 	go be.startSSHServer()
 
 	for {

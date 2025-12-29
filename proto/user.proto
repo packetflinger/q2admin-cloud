@@ -16,7 +16,7 @@ message User {
     Session session = 7;
     string public_key = 8;  // for ssh
     bool allow_ssh = 9;
-    string rpc_public_key = 10;
+    repeated string rpc_public_key = 10;
     bool allow_rpc = 11;
 }
 

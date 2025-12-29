@@ -25,8 +25,8 @@ message Config {
     string web_root = 15;       // where are website file?
     string log_file = 16;
     bool foreground = 17;
-    string management_address = 18;
-    uint32 management_port = 19;
+    string rpc_address = 18;
+    uint32 rpc_port = 19;
     string ssh_address = 22;
     uint32 ssh_port = 23;
     string ssh_hostkey = 24;
