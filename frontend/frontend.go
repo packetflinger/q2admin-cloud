@@ -48,6 +48,7 @@ type Frontend struct {
 	MessageOut    message.Buffer          // outgoing byte stream
 	Encrypted     bool                    // are the messages AES encrypted?
 	Trusted       bool                    // signature challenge verified
+	PublicKeyData string                  // the contents of the `key` file
 	PublicKey     *rsa.PublicKey          // supplied by owner via website
 	SymmetricKey  []byte                  // AES 128 CBC
 	InitVector    []byte                  // AES IV,
@@ -70,6 +71,7 @@ type Frontend struct {
 	ServerVars    map[string]string       // public server cvars
 	Data          *database.Database      // pointer to database
 	Maplist       *pb.MapRotation         // the maps for the frontend
+	WebUsers      map[string]bool         // key is email addr, val is write access
 }
 
 // Each frontend has a small collection of invite tokens available. As players
@@ -204,6 +206,14 @@ func LoadSettings(name string, clientsDir string) (Frontend, error) {
 			fe.Port = 27910
 		}
 		fe.IPAddress = tokens[0]
+		fe.WebUsers = make(map[string]bool)
+		for _, user := range f.GetUsers() {
+			fe.WebUsers[user.GetEmail()] = (user.GetAccess() == "write")
+		}
+		contents, err := os.ReadFile(path.Join(clientsDir, name, "key"))
+		if err == nil { // is nil!
+			fe.PublicKeyData = string(contents)
+		}
 	}
 	return fe, nil
 }
@@ -257,6 +267,14 @@ func (fe *Frontend) ToProto() *pb.Frontend {
 	if fe == nil {
 		return &pb.Frontend{}
 	}
+	var users []*pb.FrontendUser
+	for k, v := range fe.WebUsers {
+		access := "read"
+		if v {
+			access = "write"
+		}
+		users = append(users, &pb.FrontendUser{Email: k, Access: access})
+	}
 	return &pb.Frontend{
 		Address:       fmt.Sprintf("%s:%d", fe.IPAddress, fe.Port),
 		Name:          fe.Name,
@@ -266,6 +284,7 @@ func (fe *Frontend) ToProto() *pb.Frontend {
 		Verified:      fe.Verified,
 		AllowTeleport: fe.AllowTeleport,
 		AllowInvite:   fe.AllowInvite,
+		Users:         users,
 	}
 }
 
@@ -417,4 +436,12 @@ func (fe *Frontend) Materialize() error {
 		return fmt.Errorf("error writing rules to %q: %v", filename, err)
 	}
 	return nil
+}
+
+// Get the roles associated with a user for this frontend
+func (fe *Frontend) FetchUserRoles(u *pb.User) ([]*pb.Role, error) {
+	if u == nil {
+		return nil, fmt.Errorf("unknown user")
+	}
+	return fe.Users[u], nil
 }

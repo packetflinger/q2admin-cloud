@@ -57,6 +57,8 @@ func WriteUsers(users []*pb.User, name string) error {
 	if err != nil {
 		return err
 	}
+	header := []byte("# proto-file: proto/user.proto\n# proto-message: Users\n")
+	data = append(header, data...)
 	err = os.WriteFile(name, data, 0644)
 	if err != nil {
 		log.Println(err)

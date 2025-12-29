@@ -13,6 +13,11 @@ func TimeString(ts int64) string {
 	return fmt.Sprintf("%02d:%02d:%02d", when.Hour(), when.Minute(), when.Second())
 }
 
+func TimeDateString(ts int64) string {
+	when := time.Unix(ts, 0)
+	return when.Format("2006-01-02 15:04")
+}
+
 // TimeAgo gives you a string of how long ago something was based on a unix
 // timestamp. The longer ago the timestamp the less accurate we get.
 // Examples:

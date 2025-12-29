@@ -151,14 +151,14 @@ func (b *Backend) FindFrontendByName(name string) (*frontend.Frontend, error) {
 // Get a pointer to a user based on their email
 func (b *Backend) GetUserByEmail(email string) (*pb.User, error) {
 	if email == "" {
-		return nil, fmt.Errorf("empty email getting user")
+		return nil, fmt.Errorf("blank email address")
 	}
 	for _, u := range b.users {
 		if u.GetEmail() == email {
 			return u, nil
 		}
 	}
-	return &pb.User{}, fmt.Errorf("user not found: %q", email)
+	return nil, nil
 }
 
 // FrontendsByContext will provide a collection of pointers for frontends
@@ -551,6 +551,22 @@ func SendMessages(fe *frontend.Frontend) {
 	(&fe.MessageOut).Reset()
 }
 
+// Get list of frontends this email address has access to
+func (b *Backend) UserFrontends(u string) []*frontend.Frontend {
+	var out []*frontend.Frontend
+	if u == "" {
+		return out
+	}
+	for _, f := range b.frontends {
+		for k := range f.WebUsers {
+			if strings.EqualFold(k, u) {
+				out = append(out, &f)
+			}
+		}
+	}
+	return out
+}
+
 // Gracefully shut everything down. Close database connection, write states to
 // disk, etc
 func Shutdown() {
@@ -636,7 +652,7 @@ func Startup(configFile string, foreground bool) {
 	be.Logf(LogLevelInfo, "%-21s %s\n", "loading global rules:", be.config.GetRuleFile())
 	rules, err := FetchRules(be.config.GetRuleFile())
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	} else {
 		be.rules = rules
 	}
@@ -644,15 +660,16 @@ func Startup(configFile string, foreground bool) {
 	be.Logf(LogLevelInfo, "%-21s %s\n", "loading users:", be.config.GetUserFile())
 	users, err := api.ReadUsersFromDisk(be.config.GetUserFile())
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	} else {
 		be.users = users
 	}
+	be.Logf(LogLevelInfo, "  found %d users\n", len(be.users))
 
 	be.Logf(LogLevelNormal, "loading clients from %q\n", be.config.ClientDirectory)
 	frontends, err := be.ParseFrontends()
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	} else {
 		slices.SortFunc(frontends, func(a, b frontend.Frontend) int {
 			return strings.Compare(a.Name, b.Name)

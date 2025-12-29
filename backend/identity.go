@@ -8,6 +8,12 @@ import (
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
+// who is allowed to access what
+type IdentityAccess struct {
+	email     string
+	frontends []string
+}
+
 type IdentityContext struct {
 	user      *pb.User
 	apiKey    string

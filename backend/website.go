@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -36,8 +37,23 @@ var (
 		"checked":    boolToChecked,
 		"ago":        util.TimeAgo,
 		"dmflags":    dmflags,
+		"datetime":   util.TimeDateString,
 	}
 )
+
+type PlayerDatabaseInfo struct {
+	Id          int
+	Server_id   int
+	Name        string
+	IP          string
+	Hostname    string
+	Vpn         bool
+	Cookie      string
+	Version     string
+	Userinfo    string
+	ConnectTime int64
+	ServerUUID  string
+}
 
 // PageResponse holds all the possible data to render the pages fort he site.
 // This structure is used for every page
@@ -60,6 +76,11 @@ type PageResponse struct {
 		Groups    string
 	}
 	AuthProviders []AuthProvider
+	SearchResults []frontend.SearchResult
+	SearchQuery   string
+	PlayerDBInfo  PlayerDatabaseInfo
+	Rule          *pb.Rule   // the rule to view/edit
+	Rules         []*pb.Rule // a list of rules (srv level)
 }
 
 type SessionUser struct {
@@ -737,17 +758,80 @@ func ServerConsoleHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
+	/*
+		user, err := GetSessionUser(r)
+		if err != nil {
+			RedirectToSignon(w, r)
+			return
+		}
+		q := r.URL.Query().Get("q")
+		if q == "" {
+			fmt.Fprintf(w, "500 - blank search query")
+			return
+		}
+		_, err = be.Search(r.Context(), q)
+		if err != nil {
+			fmt.Fprintf(w, "500 - search failed")
+			fmt.Printf("error searching %q on %q: %v\n", q, f.Name, err)
+			return
+		}
+		data := PageResponse{}
+		data.Head.Title = "Search | Q2Admin CloudAdmin"
+		data.Title = "Search"
+		data.SessionUser = user
+		// data.SearchResults = results
+		// data.Frontend = f
+		data.SearchQuery = q
+
+		tmpl, e := template.New("searchresults").Funcs(funcMap).ParseFiles(
+			path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+			path.Join(be.config.GetWebRoot(), "templates", "new", "search.tmpl"),
+			path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+		)
+		if e != nil {
+			log.Println(e)
+		} else {
+			err = tmpl.ExecuteTemplate(w, "search", data)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	*/
+}
+
+func ServerSearchHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
+		return
+	}
+	vars := mux.Vars(r)
+	uuid := vars["UUID"]
+	f, err := be.FindFrontend(uuid)
+	if err != nil {
+		fmt.Fprintf(w, "500 - error looking up frontend: %q", uuid)
+		return
+	}
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		fmt.Fprintf(w, "500 - blank search query")
+		return
+	}
+	results, err := f.Search(r.Context(), q)
+	if err != nil {
+		fmt.Fprintf(w, "500 - search failed")
+		fmt.Printf("error searching %q on %q: %v\n", q, f.Name, err)
 		return
 	}
 	data := PageResponse{}
 	data.Head.Title = "Search | Q2Admin CloudAdmin"
 	data.Title = "Search"
 	data.SessionUser = user
+	data.SearchResults = results
+	data.Frontend = f
+	data.SearchQuery = q
 
-	tmpl, e := template.ParseFiles(
+	tmpl, e := template.New("searchresults").Funcs(funcMap).ParseFiles(
 		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
 		path.Join(be.config.GetWebRoot(), "templates", "new", "search.tmpl"),
 		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
@@ -756,6 +840,143 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(e)
 	} else {
 		err = tmpl.ExecuteTemplate(w, "search", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func PlayerSearchViewHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	vars := mux.Vars(r)
+	lookup := vars["lookup"]
+	lu, err := base64.StdEncoding.DecodeString(lookup)
+	if err != nil {
+		fmt.Fprintf(w, "500 - can't decode lookup string")
+		fmt.Printf("Error decoding %q for player lookup\n", lookup)
+		return
+	}
+	tokens := strings.Split(string(lu), "\\")
+	if len(tokens) != 2 {
+		fmt.Fprintf(w, "500 - invalid lookup string")
+		fmt.Printf("Error: player lookup %q not properly formatted\n", string(lu))
+		return
+	}
+	nameLookup := tokens[0]
+	timeLookup := tokens[1]
+	qry := `
+	SELECT p.*, f.uuid
+	FROM player AS p
+	JOIN frontend AS f ON f.id = p.server_id
+	WHERE p.name = ? AND p.time = ?
+	LIMIT 1`
+	res := db.Handle.QueryRow(qry, nameLookup, timeLookup)
+	var p PlayerDatabaseInfo
+	err = res.Scan(&p.Id, &p.Server_id, &p.Name, &p.IP, &p.Hostname, &p.Vpn, &p.Cookie, &p.Version, &p.Userinfo, &p.ConnectTime, &p.ServerUUID)
+	if err != nil {
+		fmt.Fprintf(w, "500 - error scanning player data")
+		fmt.Printf("Error: scanning player data: %v\n", err)
+		return
+	}
+	data := PageResponse{}
+	data.Head.Title = "Player | Q2Admin CloudAdmin"
+	data.Title = "Player: " + nameLookup
+	data.SessionUser = user
+	data.PlayerDBInfo = p
+	tmpl, e := template.New("searchresults").Funcs(funcMap).ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "player.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "player", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func RuleViewHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	data := PageResponse{}
+	data.Head.Title = "Rule View | Q2Admin CloudAdmin"
+	data.Title = "Rule"
+	data.SessionUser = user
+
+	lookup := mux.Vars(r)["uuid"]
+	fes := be.UserFrontends(user.GetEmail())
+	for _, f := range fes {
+		for _, r := range f.Rules {
+			if r.GetUuid() == lookup {
+				data.Rules = f.Rules
+				data.Rule = r
+			}
+		}
+	}
+
+	tmpl, e := template.ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "rule-view.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "rule", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func RuleListHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("serverkeyshandler!")
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	data := PageResponse{}
+	data.Head.Title = "Generate Encyption Key Pair | Q2Admin CloudAdmin"
+	data.Title = "Keys"
+	data.SessionUser = user
+
+	lookup := mux.Vars(r)["uuid"]
+	fes := be.UserFrontends(user.GetEmail())
+	for _, f := range fes {
+		for _, r := range f.Rules {
+			if r.GetUuid() == lookup {
+				data.Rules = f.Rules
+				data.Rule = r
+			}
+		}
+	}
+
+	tmpl, e := template.ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "generate-keys.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "keygen", data)
 		if err != nil {
 			log.Println(err)
 		}

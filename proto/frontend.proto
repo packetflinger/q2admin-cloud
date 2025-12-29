@@ -79,10 +79,18 @@ message Frontend {
 
     // whether the server should ignore this client
     bool disabled = 14;
+
+    // The users
+    repeated FrontendUser users = 15;
+}
+
+message FrontendUser {
+    string email = 1;
+    string access = 2; // "read" or "write"
 }
 
 // who can access this frontend and how
-message FrontendAccess {
+message FrontendAccess {    // maybe get rid of this?
     User user = 1;
     repeated Role roles = 2;
 }
