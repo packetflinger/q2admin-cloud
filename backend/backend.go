@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"context"
 	"crypto/rsa"
 	"encoding/hex"
 	"fmt"
@@ -35,6 +36,8 @@ type Backend struct {
 	privateKey *rsa.PrivateKey     // private to us
 	publicKey  *rsa.PublicKey      // known to clients
 	maintCount int                 // total maintenance runs
+	rpcCancel  context.CancelFunc  // call this to kill the RPC server
+	rpcStart   int64               // unix timestamp
 }
 
 var (

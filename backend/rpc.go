@@ -1,16 +1,22 @@
 // This is the RPC server for the backend implementing Google's gRPC interface.
-// Each RPC accepts a request proto and returns a result proto.
+// Each RPC accepts a request proto and returns a result proto. The server
+// requires a TLS connection but uses a self-signed certificate generated each
+// time the server starts.
 package backend
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
 	"strconv"
 	"strings"
@@ -18,6 +24,7 @@ import (
 
 	"github.com/packetflinger/q2admind/crypto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -50,7 +57,16 @@ func (s *Backend) startRPCServer() {
 		return
 	}
 	defer listener.Close()
-	srv := grpc.NewServer()
+	cert, err := createTLSCert()
+	if err != nil {
+		log.Fatalf("creating TLS cert: %v", err)
+	}
+	config := &tls.Config{
+		Certificates: []tls.Certificate{*cert},
+		ClientAuth:   tls.NoClientCert,
+	}
+	creds := credentials.NewTLS(config)
+	srv := grpc.NewServer(grpc.Creds(creds))
 	pb.RegisterQ2AdminServer(srv, &RPCServer{})
 	s.Logf(LogLevelNormal, "listening for RPC clients on %s\n", port)
 	for {
@@ -58,6 +74,37 @@ func (s *Backend) startRPCServer() {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}
+}
+
+// createTLSCert generates a new TLS certificate for the transport security
+// of the RPC connection. The cert is self-signed.
+func createTLSCert() (*tls.Certificate, error) {
+	pk, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, err
+	}
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(time.Now().Unix()),
+		Subject: pkix.Name{
+			Organization: []string{"Packetflinger Industries"},
+			CommonName:   "cloud.q2dmin.net",
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(time.Hour * 24 * 365 * 10),
+		KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		// ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+	}
+	// template and parent are equal, so it's a self-signed cert
+	cert, err := x509.CreateCertificate(rand.Reader, template, template, pk.Public(), pk)
+	if err != nil {
+		return nil, err
+	}
+	tlsCert := tls.Certificate{
+		Certificate: [][]byte{cert},
+		PrivateKey:  pk,
+	}
+	return &tlsCert, nil
 }
 
 // The http "headers" for an RPC request are contained in metadata associated

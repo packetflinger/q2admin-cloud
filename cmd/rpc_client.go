@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/tls"
 	"encoding/base64"
 	"flag"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/packetflinger/q2admind/crypto"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 
 	pb "github.com/packetflinger/q2admind/proto"
 )
@@ -44,7 +45,7 @@ func (t tokenAuth) GetRequestMetadata(ctx context.Context, in ...string) (map[st
 // being able to sniff the bearer tokens. That risk is minimal however due to
 // the token's very short time-to-live.
 func (tokenAuth) RequireTransportSecurity() bool {
-	return false // CHANGE THIS TO TRUE LATER
+	return true
 }
 
 // makeToken creates a new bearer token for an RPC request. These tokens are
@@ -69,8 +70,13 @@ func main() {
 	ta := tokenAuth{
 		token: makeToken(*user, int64(*tokenTTL), privkey),
 	}
+	config := &tls.Config{
+		// use `false` with a cert signed by a trusted authority
+		InsecureSkipVerify: true,
+	}
+	creds := credentials.NewTLS(config)
 	addr := fmt.Sprintf("%s:%d", *host, *port)
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithPerRPCCredentials(ta))
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(creds), grpc.WithPerRPCCredentials(ta))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
