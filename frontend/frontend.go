@@ -18,6 +18,7 @@ import (
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/libq2/state"
 	"github.com/packetflinger/q2admind/database"
+	"github.com/packetflinger/q2admind/maprotator"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -70,7 +71,7 @@ type Frontend struct {
 	TeleportCount int                     // how many times teleport was used
 	ServerVars    map[string]string       // public server cvars
 	Data          *database.Database      // pointer to database
-	Maplist       *pb.MapRotation         // the maps for the frontend
+	Maplist       *maprotator.MapList     // the maps for the frontend
 	WebUsers      map[string]bool         // key is email addr, val is write access
 }
 

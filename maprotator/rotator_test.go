@@ -14,11 +14,11 @@ func TestMapRotation(t *testing.T) {
 		name    string
 		maps    []string
 		rotname string
-		want    *pb.MapRotation
+		want    *MapList
 	}{
 		{
 			name:    "nil",
-			maps:    nil,
+			maps:    []string{},
 			rotname: "",
 			want:    nil,
 		},
@@ -29,13 +29,15 @@ func TestMapRotation(t *testing.T) {
 				"q2dm2",
 				"q2dm3",
 			},
-			want: &pb.MapRotation{
-				Name: "default rotation",
-				Size: 3,
-				Maps: []*pb.Map{
-					{Name: "q2dm1"},
-					{Name: "q2dm2"},
-					{Name: "q2dm3"},
+			want: &MapList{
+				&pb.MapRotation{
+					Name: "default rotation",
+					Size: 3,
+					Maps: []*pb.Map{
+						{Name: "q2dm1"},
+						{Name: "q2dm2"},
+						{Name: "q2dm3"},
+					},
 				},
 			},
 		},
@@ -46,13 +48,15 @@ func TestMapRotation(t *testing.T) {
 				"q2dm2 5 40",
 				"q2dm3 0 35",
 			},
-			want: &pb.MapRotation{
-				Name: "default rotation",
-				Size: 3,
-				Maps: []*pb.Map{
-					{Name: "q2dm1", MaximumPlayers: 20},
-					{Name: "q2dm2", MinimumPlayers: 5, MaximumPlayers: 40},
-					{Name: "q2dm3", MaximumPlayers: 35},
+			want: &MapList{
+				&pb.MapRotation{
+					Name: "default rotation",
+					Size: 3,
+					Maps: []*pb.Map{
+						{Name: "q2dm1", MaximumPlayers: 20},
+						{Name: "q2dm2", MinimumPlayers: 5, MaximumPlayers: 40},
+						{Name: "q2dm3", MaximumPlayers: 35},
+					},
 				},
 			},
 		},
@@ -60,12 +64,16 @@ func TestMapRotation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := NewMapRotation("", tc.maps)
-			options := []cmp.Option{
-				protocmp.Transform(),
-				protocmp.IgnoreFields(&pb.MapRotation{}, "uuid"),
-			}
-			if diff := cmp.Diff(got, tc.want, options...); diff != "" {
-				t.Errorf("NewMapRotation(%v) resulted in proto diff (-want +got):\n%s", tc.maps, diff)
+			if (got == nil) && (tc.want == nil) {
+				// t.Errorf("nil maprotator")
+			} else {
+				options := []cmp.Option{
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pb.MapRotation{}, "uuid"),
+				}
+				if diff := cmp.Diff(*got, *tc.want, options...); diff != "" {
+					t.Errorf("NewMapRotation(%v) resulted in proto diff (-want +got):\n%s", tc.maps, diff)
+				}
 			}
 		})
 	}
@@ -153,7 +161,7 @@ func TestNext(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Next(tc.rot)
+			got := (&MapList{tc.rot}).Next()
 			options := []cmp.Option{
 				protocmp.Transform(),
 				protocmp.IgnoreFields(&pb.MapRotation{}, "uuid"),

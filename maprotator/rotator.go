@@ -1,6 +1,7 @@
 package maprotator
 
 import (
+	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -10,8 +11,11 @@ import (
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
-func NewMapRotation(name string, maps []string) *pb.MapRotation {
+type MapList struct{ *pb.MapRotation }
+
+func NewMapRotation(name string, maps []string) *MapList {
 	if len(maps) == 0 {
+		fmt.Println("0 maps")
 		return nil
 	}
 	if name == "" {
@@ -48,37 +52,38 @@ func NewMapRotation(name string, maps []string) *pb.MapRotation {
 		rot.Maps = append(rot.Maps, mapEntry)
 		rot.Size = int32(len(rot.Maps))
 	}
-	return rot
+	return &MapList{rot}
 }
 
 // Get the next map in the rotation. If we're at the end, start over at the
 // beginning.
-func Next(rot *pb.MapRotation) *pb.Map {
-	if rot.GetSize() == 0 {
+func (m *MapList) Next() *pb.Map {
+	if m.GetSize() == 0 {
 		return nil
 	}
 	var nextIndex int32
-	switch rot.Direction {
+	switch m.Direction {
 	case pb.MapRotationDirection_MapRotationDirectionForward:
-		nextIndex = rot.GetIndex() + 1
-		if nextIndex == rot.GetSize() {
+		nextIndex = m.GetIndex() + 1
+		if nextIndex == m.GetSize() {
 			nextIndex = 0
 		}
 	case pb.MapRotationDirection_MapRotationDirectionReverse:
-		nextIndex = rot.GetIndex() - 1
+		nextIndex = m.GetIndex() - 1
 		if nextIndex == -1 {
-			nextIndex = rot.GetSize() - 1
+			nextIndex = m.GetSize() - 1
 		}
 	}
-	return rot.GetMaps()[nextIndex]
+	m.Index = nextIndex
+	return m.GetMaps()[nextIndex]
 }
 
 // Fisher-Yates shuffle
-func Shuffle(rot *pb.MapRotation) *pb.MapRotation {
-	maps := rot.GetMaps()
+func (m MapList) Shuffle() MapList {
+	maps := m.GetMaps()
 	rand.Shuffle(len(maps), func(i, j int) {
 		maps[i], maps[j] = maps[j], maps[i]
 	})
-	rot.Maps = maps
-	return rot
+	m.Maps = maps
+	return m
 }
