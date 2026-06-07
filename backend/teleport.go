@@ -101,7 +101,7 @@ func Teleport(fe *frontend.Frontend) {
 
 	for i, f := range sv.frontends {
 		if strings.EqualFold(f.Name, target) {
-			notice := fmt.Sprintf("Teleporting to %s to %s [%s:%d]\n", p.Name, f.Name, f.IPAddress, f.Port)
+			notice := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, f.Name, f.IPAddress, f.Port)
 			SayEveryone(fe, PRINT_CHAT, notice)
 
 			cmd := fmt.Sprintf("connect %s:%d\n", f.IPAddress, f.Port)
