@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize/english"
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/crypto"
@@ -667,13 +668,14 @@ func Startup(configFile string, foreground bool) {
 	} else {
 		be.users = users
 	}
-	be.Logf(LogLevelInfo, "  found %d users\n", len(be.users))
+	be.Logf(LogLevelInfo, "  found %s\n", english.Plural(len(be.users), "user", ""))
 
 	be.Logf(LogLevelNormal, "loading clients from %q\n", be.config.ClientDirectory)
 	frontends, err := be.ParseFrontends()
 	if err != nil {
 		log.Fatal(err)
 	} else {
+		be.Logf(LogLevelNormal, "found %s:\n", english.Plural(len(frontends), "client", ""))
 		slices.SortFunc(frontends, func(a, b frontend.Frontend) int {
 			return strings.Compare(a.Name, b.Name)
 		})
