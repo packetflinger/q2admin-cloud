@@ -1,16 +1,3 @@
-CREATE TABLE IF NOT EXISTS "system_log" (
-	"id"	INTEGER,
-	"log_time"	INTEGER,
-	"log_entry"	TEXT,
-	PRIMARY KEY("id" AUTOINCREMENT)
-);
-CREATE TABLE IF NOT EXISTS "client_log" (
-	"id"	INTEGER,
-	"uuid"	TEXT,
-	"event_time"	INTEGER,
-	"event"	TEXT,
-	PRIMARY KEY("id" AUTOINCREMENT)
-);
 CREATE TABLE IF NOT EXISTS "chat" (
 	"id"	INTEGER,
 	"uuid"	TEXT,
@@ -18,13 +5,28 @@ CREATE TABLE IF NOT EXISTS "chat" (
 	"chat"	TEXT,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-CREATE TABLE IF NOT EXISTS "player" (
+CREATE TABLE IF NOT EXISTS "connection" (
 	"id"	INTEGER,
-	"server"	TEXT,
-	"name"	TEXT,
-	"ip"	TEXT,
-	"hash"	TEXT,
-	"userinfo"	TEXT,
-	"connect_time"	INTEGER,
+	"frontend"	INTEGER NOT NULL DEFAULT 0 UNIQUE,
+	"last_seen"	INTEGER NOT NULL DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
+CREATE TABLE IF NOT EXISTS "frontend" (
+	"id"	INTEGER,
+	"uuid"	TEXT NOT NULL DEFAULT "",
+	PRIMARY KEY("id" AUTOINCREMENT)
+);
+CREATE TABLE IF NOT EXISTS "player" (
+	"id"	INTEGER,
+	"server_id"	INTEGER,
+	"name"	TEXT,
+	"ip"	TEXT,
+	"hostname"	TEXT,
+	"vpn"	INTEGER,
+	"cookie"	TEXT,
+	"version"	TEXT,
+	"userinfo"	TEXT,
+	"time"	INTEGER,
+	PRIMARY KEY("id" AUTOINCREMENT)
+);
+
