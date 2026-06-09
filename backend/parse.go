@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/packetflinger/libq2/message"
@@ -253,8 +254,8 @@ func ParseConnect(fe *frontend.Frontend) {
 	// processing rules.
 	go func() {
 		ptr, err := net.LookupAddr(p.IP)
-		if err != nil {
-			log.Printf("error looking up dns for %s[%s]: %v\n", p.Name, p.IP, err)
+		if err != nil && !strings.HasSuffix(err.Error(), "no such host") {
+			be.Logf(LogLevelNormal, "error looking up dns for %s[%s]: %v\n", p.Name, p.IP, err)
 		}
 		if len(ptr) > 0 {
 			p.Hostname = ptr[0] // just take the first address
@@ -400,6 +401,8 @@ func ParsePlayer(fe *frontend.Frontend) *frontend.Player {
 		Cookie:       info["cl_cookie"],
 		Frontend:     fe,
 		Version:      clientVersion,
+		Hostname:     info["ip"], // PTR resolved later
+
 	}
 
 	fe.Log.Printf("PLAYER %d|%s|%s\n", clientnum, newplayer.UserInfoHash, userinfo)
