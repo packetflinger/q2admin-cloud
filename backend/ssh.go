@@ -647,6 +647,8 @@ func sessionHandler(s ssh.Session) {
 		}
 		SendMessages(fe)
 	}
+	be.Logf(LogLevelInfo, "SSH user %q [%s] disconnected\n", s.User(), s.RemoteAddr().String())
+	s.Close()
 }
 
 // linkFrontendToTerminal connects the frontend to the the ssh terminal to
@@ -706,20 +708,20 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 		return false
 	}
 	if usr.GetDisabled() {
-		be.Logf(LogLevelInfo, "login from disabled user %q disallowed\n", usr.GetEmail())
+		be.Logf(LogLevelInfo, "SSH login from disabled user %q disallowed\n", usr.GetEmail())
 		return false
 	}
 	if !usr.GetAllowSsh() {
-		be.Logf(LogLevelInfo, "login from %q disallowed via config\n", usr.GetEmail())
+		be.Logf(LogLevelInfo, "SSH login from %q disallowed via config\n", usr.GetEmail())
 		return false
 	}
 	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(usr.GetPublicKey()))
 	if err != nil {
-		be.Logf(LogLevelAll, "error parsing public key: %v\n", err)
+		be.Logf(LogLevelAll, "SSH error parsing public key: %v\n", err)
 		return false
 	}
 	if ssh.KeysEqual(key, pub) {
-		be.Logf(LogLevelInfo, "user %q allowed using key %q\n", ctx.User(), comment)
+		be.Logf(LogLevelInfo, "SSH user %q [%s] allowed using key %q\n", ctx.User(), ctx.RemoteAddr().String(), comment)
 		return true
 	}
 	return false
