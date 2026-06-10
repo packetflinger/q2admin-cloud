@@ -36,3 +36,51 @@ func TestRender(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckmark(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		want  string
+	}{
+		{
+			name:  "true",
+			input: bool(true),
+			want:  "\u2713",
+		},
+		{
+			name:  "false",
+			input: bool(false),
+			want:  " ",
+		},
+		{
+			name:  "1",
+			input: int(1),
+			want:  "\u2713",
+		},
+		{
+			name:  "0",
+			input: int(0),
+			want:  " ",
+		},
+		{
+			name:  "yes",
+			input: string("yes"),
+			want:  "\u2713",
+		},
+		{
+			name:  "no",
+			input: string("no"),
+			want:  " ",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := checkMark(tc.input)
+			if got != tc.want {
+				t.Error("got:", got, "want:", tc.want)
+			}
+		})
+	}
+}

@@ -838,14 +838,20 @@ func User(email string) (*pb.User, error) {
 // Convert a logical variable (1/0, true/false, "yes"/"no") into an emoji
 // checkmark
 func checkMark(in any) string {
-	if reflect.TypeOf(in) == reflect.TypeOf(true) {
+	mark := "\u2713"
+	if reflect.TypeOf(in) == reflect.TypeFor[bool]() {
 		if in == true {
-			return "\u2713"
+			return mark
 		}
 	}
-	if reflect.TypeOf(in) == reflect.TypeOf(1) {
+	if reflect.TypeOf(in) == reflect.TypeFor[int]() {
 		if in == 1 {
-			return "\u2713"
+			return mark
+		}
+	}
+	if reflect.TypeOf(in) == reflect.TypeFor[string]() {
+		if in == "yes" {
+			return mark
 		}
 	}
 	return " "
