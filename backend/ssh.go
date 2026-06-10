@@ -727,7 +727,9 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	return false
 }
 
-// ParseCmdArgs breaks up the current SSH command and args
+// ParseCmdArgs breaks up the current SSH command and args. This allows for the
+// typical `argc`, `argv`, `args` functionality to make it easier to understand
+// what the user is actually trying to do.
 func ParseCmdArgs(input string) (CmdArgs, error) {
 	if input == "" {
 		return CmdArgs{}, nil
