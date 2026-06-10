@@ -128,10 +128,10 @@ id        type     description
 
 	serversTemplate = `
 Your servers:
-Name                  Status     Ver  Time  Peer
---------------------  ---------  ---- ----  ------------------------------------------
+Name                  Status     Ver  Time      Peer
+--------------------  ---------  ---- --------  ------------------------------------------
 {{ range . -}}
-{{ printf "%-20s" .Name }}  {{ printf "%-9s" (. | connected) }}  {{ printf "%4d" .Version }} {{ if .Connection }}{{ printf "%-4s" (.ConnectTime | ago)}}  {{ .Connection.RemoteAddr.String }}{{ end }}
+{{ printf "%-20s" .Name }}  {{ printf "%-9s" (. | connected) }}  {{ if .Connection }}{{ printf "%4d" .Version }}{{ else }}{{ printf "    " }}{{ end}} {{ if .Connection }}{{ printf "%-8s" (.ConnectTime | ago)}}  {{ .Connection.RemoteAddr.String }}{{ end }}
 {{ end -}}
 `
 )
