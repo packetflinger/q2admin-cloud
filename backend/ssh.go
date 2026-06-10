@@ -106,24 +106,26 @@ id        type     description
 
 	whoisTemplate = `
 {{ printf "Player Information" | underline}}:
-  name:     {{ .Name }}
-  ip:       {{ .IP }} 
-  dns:      {{ .Hostname }}
-  client:   {{ .Version }}
-  vpn:      {{ .VPN }}
+  Name:    "{{ .Name }}"
+  IP:       {{ .IP }} 
+  DNS:      {{ .Hostname }}
+  Version:  {{ .Version }}
+  VPN:      {{ .VPN }}
 
-UserInfo Data:
+{{ printf "Userinfo Data" | underline}}:
 {{ range $k, $v := .UserinfoMap -}}
 {{ printf "%15s" $k}} = {{ $v }}
 {{ end -}}
 
-Rules matching:
+
+{{ printf "Rules Matching" | underline}}:
 id        type     description
 --------  -------  -----------------------------------------------------
 {{ range .Rules -}}
 {{ slice .GetUuid 0 8}}  {{ printf "%-7s" .GetType }}  {{ join .GetDescription " " | truncate 53 }}
 {{ end }}
 `
+
 	serversTemplate = `
 Your servers:
 Name                  Status     Ver  Time  Peer
