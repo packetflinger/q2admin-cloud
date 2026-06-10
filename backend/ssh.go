@@ -105,7 +105,7 @@ id        type     description
 `
 
 	whoisTemplate = `
-{{ printf "Player Information" | underline)}}:
+{{ printf "Player Information" | underline}}:
   name:     {{ .Name }}
   ip:       {{ .IP }} 
   dns:      {{ .Hostname }}
