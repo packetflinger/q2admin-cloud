@@ -154,20 +154,18 @@ func SayPlayer(cl *frontend.Frontend, p *frontend.Player, level int, text string
 
 // Setup a new cookie on a player
 //
-// Player cookies are a dirty and not terribly effective way of
-// uniquely identifying players. Original Q2 made no effort to
-// ID players other than their client number. Every player in the
-// game can have the same name, skin, etc. The player's IP address
-// was the only way to really differentiate them from other players.
-// Now in the age of VPNs, an malicious player can get banned, and
-// reconnect on a VPN with different IP, different name, etc, and
+// Player cookies are a dirty and not terribly effective way of uniquely
+// identifying players. Original Q2 made no effort to ID players other than
+// their client number. Every player in the game can have the same name, skin,
+// etc. The player's IP address was the only way to really differentiate them
+// from other players. Now in the age of VPNs, an malicious player can get
+// banned, and reconnect on a VPN with different IP, different name, etc, and
 // continue being abusive.
 //
-// The idea of a player cookie is a persistent unique identifier.
-// PlayerX can reconnect with a different name on a different IP
-// with a different client and still be identified. This is great
-// for tracking statistics and disciplinary actions (muting/banning
-// shitheads).
+// The idea of a player cookie is a persistent unique identifier. PlayerX can
+// reconnect with a different name on a different IP with a different client
+// and still be identified. This is great for tracking statistics and
+// disciplinary actions (muting/banning shitheads).
 func SetupPlayerCookie(cl *frontend.Frontend, p *frontend.Player) {
 	value := hex.EncodeToString(crypto.RandomBytes(12)) // random ID
 
