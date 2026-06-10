@@ -15,9 +15,8 @@ func ConsoleSay(cl *frontend.Frontend, print string) {
 	if cl == nil || print == "" {
 		return
 	}
-	txt := fmt.Sprintf("say %s\n", print)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
-	(&cl.MessageOut).WriteString(txt)
+	(&cl.MessageOut).WriteString(fmt.Sprintf("say %s\n", print))
 }
 
 // Force a player to do a command
