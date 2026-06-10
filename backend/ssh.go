@@ -105,7 +105,7 @@ id        type     description
 `
 
 	whoisTemplate = `
-Player information:
+{{ printf "%s" underline("Player Information")}}:
   name:     {{ .Name }}
   ip:       {{ .IP }} 
   dns:      {{ .Hostname }}
@@ -238,6 +238,7 @@ func sessionHandler(s ssh.Session) {
 		"red":       red,
 		"yello":     yellow,
 		"magenta":   magenta,
+		"underline": underline,
 		"checkMark": checkMark,
 		"connected": connectionIndicator,
 		"now":       time.Now().Unix,
