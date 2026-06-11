@@ -190,13 +190,10 @@ func ParsePrint(fe *frontend.Frontend) {
 	switch level {
 	case PRINT_CHAT:
 		fe.Log.Println("CHAT", stripped)
-		msgColor := ansiCode{foreground: ColorGreen, bold: true}.Render()
-		msg := fmt.Sprintf("%s%s%s", msgColor, stripped, AnsiReset)
-		fe.SSHPrintln(msg)
+		fe.SSHPrintln(Font([]int{ColorGreen, WeightBold}, stripped))
 	case PRINT_HIGH:
 		fe.Log.Println("PRINT", stripped)
-		msgColor := ansiCode{foreground: ColorBlack, background: ColorLightGray}.Render()
-		fe.SSHPrintln(msgColor + stripped + AnsiReset)
+		fe.SSHPrintln(Font([]int{ColorBlack, bgcolor(ColorLightGray)}, stripped))
 
 		// change the map
 		fmt.Println(stripped)

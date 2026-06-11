@@ -45,49 +45,15 @@ const (
 	AnsiReset          = "\033[m"
 )
 
-type ansiCode struct {
-	foreground int
-	background int
-	bold       bool
-	underlined bool
-	inversed   bool
-}
-
-// Render will build an ANSI color code based on the receiver. This is only
-// used when sending strings to an SSH terminal.
-func (c ansiCode) Render() string {
-	b := WeightNormal
-	if c.bold {
-		b = WeightBold
-	}
-	u := FontNoUnderline
-	if c.underlined {
-		u = FontUnderline
-	}
-	r := 27
-	if c.inversed {
-		r = 7
-	}
-	return fmt.Sprintf("\033[0;%d;%d;%d;%d;%dm", c.foreground, c.background+10, b, u, r)
-}
-
-func PrettyString(s string, fg, bg int, b, u bool) string {
-	ac := ansiCode{
-		foreground: fg,
-		background: bg,
-		bold:       b,
-		underlined: u,
-	}
-	return fmt.Sprintf("%s%s%s", ac.Render(), s, AnsiReset)
-}
-
+// Font applies ANSI codes to the string for displaying in a terminal. This
+// includes font color, background color, weight, decoration, etc. This doesn't
+// change the typeface of the font, only the presentation.
 func Font(attr []int, s string) string {
 	var strs []string
 	for _, a := range attr {
 		strs = append(strs, fmt.Sprintf("%d", a))
 	}
-	code := strings.Join(strs, ";")
-	return fmt.Sprintf("\033[%sm%s%s", code, s, AnsiReset)
+	return fmt.Sprintf("\033[%sm%s%s", strings.Join(strs, ";"), s, AnsiReset)
 }
 
 // Backgrounds are 10 digits higher than foregrounds
@@ -97,19 +63,19 @@ func bgcolor(c int) int {
 
 // Convenience func for use in templates
 func red(s string) string {
-	return PrettyString(s, ColorRed, 0, false, false)
+	return Font([]int{ColorRed}, s)
 }
 
 func green(s string) string {
-	return PrettyString(s, ColorGreen, 0, false, false)
+	return Font([]int{ColorGreen}, s)
 }
 
 func yellow(s string) string {
-	return PrettyString(s, ColorYellow, 0, false, false)
+	return Font([]int{ColorYellow}, s)
 }
 
 func magenta(s string) string {
-	return PrettyString(s, ColorMagenta, 0, false, false)
+	return Font([]int{ColorMagenta}, s)
 }
 
 func underline(s string) string {
