@@ -254,6 +254,9 @@ func sessionHandler(s ssh.Session) {
 	whoisTmpl := template.Must(template.New("whoisout").Funcs(funcmap).Parse(whoisTemplate))
 	srvTmpl := template.Must(template.New("srvout").Funcs(funcmap).Parse(serversTemplate))
 
+	defer be.Logf(LogLevelInfo, "SSH user %q [%s] disconnected\n", s.User(), s.RemoteAddr().String())
+	defer s.Close()
+
 	for {
 		line, err := sshterm.terminal.ReadLine()
 		if err != nil {
@@ -647,8 +650,6 @@ func sessionHandler(s ssh.Session) {
 		}
 		SendMessages(fe)
 	}
-	be.Logf(LogLevelInfo, "SSH user %q [%s] disconnected\n", s.User(), s.RemoteAddr().String())
-	s.Close()
 }
 
 // linkFrontendToTerminal connects the frontend to the the ssh terminal to
