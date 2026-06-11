@@ -59,7 +59,7 @@ type SearchResultsOutput struct {
 
 const (
 	helpTemplate = `
-Available commands:
+{{ printf "Available commands" | underline }}:
 {{- range .Cmds}}
   {{ printf "%-20s" .Cmd }}                   {{ .Desc -}}
 {{end}}
@@ -67,6 +67,7 @@ Available commands:
 {{.Extra}}
 `
 	statusTemplate = `
+{{ printf "Frontend Status" | underline }}:
 Frontend:      {{ .IPAddress }}:{{ .Port }}
 Peer:          {{ .Connection.RemoteAddr.String | magenta }}
 Current map:   {{ .CurrentMap }}
@@ -127,7 +128,7 @@ id        type     description
 `
 
 	serversTemplate = `
-Your servers:
+{{ printf "Your servers" | underline }}:
 Name                  Status     Ver  Time      Peer
 --------------------  ---------  ---- --------  ------------------------------------------
 {{ range . -}}
