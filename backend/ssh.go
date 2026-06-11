@@ -248,9 +248,9 @@ func sessionHandler(s ssh.Session) {
 		"ago":       util.TimeAgo,
 	}
 
-	helpTmpl := template.Must(template.New("helpout").Parse(helpTemplate))
+	helpTmpl := template.Must(template.New("helpout").Funcs(funcmap).Parse(helpTemplate))
 	statusTmpl := template.Must(template.New("statusout").Funcs(funcmap).Parse(statusTemplate))
-	searchTmpl := template.Must(template.New("searchout").Parse(searchTemplate))
+	searchTmpl := template.Must(template.New("searchout").Funcs(funcmap).Parse(searchTemplate))
 	rulesTmpl := template.Must(template.New("rulesout").Funcs(funcmap).Parse(rulesTemplate))
 	whoisTmpl := template.Must(template.New("whoisout").Funcs(funcmap).Parse(whoisTemplate))
 	srvTmpl := template.Must(template.New("srvout").Funcs(funcmap).Parse(serversTemplate))
