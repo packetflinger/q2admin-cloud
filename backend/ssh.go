@@ -374,6 +374,7 @@ func sessionHandler(s ssh.Session) {
 					{Cmd: "", Desc: ""},
 					{Cmd: "kick <#> [msg]", Desc: "kick player # with msg"},
 					{Cmd: "mute <#> <secs>", Desc: "mute player # for secs seconds"},
+					{Cmd: "stifle <#> <secs>", Desc: "stifle player # for secs seconds"},
 				},
 			}
 			var msg bytes.Buffer
@@ -533,6 +534,50 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			MutePlayer(fe, p, secs)
+
+		} else if c.command == "stifle" || c.command == "stifled" || c.command == "stifles" {
+			if len(c.args) == 0 { // list all mutes
+				sshterm.Println("Active stifles:")
+
+				var details strings.Builder
+				for _, m := range activeFE.Rules {
+					if m.Type != pb.RuleType_STIFLE {
+						continue
+					}
+					mtxt, err := RuleDetailLine(m)
+					if err != nil {
+						sshterm.Printf(" stifle list error: %v\n", err)
+						continue
+					}
+					_, err = details.WriteString(mtxt + "\n")
+					if err != nil {
+						sshterm.Printf("stifle list error: %v\n", err)
+						continue
+					}
+				}
+				sshterm.Println(details.String() + "\nUsage: stifle <player_id> <seconds>")
+				continue
+			}
+			id, err := strconv.Atoi(c.argv[0])
+			if err != nil {
+				sshterm.Printf("stifle: invalid client_id %q\n", c.argv[0])
+				continue
+			}
+			if id < 0 || id > activeFE.MaxPlayers {
+				sshterm.Printf("stifle: invalid client_id %q\n", c.argv[0])
+				continue
+			}
+			secs, err := strconv.Atoi(c.argv[1])
+			if err != nil {
+				sshterm.Printf("stifle: invalid seconds %q\n", c.argv[1])
+				continue
+			}
+			p := &activeFE.Players[id]
+			if p.ConnectTime == 0 {
+				sshterm.Printf("stile: client_id %q not in use\n", c.argv[0])
+				continue
+			}
+			StiflePlayer(fe, p, secs)
 
 		} else if c.command == "pause" {
 			if sshterm.paused > 0 {
