@@ -574,7 +574,7 @@ func sessionHandler(s ssh.Session) {
 			}
 			p := &activeFE.Players[id]
 			if p.ConnectTime == 0 {
-				sshterm.Printf("stile: client_id %q not in use\n", c.argv[0])
+				sshterm.Printf("stifle: client_id %q not in use\n", c.argv[0])
 				continue
 			}
 			StiflePlayer(fe, p, secs)
