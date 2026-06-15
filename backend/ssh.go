@@ -575,6 +575,9 @@ func sessionHandler(s ssh.Session) {
 			StiflePlayer(fe, players[0], secs)
 
 		} else if c.command == "pause" {
+			// Stop the terminal from scrolling with in-game messages (frags,
+			// chat, etc). The pause will automatically expire after a default
+			// of 10 minutes. Msgs are buffered while paused.
 			if sshterm.paused > 0 {
 				continue
 			}
