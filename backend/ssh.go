@@ -558,13 +558,13 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println(details.String() + "\nUsage: stifle <player_id> <seconds>")
 				continue
 			}
-			id, err := strconv.Atoi(c.argv[0])
+			players, err := activeFE.ResolvePlayers(c.argv[0])
 			if err != nil {
-				sshterm.Printf("stifle: invalid client_id %q\n", c.argv[0])
+				sshterm.Printf("stifle: unable to resolve player: %q\n", err)
 				continue
 			}
-			if id < 0 || id > activeFE.MaxPlayers {
-				sshterm.Printf("stifle: invalid client_id %q\n", c.argv[0])
+			if len(players) != 1 {
+				sshterm.Printf("stifle: %q doesn't match exactly 1 player\n", c.argv[0])
 				continue
 			}
 			secs, err := strconv.Atoi(c.argv[1])
@@ -572,12 +572,7 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("stifle: invalid seconds %q\n", c.argv[1])
 				continue
 			}
-			p := &activeFE.Players[id]
-			if p.ConnectTime == 0 {
-				sshterm.Printf("stifle: client_id %q not in use\n", c.argv[0])
-				continue
-			}
-			StiflePlayer(fe, p, secs)
+			StiflePlayer(fe, players[0], secs)
 
 		} else if c.command == "pause" {
 			if sshterm.paused > 0 {

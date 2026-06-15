@@ -1,9 +1,13 @@
 package frontend
 
 import (
+	//"cmp"
 	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestGetPlayerFromPrint(t *testing.T) {
@@ -87,6 +91,119 @@ func TestGetPlayerFromPrint(t *testing.T) {
 			sort.Strings(names)
 			if !reflect.DeepEqual(names, tc.want) {
 				t.Error("\ngot", names, "\nwant", tc.want)
+			}
+		})
+	}
+}
+
+func TestResolvePlayer(t *testing.T) {
+	fe := Frontend{
+		MaxPlayers: 8,
+		Players: []Player{
+			{
+				ClientID:    0,
+				ConnectTime: 100,
+				Name:        "snot-rocket",
+			},
+			{
+				ClientID:    1,
+				ConnectTime: 100,
+				Name:        "dingleberry",
+			},
+			{
+				ClientID:    2,
+				ConnectTime: 100,
+				Name:        "  claire ",
+			},
+			{
+				ClientID:    3,
+				ConnectTime: 100,
+				Name:        "  claire     ",
+			},
+			{
+				ClientID:    4,
+				ConnectTime: 100,
+				Name:        "2",
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		frontend Frontend
+		input    string
+		want     []*Player
+		wantErr  bool
+	}{
+		{
+			name:     "empty",
+			frontend: fe,
+			input:    "",
+			want:     []*Player{},
+			wantErr:  true,
+		},
+		{
+			name:     "negative player id",
+			frontend: fe,
+			input:    "-3",
+			want:     []*Player{},
+			wantErr:  true,
+		},
+		{
+			name:     "by id",
+			frontend: fe,
+			input:    "1",
+			want: []*Player{
+				{
+					ClientID:    1,
+					ConnectTime: 100,
+					Name:        "dingleberry",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:     "by name",
+			frontend: fe,
+			input:    "lair",
+			want: []*Player{
+				{
+					ClientID:    2,
+					ConnectTime: 100,
+					Name:        "  claire ",
+				},
+				{
+					ClientID:    3,
+					ConnectTime: 100,
+					Name:        "  claire     ",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:     "numeric name",
+			frontend: fe,
+			input:    "4",
+			want: []*Player{
+				{
+					ClientID:    4,
+					ConnectTime: 100,
+					Name:        "2",
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := tc.frontend.ResolvePlayers(tc.input)
+			if (err != nil) != tc.wantErr {
+				t.Error(err)
+			} else {
+				if diff := cmp.Diff(got, tc.want, protocmp.Transform()); diff != "" {
+					t.Errorf("ResolvePlayers(%q) = %v want %v\n", tc.input, got, tc.want)
+				}
 			}
 		})
 	}

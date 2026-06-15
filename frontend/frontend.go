@@ -240,10 +240,10 @@ func (fe *Frontend) GetPlayerFromPrint(txt string) ([]*Player, error) {
 	var players []*Player
 	var name string
 	if fe == nil {
-		return players, fmt.Errorf("error getting player from print: null receiver")
+		return players, fmt.Errorf("can't resolve player: nil receiver")
 	}
 	if txt == "" {
-		return players, fmt.Errorf("error getting player from print: empty print")
+		return players, fmt.Errorf("can't resolve player: blank input")
 	}
 	count := strings.Count(txt, ": ") // note the space
 	if count == 0 {
@@ -260,6 +260,42 @@ func (fe *Frontend) GetPlayerFromPrint(txt string) ([]*Player, error) {
 		}
 	}
 	return players, nil
+}
+
+// ResolvePlayers will find and return pointers to players matching the input
+// text. This can be a client number or a (partial) name string. Input is
+// lightly sanitized because it's user-supplied.
+//
+// If the input is a number, assume it's the client ID and not the name. IDs
+// are the only way to uniquely identify players, names can overlap.
+func (fe *Frontend) ResolvePlayers(in string) ([]*Player, error) {
+	var found []*Player
+	if in == "" {
+		return []*Player{}, fmt.Errorf("empty player input")
+	}
+	if len(in) > 15 {
+		in = in[:14]
+	}
+	id, err := strconv.Atoi(in)
+	if id < 0 || id > fe.MaxPlayers {
+		return []*Player{}, fmt.Errorf("invalid player ID")
+	}
+	if err != nil {
+		// it's not a number
+		for _, p := range fe.Players {
+			if strings.Contains(strings.ToLower(p.Name), strings.ToLower(in)) {
+				found = append(found, &p)
+			}
+		}
+		return found, nil
+	}
+	// it's a number
+	for _, p := range fe.Players {
+		if p.ClientID == id && p.ConnectTime > 0 {
+			found = append(found, &p)
+		}
+	}
+	return found, nil
 }
 
 // ToProto will convert a Frontend struct into the corresponding protobuf. This
