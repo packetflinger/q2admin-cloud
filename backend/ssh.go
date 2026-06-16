@@ -98,11 +98,11 @@ name             server              seen  address
 {{ end }}
 `
 	rulesTemplate = `
-id        type     description
---------  -------  -----------------------------------------------------
-{{ range . -}}
-{{ if .GetUuid }}{{ slice .GetUuid 0 8}}  {{ printf "%-7s" .GetType }}  {{ join .GetDescription " " | truncate 53 }}{{ end }}
-{{ end }}
+  ID        Type     Description
+  --------  -------  -----------------------------------------------------
+  {{ range . -}}
+  {{ if .GetUuid }}{{ slice .GetUuid 0 8}}  {{ printf "%-7s" .GetType }}  {{ join .GetDescription " " | truncate 53 }}{{ end }}
+  {{ end }}
 `
 
 	whoisTemplate = `
@@ -375,6 +375,8 @@ func sessionHandler(s ssh.Session) {
 					{Cmd: "kick <#> [msg]", Desc: "kick player # with msg"},
 					{Cmd: "mute <#> <secs>", Desc: "mute player # for secs seconds"},
 					{Cmd: "stifle <#> <secs>", Desc: "stifle player # for secs seconds"},
+					{Cmd: "", Desc: ""},
+					{Cmd: "rules [show <id> | del <id> | add]", Desc: ""},
 				},
 			}
 			var msg bytes.Buffer
@@ -616,16 +618,16 @@ func sessionHandler(s ssh.Session) {
 			}
 			sshterm.Println(msg.String())
 			continue
-		} else if c.command == "rules" {
+		} else if c.command == "rules" || c.command == "rule" {
 			if c.argc == 0 {
-				sshterm.Printf("CLIENT-level rules in affect on %q:\n", fe.Name)
+				sshterm.Printf("%s %s\n", underline("Local rules affecting"), yellow(fe.Name))
 				var msg bytes.Buffer
 				if err := rulesTmpl.Execute(&msg, fe.Rules); err != nil {
 					log.Println("error executing rules template:", err)
 				}
 				sshterm.Println(msg.String())
 				msg.Reset()
-				sshterm.Printf("SERVER-level rules in affect on %q:\n", fe.Name)
+				sshterm.Println(underline("Global rules:"))
 				if err := rulesTmpl.Execute(&msg, be.rules); err != nil {
 					log.Println("error executing rules template:", err)
 				}
@@ -633,7 +635,7 @@ func sessionHandler(s ssh.Session) {
 			} else if c.argc > 1 && c.argv[0] == "show" {
 				for _, r := range append(fe.Rules, be.rules...) {
 					if strings.HasPrefix(r.GetUuid(), c.argv[1]) {
-						sshterm.Printf("Detail for rule [%s]:\n\n", c.argv[1])
+						sshterm.Printf(underline("Details for rule [%s]:\n\n"), yellow(c.argv[1]))
 						sshterm.Println(prototext.Format(r))
 						break
 					}
