@@ -4,10 +4,12 @@
 		<h1 class="h3 mb-3">{{.Title}}</h1>
 		<div class="row">
 			<div>
-				<div class="input-group mb-3">
-					<input type="text" class="form-control" placeholder="Search IPs, player names, more" aria-label="Example text with button addon" aria-describedby="searchbutton">
-					<button class="btn btn-primary" type="button" id="searchbutton">Search</button>
-				</div>
+				<form method="get" action="/search/{{.Frontend.UUID}}">
+					<div class="input-group mb-3">
+						<input type="text" name="q" class="form-control" placeholder="Search IPs, player names, more" aria-label="Example text with button addon" aria-describedby="searchbutton">
+						<button class="btn btn-primary" type="submit" id="searchbutton">Search</button>
+					</div>
+				</form>
 			</div>
 		</div>
 
@@ -20,9 +22,20 @@
 					<div class="card-body">
 						<div>Unique ID: {{.Frontend.UUID}} <a href="#" data-bs-toggle="modal" data-bs-target="#changeuuid"><i data-feather="refresh-cw"></i></a></div>
 						<div>Address: <a href="quake2://{{.Frontend.IPAddress}}:{{.Frontend.Port}}">{{.Frontend.IPAddress}}:{{.Frontend.Port}}</a></div>
-						<div>Enabled: {{ .Frontend.Enabled | yesnoemoji }}</div>
-						<div>Teleport Allowed: {{ .Frontend.AllowTeleport | yesnoemoji }}</div>
-						<div>Invite Allowed: {{ .Frontend.AllowInvite | yesnoemoji }}</div>
+						<div>{{ .Frontend.Enabled | yesnoemoji }} Enabled</div>
+						<div>{{ .Frontend.AllowTeleport | yesnoemoji }} Teleport Allowed</div>
+						<div>{{ .Frontend.AllowInvite | yesnoemoji }} Invite Allowed</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-12 col-sm-4">
+				<div class="card">
+					<div class="card-header"><h4>Keys <a href="#" data-bs-toggle="modal" data-bs-target="#key-explain-modal"><i class="float-end" data-feather="help-circle"></i></a></h4></div>
+					<div class="card-body">
+						{{ if .Frontend.PublicKeyData }}<div><a href="#" data-bs-toggle="modal" data-bs-target="#publickey">View/Edit Public Key</a></div>
+						{{ else }}<div><a href="#" data-bs-toggle="modal" data-bs-target="#publickey">Add Public Key</a></div>{{ end }}
+						<div><a href="/sv/{{ .Frontend.UUID }}/keygen">Generate Key Pair</a></div>
 					</div>
 				</div>
 			</div>
@@ -30,12 +43,11 @@
 			<div class="col-12 col-sm-4">
 				<div class="card">
 					<div class="card-header">
-						<h4>Frontend Info</h4>
+						<h4>Frontend Status</h4>
 					</div>
 					<div class="card-body">
 						<div>Peer Address: {{.Frontend.Connection.RemoteAddr.String}} {{if .Frontend.Encrypted}}<i data-feather="lock"></i>{{end}}</div>
 						<div>Last connected: {{.Frontend.ConnectTime | ago}}</div>
-						<!-- <div>Encrypted: {{ .Frontend.Encrypted | yesno }}</div> -->
 						<div>Flags: {{ index .Frontend.ServerVars "dmflags" | dmflags}}</div>
 						<div>Current Map: {{ .Frontend.CurrentMap }}</div>
 					</div>
@@ -86,6 +98,16 @@
 				</div>
 			</div>
 {{end}}
+		<div class="col-12 col-sm-4">
+				<div class="card">
+					<div class="card-header"><h4>Rules <a class="float-end" href="#"><i data-feather="file-plus"></i></a></h4></div>
+					<div class="card-body">
+					{{ range .Frontend.Rules }}
+						<div><a href="/rules/{{ .GetUuid }}/view">{{ .GetDescription }}</a></div>
+					{{ end }}
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 
@@ -168,6 +190,80 @@
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+				</div>
+			 </div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="publickey" tabindex="-1" aria-labelledby="publickey" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Frontend Public Key</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<div class="mb-3">
+						<label for="keydata" class="form-label">Key Data:</label>
+						<textarea style="height: 300px;" class="form-control" id="keydata" placeholder="">{{ .Frontend.PublicKeyData }}</textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+					<button type="button" class="btn btn-primary float-end">Save</button>
+				</div>
+			 </div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="key-explain-modal" tabindex="-1" aria-labelledby="key-explain-modal" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Keys?</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<h5>How does Q2Admin use them?</h5>
+					<p>
+						Q2Admin uses asymmetric encryption keys (public/private pairs) for authentication and key exchange.
+					</p>
+					<p>
+						You store a private key securely along with your Quake 2 server locally, and provide 
+						the public key here. When your Quake 2 server initiates a connection to this CloudAdmin server, 
+						the server will challenge your server with data encrypted with the public key. Only the 
+						complementary private key will be able to decrypt this data, proving this is the intended 
+						server and allowing the connection.
+					</p>
+					<p>
+						If the local Q2Admin is configured for an encrypted connection (default behavior), the public key
+						provided is used for encrypting an ephemeral symmetric session key used for securing the data
+						exchanged between the CloudAdmin and your Quake 2 server. These sessions keys are automatically
+						rotated every hour or so.
+					</p>
+					<h5>Can I generate my own keys on my end?</h5>
+					<p>
+						Yes you can, and you should. It's considered insecure to transmit private keys between devices over
+						untrusted networks. The Generate Keys function is for convenience. Generate these with the openssl program:
+					</p>
+					<p>
+						<div>For the private key "private.pem"</div>
+						<code>
+						$ openssl genpkey -out private.pem -algorithm RSA -pkeyopt rsa_keygen_bits:2048
+						</code>
+					</p>
+					<p>
+						<div>For the complementary public key "public.pem"</div>
+						<code>
+						$ openssl pkey -in private.pem -pubout -out public.pem
+						</code>
+					</p>
+					<p>
+						Then click the <b>View/Edit Public Key</b> link and simply paste the contents of the public key.
+					</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Okay</button>
 				</div>
 			 </div>
 		</div>
