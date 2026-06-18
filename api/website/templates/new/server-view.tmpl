@@ -120,22 +120,24 @@
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 					</div>
 					<div class="modal-body">
-						<div>
+						<p>
 							<label for="serveraddr" class="form-label">Frontend Address</label>
 							<input type="text" class="form-control" id="serveraddr" name="serveraddr" placeholder="100.64.55.4:27910" value="{{.Frontend.IPAddress}}:{{.Frontend.Port}}">
-						</div>
-						<div class="form-check form-switch">
-							<input class="form-check-input" type="checkbox" id="switchEnabled" name="switchenabled" {{.Frontend.Enabled | checked}}>
-							<label class="form-check-label" for="switchEnabled">Enabled</label>
-						</div>
-						<div class="form-check form-switch">
-							<input class="form-check-input" type="checkbox" id="switchTeleport" name="switchteleport" {{.Frontend.AllowTeleport | checked}}>
-							<label class="form-check-label" for="switchTeleport">Allow player teleporting to other frontends</label>
-						</div>
-						<div class="form-check form-switch">
-							<input class="form-check-input" type="checkbox" id="switchInvite" name="switchinvite" {{.Frontend.AllowInvite | checked}}>
-							<label class="form-check-label" for="switchInvite">Allow player invite broadcasts</label>
-						</div>
+						</p>
+						<p>
+							<div class="form-check form-switch">
+								<input class="form-check-input" type="checkbox" id="switchEnabled" name="switchenabled" {{.Frontend.Enabled | checked}}>
+								<label class="form-check-label" for="switchEnabled">Enabled</label>
+							</div>
+							<div class="form-check form-switch">
+								<input class="form-check-input" type="checkbox" id="switchTeleport" name="switchteleport" {{.Frontend.AllowTeleport | checked}}>
+								<label class="form-check-label" for="switchTeleport">Allow player teleporting to other frontends</label>
+							</div>
+							<div class="form-check form-switch">
+								<input class="form-check-input" type="checkbox" id="switchInvite" name="switchinvite" {{.Frontend.AllowInvite | checked}}>
+								<label class="form-check-label" for="switchInvite">Allow player invite broadcasts</label>
+							</div>
+						</p>
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
