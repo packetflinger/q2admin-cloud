@@ -20,11 +20,13 @@
 						<h4>Settings <a href="#" data-bs-toggle="modal" data-bs-target="#edit-server-modal"><i class="float-end" data-feather="edit-2"></i></a></h4>
 					</div>
 					<div class="card-body">
-						<div>Unique ID: {{.Frontend.UUID}} <a href="#" data-bs-toggle="modal" data-bs-target="#changeuuid"><i data-feather="refresh-cw"></i></a></div>
-						<div>Address: <a href="quake2://{{.Frontend.IPAddress}}:{{.Frontend.Port}}">{{.Frontend.IPAddress}}:{{.Frontend.Port}}</a></div>
-						<div>{{ .Frontend.Enabled | yesnoemoji }} Enabled</div>
-						<div>{{ .Frontend.AllowTeleport | yesnoemoji }} Teleport Allowed</div>
-						<div>{{ .Frontend.AllowInvite | yesnoemoji }} Invite Allowed</div>
+						<p>Unique ID: <code>{{.Frontend.UUID}}</code> <a href="#" data-bs-toggle="modal" data-bs-target="#changeuuid"><i data-feather="refresh-cw"></i></a></p>
+						<p>Address: <a href="quake2://{{.Frontend.IPAddress}}:{{.Frontend.Port}}">{{.Frontend.IPAddress}}:{{.Frontend.Port}}</a></p>
+						<p>
+							<div>{{ .Frontend.Enabled | yesnoemoji }} Enabled</div>
+							<div>{{ .Frontend.AllowTeleport | yesnoemoji }} Teleport Allowed</div>
+							<div>{{ .Frontend.AllowInvite | yesnoemoji }} Invite Allowed</div>
+						</p>
 					</div>
 				</div>
 			</div>
