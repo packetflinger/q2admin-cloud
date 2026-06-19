@@ -54,7 +54,7 @@ func LoadWebsiteRoutes() *mux.Router {
 
 	Routes.PlayerView = "/sv/{ServerUUID}/{ServerName}/player/{ClientNum}"
 	Routes.RuleList = "/sv/{ServerUUID}/{ServerName}/rules"
-	Routes.ServerKeys = "/sv/{ServerUUID}/{ServerName}/generate-keys"
+	Routes.ServerKeys = "/sv/{ServerUUID}/{ServerName}/manage-keys"
 	Routes.ServerEdit = "/sv/{ServerUUID}/{ServerName}/edit"
 	Routes.ServerConsole = "/sv/{ServerUUID}/{ServerName}/console"
 	Routes.ServerChangeUUID = "/sv/{ServerUUID}/{ServerName}/change-uuid"

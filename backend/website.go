@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -958,6 +959,37 @@ func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
+
+	// handle saving public key
+	if r.PostFormValue("action") == "SaveKey" {
+		uuid := r.PostFormValue("uuid")
+		name := r.PostFormValue("srvname")
+		keydata := r.PostFormValue("keydata")
+		if uuid == "" || name == "" || keydata == "" {
+			fmt.Fprintln(w, "error 500 - bad form submission")
+			return
+		}
+		f, err := be.FindFrontend(uuid)
+		if err != nil {
+			log.Println(err)
+			fmt.Fprintln(w, "error 500 - bad frontend lookup")
+			return
+		}
+		if f.Owner != user.Email {
+			fmt.Fprintln(w, "403 - permission denied")
+			return
+		}
+		f.PublicKeyData = strings.Trim(keydata, " \r\n\t")
+		dest := path.Join(be.config.ClientDirectory, name, "key")
+		err = os.WriteFile(dest, []byte(f.PublicKeyData), 0600)
+		if err != nil {
+			fmt.Fprintf(w, "error 500 - unable to write key file")
+			return
+		}
+		http.Redirect(w, r, path.Join("/sv", uuid, name), http.StatusSeeOther)
+		return
+	}
+
 	data := PageResponse{}
 	data.Head.Title = "Generate Encyption Key Pair | Q2Admin CloudAdmin"
 	data.Title = "Keys"
