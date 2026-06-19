@@ -948,6 +948,7 @@ func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RuleListHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "list rules here")
 }
 
 func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
@@ -1005,8 +1006,7 @@ func boolToEmoji(val bool) template.HTML {
 	if val {
 		return template.HTML("&#x2705;") // green checkmark
 	}
-	// &#x2715; also good
-	return template.HTML("&#10006;")
+	return template.HTML("&#x274C;") // red x
 }
 
 // for translating boolean value from struct to an HTML checkbox value
