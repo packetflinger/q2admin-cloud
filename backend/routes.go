@@ -52,6 +52,14 @@ func LoadWebsiteRoutes() *mux.Router {
 	apiRoute.ServerList = "/api/v1/ListServers"
 	apiRoute.APIKeyList = "/api/v1/ListAPIKeys/{UUID}/key/{APIKEY}"
 
+	Routes.PlayerView = "/sv/{ServerUUID}/{ServerName}/player/{ClientNum}"
+	Routes.RuleList = "/sv/{ServerUUID}/{ServerName}/rules"
+	Routes.ServerKeys = "/sv/{ServerUUID}/{ServerName}/generate-keys"
+	Routes.ServerEdit = "/sv/{ServerUUID}/{ServerName}/edit"
+	Routes.ServerConsole = "/sv/{ServerUUID}/{ServerName}/console"
+	Routes.ServerChangeUUID = "/sv/{ServerUUID}/{ServerName}/change-uuid"
+	Routes.ServerView = "/sv/{ServerUUID}/{ServerName}"
+
 	Routes.ServerAdd = "/add-server"
 	Routes.ConnectedServers = "/api/GetConnectedServers"
 	Routes.AuthDiscord = "/auth/discord"
@@ -70,13 +78,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.AuthLogout = "/sign-out"
 	Routes.Static = "/static/"
 	Routes.Static2 = "/static2/"
-	Routes.PlayerView = "/sv/{ServerUUID}/{ServerName}/player/{ClientNum}"
-	Routes.ServerConsole = "/sv/{ServerUUID}/{ServerName}/console"
-	Routes.ServerEdit = Routes.ServerView + "/edit"
-	Routes.ServerChangeUUID = Routes.ServerView + "/changeuuid"
-	Routes.ServerView = "/sv/{ServerUUID}/{ServerName}"
-	Routes.ServerKeys = "/sv/{uuid}/keygen"
-	Routes.RuleList = "/sv/{ServerUUID}/rules"
+
 	Routes.Terms = "/terms-of-use"
 	Routes.Index = "/"
 
