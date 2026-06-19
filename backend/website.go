@@ -953,7 +953,6 @@ func RuleListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("serverkeyshandler!")
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
