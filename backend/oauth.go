@@ -270,6 +270,51 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Fake an actual login for testing on different devices and when there is no
+// internet available. This pretends an oauth provider confirmed identity and
+// creates a session cookie for the user matching the email parameter.
+func MockLogin(w http.ResponseWriter, r *http.Request, email string) {
+	user, err := be.GetUserByEmail(email)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if user == nil {
+		fmt.Fprintf(w, "User %q unknown, you can only mock existing users", email)
+		return
+	}
+	alias := email
+	if len(user.Name) > 0 {
+		alias = user.Name
+	}
+	id := uuid.NewString()
+	ttl := int64(86400) // 1 day from now
+	signedJWT, err := CreateSessionToken(user, id, ttl, Website.Secret)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	session := pb.Session{
+		Id:         id,
+		Creation:   time.Now().Unix(),
+		Expiration: time.Now().Unix() + ttl,
+		AuthToken:  "blah",
+		Avatar:     "",
+		Name:       alias,
+	}
+	user.Session = &session
+
+	cookie := http.Cookie{
+		Name:     CookieName,
+		Value:    signedJWT,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(12 * time.Hour),
+		Path:     "/",
+	}
+	http.SetCookie(w, &cookie)
+	http.Redirect(w, r, Routes.Dashboard, http.StatusFound)
+}
+
 // TODO: hard code less of this
 func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	oauthGoogleUrlAPI := "https://www.googleapis.com/oauth2/v2/userinfo?access_token="

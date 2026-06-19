@@ -27,6 +27,7 @@ import (
 
 const (
 	CookieName = "q2asess"
+	AuthBypass = "joe@joereid.com" // for testing, skips auth
 )
 
 var (
@@ -375,6 +376,10 @@ func WebsiteHandlerIndex(w http.ResponseWriter, r *http.Request) {
 
 // Display signin page
 func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
+	if AuthBypass != "" {
+		MockLogin(w, r, AuthBypass)
+		return
+	}
 	infile := path.Join(be.config.GetWebRoot(), "templates", "new", "sign-in.tmpl")
 	tmpl, e := template.ParseFiles(infile)
 
