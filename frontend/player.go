@@ -13,34 +13,34 @@ import (
 // Each game server has a slice of all current players
 type Player struct {
 	ClientID         int // ID on the gameserver (0-maxplayers)
+	ConnectTime      int64
+	Cookie           string // a unique value to identify players
 	Database_ID      int64
+	Deaths           int
+	FloodInfo        *pb.FloodInfo
+	FOV              int
+	Frags            int
+	Frontend         *Frontend // circular ref
+	Hostname         string
+	Invites          int
+	InvitesAvailable int
+	IP               string
+	LastInvite       int64
+	LastTeleport     int64 // actually going
+	LastTeleportList int64 // viewing the big list of destinations
+	Muted            bool  // is this player muted?
 	Name             string
-	Version          string // q2 client flavor + version
+	Port             int
+	Rules            []*pb.Rule // rules that match this player
+	Stifled          bool
+	StifleLength     int // seconds
+	Suicides         int
+	Teleports        int
 	Userinfo         string
 	UserinfoMap      map[string]string
 	UserInfoHash     string // md5 hash for checking if UI changed
-	Cookie           string // a unique value to identify players
-	Frags            int
-	Deaths           int
-	Suicides         int
-	Teleports        int
-	LastTeleport     int64 // actually going
-	LastTeleportList int64 // viewing the big list of destinations
-	Invites          int
-	LastInvite       int64
-	InvitesAvailable int
-	IP               string
-	Port             int
-	Hostname         string
+	Version          string // q2 client flavor + version
 	VPN              bool
-	FOV              int
-	ConnectTime      int64
-	Rules            []*pb.Rule // rules that match this player
-	Stifled          bool
-	StifleLength     int       // seconds
-	Frontend         *Frontend // circular ref
-	Muted            bool      // is this player muted?
-	FloodInfo        *pb.FloodInfo
 }
 
 // Get a pointer to a player based on a client number
