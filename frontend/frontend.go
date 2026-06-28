@@ -28,50 +28,50 @@ import (
 // on disk during init and the rest is filled in when the game
 // server actually connects
 type Frontend struct {
-	ID            int                     // this is the database index, remove later
-	UUID          string                  // random identifier
-	Owner         string                  // email addr
-	Version       int                     // q2admin library version
-	Name          string                  // the teleport name
-	Description   string                  // used in teleporting
-	IPAddress     string                  // used for teleporting
-	Port          int                     // used for teleporting
+	AllowInvite   bool                    // honor invites from players
+	AllowTeleport bool                    // enable teleport functionality
+	APIKeys       *pb.ApiKeys             // keys generated for accessing this client
+	Challenge     []byte                  // random data for auth set by server
 	Connected     bool                    // is it currently connected to us?
-	Verified      bool                    // client owner proved they're the owner
-	CurrentMap    string                  // what map is currently running
-	PreviousMap   string                  // what was the last map?
-	Enabled       bool                    // actually use it
 	Connection    *net.Conn               // the tcp connection
-	Players       []Player                // all the connected players
-	PlayerCount   int                     // len(Players)
+	ConnectTime   int64                   // unix timestamp when connection made
+	CurrentMap    string                  // what map is currently running
+	Data          *database.Database      // pointer to database
+	Description   string                  // used in teleporting
+	Enabled       bool                    // actually use it
+	Encrypted     bool                    // are the messages AES encrypted?
+	ID            int                     // this is the database index, remove later
+	InitVector    []byte                  // AES IV,
+	Invites       InviteBucket            // Invite throttling
+	IPAddress     string                  // used for teleporting
+	Log           *log.Logger             // log stuff here
+	LogFile       *os.File                // pointer to file so we can close when client disconnects
+	Maplist       *maprotator.MapList     // the maps for the frontend
 	MaxPlayers    int                     // total number
 	Message       message.Buffer          // incoming byte stream
 	MessageOut    message.Buffer          // outgoing byte stream
-	Encrypted     bool                    // are the messages AES encrypted?
-	Trusted       bool                    // signature challenge verified
-	PublicKeyData string                  // the contents of the `key` file
-	PublicKey     *rsa.PublicKey          // supplied by owner via website
-	SymmetricKey  []byte                  // AES 128 CBC
-	InitVector    []byte                  // AES IV,
-	PreviousIV    []byte                  // the next to last AES IV we used (just in case)
-	Rules         []*pb.Rule              // bans, mutes, etc
-	PingCount     int                     // how many pings client has seen
-	Log           *log.Logger             // log stuff here
-	LogFile       *os.File                // pointer to file so we can close when client disconnects
-	APIKeys       *pb.ApiKeys             // keys generated for accessing this client
+	Name          string                  // the teleport name
+	Owner         string                  // email addr
 	Path          string                  // the fs path for this client
-	Terminals     []*chan string          // pointers to the console streams
-	Users         map[*pb.User][]*pb.Role // users who have access via ssh/web
-	Challenge     []byte                  // random data for auth set by server
-	ConnectTime   int64                   // unix timestamp when connection made
+	PingCount     int                     // how many pings client has seen
+	PlayerCount   int                     // len(Players)
+	Players       []Player                // all the connected players
+	Port          int                     // used for teleporting
+	PreviousIV    []byte                  // the next to last AES IV we used (just in case)
+	PreviousMap   string                  // what was the last map?
+	PublicKey     *rsa.PublicKey          // supplied by owner via website
+	PublicKeyData string                  // the contents of the `key` file
+	Rules         []*pb.Rule              // bans, mutes, etc
 	Server        any                     // pointer for circular reference back
-	AllowInvite   bool                    // honor invites from players
-	Invites       InviteBucket            // Invite throttling
-	AllowTeleport bool                    // enable teleport functionality
-	TeleportCount int                     // how many times teleport was used
 	ServerVars    map[string]string       // public server cvars
-	Data          *database.Database      // pointer to database
-	Maplist       *maprotator.MapList     // the maps for the frontend
+	SymmetricKey  []byte                  // AES 128 CBC
+	TeleportCount int                     // how many times teleport was used
+	Terminals     []*chan string          // pointers to the console streams
+	Trusted       bool                    // signature challenge verified
+	Users         map[*pb.User][]*pb.Role // users who have access via ssh/web
+	UUID          string                  // random identifier
+	Verified      bool                    // client owner proved they're the owner
+	Version       int                     // q2admin library version
 	WebUsers      map[string]bool         // key is email addr, val is write access
 }
 
