@@ -30,15 +30,15 @@ import (
 
 // "This" admin server
 type Backend struct {
-	users      []*pb.User          // website users
 	config     pb.Config           // global config
 	frontends  []frontend.Frontend // managed quake 2 servers
-	rules      []*pb.Rule          // bans/mutes/etc
+	maintCount int                 // total maintenance runs
 	privateKey *rsa.PrivateKey     // private to us
 	publicKey  *rsa.PublicKey      // known to clients
-	maintCount int                 // total maintenance runs
 	rpcCancel  context.CancelFunc  // call this to kill the RPC server
 	rpcStart   int64               // unix timestamp
+	rules      []*pb.Rule          // bans/mutes/etc
+	users      []*pb.User          // website users
 }
 
 var (
