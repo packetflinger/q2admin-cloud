@@ -208,3 +208,83 @@ func TestResolvePlayer(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateKDR(t *testing.T) {
+	tests := []struct {
+		name     string
+		frontend *Frontend
+		id       int
+		want     float64
+	}{
+		{
+			name:     "negative id",
+			frontend: &Frontend{},
+			id:       -1,
+			want:     0.0,
+		},
+		{
+			name: "high id",
+			frontend: &Frontend{
+				MaxPlayers: 8,
+			},
+			id:   100,
+			want: 0.0,
+		},
+		{
+			name: "negative",
+			frontend: &Frontend{
+				MaxPlayers: 8,
+				Players: []Player{
+					{
+						ClientID:    0,
+						ConnectTime: 1,
+						Frags:       -4,
+						Deaths:      10,
+					},
+				},
+			},
+			id:   0,
+			want: -2.5,
+		},
+		{
+			name: "positive",
+			frontend: &Frontend{
+				MaxPlayers: 8,
+				Players: []Player{
+					{
+						ClientID:    0,
+						ConnectTime: 1,
+						Frags:       25,
+						Deaths:      10,
+					},
+				},
+			},
+			id:   0,
+			want: 2.5,
+		},
+		{
+			name: "zero death",
+			frontend: &Frontend{
+				MaxPlayers: 8,
+				Players: []Player{
+					{
+						ClientID:    0,
+						ConnectTime: 1,
+						Frags:       25,
+						Deaths:      0,
+					},
+				},
+			},
+			id:   0,
+			want: 25,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.frontend.CalculateKDR(tc.id)
+			if got != tc.want {
+				t.Errorf("CalculateKDR(%d): %f, want %f\n", tc.id, got, tc.want)
+			}
+		})
+	}
+}

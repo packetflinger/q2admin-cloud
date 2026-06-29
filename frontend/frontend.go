@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"os"
 	"path"
@@ -481,4 +482,33 @@ func (fe *Frontend) FetchUserRoles(u *pb.User) ([]*pb.Role, error) {
 		return nil, fmt.Errorf("unknown user")
 	}
 	return fe.Users[u], nil
+}
+
+// Calculate the current kill:death ratio for a player based on their current
+// stats. Special consideration needs to be made for cases were no deaths
+// have been reported (divide by zero).
+//
+// When a player has more deaths than frags, the absolute value of the
+// numerator and denominator are swapped and multiplied by -1 resulting in a
+// larger negative number instead of an increasingly smaller number as deaths
+// increase.
+func (fe *Frontend) CalculateKDR(cid int) float64 {
+	if cid < 0 || cid >= fe.MaxPlayers {
+		return 0.0
+	}
+	p, err := fe.FindPlayer(cid)
+	if err != nil {
+		fmt.Println(err)
+		return 0.0
+	}
+	nom, denom := p.Frags, p.Deaths
+	multiplier := 1
+	if denom > nom {
+		nom, denom = denom, nom
+		multiplier = -1
+	}
+	if denom == 0 {
+		return math.Abs(float64(nom)) * float64(multiplier)
+	}
+	return math.Abs(float64(nom)/float64(denom)) * float64(multiplier)
 }
