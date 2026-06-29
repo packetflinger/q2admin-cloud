@@ -25,6 +25,7 @@ type Player struct {
 	Invites          int
 	InvitesAvailable int
 	IP               string
+	KDR              float64 // kill:death ratio
 	LastInvite       int64
 	LastTeleport     int64 // actually going
 	LastTeleportList int64 // viewing the big list of destinations

@@ -333,9 +333,11 @@ func ParseObituary(fe *frontend.Frontend, obit string) {
 			death.Victim.ClientID,
 			death.MeansToString(),
 		)
-		fe.Players[death.Victim.ClientID].Deaths++
-		fe.Players[death.Victim.ClientID].Suicides++
-		fe.Players[death.Victim.ClientID].Frags--
+		cid := death.Victim.ClientID
+		fe.Players[cid].Deaths++
+		fe.Players[cid].Suicides++
+		fe.Players[cid].Frags--
+		fe.Players[cid].KDR = fe.CalculateKDR(cid)
 	} else {
 		logObit = fmt.Sprintf("DEATH: %s[%d] -> %s[%d] (%s)",
 			death.Murderer.Name,
@@ -344,8 +346,12 @@ func ParseObituary(fe *frontend.Frontend, obit string) {
 			death.Victim.ClientID,
 			death.MeansToString(),
 		)
-		fe.Players[death.Victim.ClientID].Deaths++
-		fe.Players[death.Murderer.ClientID].Frags++
+		cidV := death.Victim.ClientID
+		cidM := death.Murderer.ClientID
+		fe.Players[cidV].Deaths++
+		fe.Players[cidM].Frags++
+		fe.Players[cidV].KDR = fe.CalculateKDR(cidV)
+		fe.Players[cidM].KDR = fe.CalculateKDR(cidM)
 	}
 	fe.Log.Printf("%s", logObit)
 	fe.SSHPrintln(logObit)
