@@ -1,3 +1,4 @@
+// Some player-specific functionality
 package frontend
 
 import (
@@ -102,6 +103,12 @@ func (player *Player) LoadPlayerHash() {
 // `$player.ConnectTime > 0` to determine if this player ID is in use.
 func (fe *Frontend) ValidPlayerID(client int) bool {
 	return client >= 0 && client < len(fe.Players)
+}
+
+// Check if there is an actual player using this particular slot on the
+// frontend. Sanity checks for inappropritate indexes as well.
+func (fe *Frontend) PlayerSlotInUse(slot int) bool {
+	return fe.ValidPlayerID(slot) && fe.Players[slot].ConnectTime > 0
 }
 
 // Remove a player from the players slice (used when player quits). This also
