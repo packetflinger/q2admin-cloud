@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS "player" (
 	"time"	INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
+CREATE INDEX "server_idx" ON "player" (
+        "server"
+);
 CREATE TABLE IF NOT EXISTS "player_stat" (
         "id"    INTEGER,
         "player"        INTEGER,
