@@ -1,7 +1,51 @@
 {{define "player-view"}}
 {{template "header" .}}
 
-<h1 class="h3 mb-3">{{.Title}}</h1>
+{{ if .Player.Name }}
+<h1 class="h3 mb-3">{{ .Frontend.Name }} &gt; {{ .Player.Name }} </h1>
+<div class="row">
+  <div class="col">
+    <div class="card">
+        <div class="card-header">
+            <h4>Player Info</h4>
+        </div>
+        <div class="card-body">
+            <div>Name: <span class="font-monospace">"{{.Player.Name}}"</span></div>
+            <div>Address: <span class="font-monospace">{{ .Player.IP }}</span></div>
+            <div>Port: <span class="font-monospace">{{ .Player.Port }}</span></div>
+            <div>DNS: {{.Player.Hostname}}</div>
+            <div>VPN Connected: {{.Player.VPN }}</div>
+            <div>Connected: {{.Player.ConnectTime}}</div>
+            <div>Client: {{ .Player.Version }}</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h4>Basic Stats</h4>
+        </div>
+        <div class="card-body">
+            <div>Frags: {{ .Player.Frags }}</div>
+            <div>Deaths: {{ .Player.Deaths }}</div>
+            <div>Suicides: {{.Player.Suicides }}</div>
+            <div>Kill:Death Ratio: {{.Player.KDR }}</div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h4>Controls</h4>
+        </div>
+        <div class="card-body">
+            <div><button class="btn btn-default">Send Private Message</button></div>
+            <div><button class="btn btn-default">Kick/Ban</button></div>
+            <div><button class="btn btn-default">Mute/Stifle</button></div>
+            <div><button class="btn btn-default">Blackhole</div>
+        </div>
+    </div>
+  </div>
+</div>
+{{ else }}
+<p>No player found in slot</p>
+{{ end }}
 
 {{template "footer" .}}
 {{end}}

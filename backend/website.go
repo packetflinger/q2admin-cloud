@@ -83,6 +83,7 @@ type PageResponse struct {
 	PlayerDBInfo  PlayerDatabaseInfo
 	Rule          *pb.Rule   // the rule to view/edit
 	Rules         []*pb.Rule // a list of rules (srv level)
+	Player        *frontend.Player
 }
 
 type SessionUser struct {
@@ -710,9 +711,28 @@ func WebEditServer(w http.ResponseWriter, r *http.Request) {
 }
 
 func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	uuid := vars["ServerUUID"]
+	playerId := vars["ClientNum"]
+	fe, err := be.FindFrontend(uuid)
+	if err != nil {
+		log.Println("invalid server id:", uuid)
+		return
+	}
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
+		return
+	}
+	pid, err := strconv.Atoi(playerId)
+	if err != nil {
+		be.Logf(LogLevelInfo, "invalid player id %q: %v", playerId, err)
+		fmt.Fprintf(w, "invalid player id %q", playerId)
+		return
+	}
+	if pid < 0 || pid >= fe.MaxPlayers {
+		be.Logf(LogLevelInfo, "invalid player id %q - not a valid client slot", playerId)
+		fmt.Fprintf(w, "invalid player id %q", playerId)
 		return
 	}
 	data := PageResponse{}
@@ -720,12 +740,15 @@ func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {
 	data.Head.Keywords = "Player"
 	data.Title = "Player View"
 	data.SessionUser = user
+	data.Frontend = fe
+	data.Player = &(fe.Players[pid])
 
 	tmpl, e := template.ParseFiles(
 		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
 		path.Join(be.config.GetWebRoot(), "templates", "new", "player-view.tmpl"),
 		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
 	)
+	tmpl = tmpl.Funcs(funcMap)
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -946,10 +969,102 @@ func RuleViewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	data := PageResponse{}
+	//data.Head.Title = "Frontend Rules | Q2Admin CloudAdmin"
+	//data.Title = "Rules"
+	data.SessionUser = user
+
+	lookup := mux.Vars(r)["uuid"]
+	//fes := be.UserFrontends(user.GetEmail())
+	for _, f := range be.frontends {
+		for j, r := range f.Rules {
+			if r.GetUuid() == lookup {
+				data.Frontend = &f
+				data.Rule = f.Rules[j]
+			}
+		}
+	}
+
+	tmpl, e := template.ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "rule-edit.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "rule-edit", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func RuleAddHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	data := PageResponse{}
+	data.Head.Title = "Frontend Rules | Q2Admin CloudAdmin"
+	data.Title = "Rules"
+	data.SessionUser = user
+
+	tmpl, e := template.ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "rule-add.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "rule-add", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
 }
 
 func RuleListHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "list rules here")
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	data := PageResponse{}
+	data.Head.Title = "Frontend Rules | Q2Admin CloudAdmin"
+	data.Title = "Rules"
+	data.SessionUser = user
+
+	lookup := mux.Vars(r)["ServerUUID"]
+	fes := be.UserFrontends(user.GetEmail())
+	for _, f := range fes {
+		if f.UUID == lookup {
+			data.Frontend = f
+			data.Frontend.Rules = SortRules(data.Frontend.Rules)
+			break
+		}
+	}
+
+	tmpl, e := template.ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "rule-list.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "rule-list", data)
+		if err != nil {
+			log.Println(err)
+		}
+	}
 }
 
 func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {

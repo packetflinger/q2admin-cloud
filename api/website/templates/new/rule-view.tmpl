@@ -1,0 +1,177 @@
+{{ define "rule" }}
+{{ template "header" .}}
+
+<h1 class="h3 mb-3">Rule View</h1>
+<p>ID: {{ .Rule.GetUuid }}</p>
+<div>Type: {{ .Rule.GetType }}</div>
+
+<div class="card">
+  <div class="card-header">
+    Match Criteria
+  </div>
+  <div class="card-body">
+    {{ if .Rule.GetAddress}}
+    <h5 class="card-title">Addresses</h5>
+    <p class="card-text">
+        {{ range .Rule.GetAddress }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetHostname}}
+    <h5 class="card-title">DNS Names</h5>
+    <p class="card-text">
+        {{ range .Rule.GetHostname }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetName}}
+    <h5 class="card-title">Player Names</h5>
+    <p class="card-text">
+        {{ range .Rule.GetName }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetClient}}
+    <h5 class="card-title">Quake 2 Clients</h5>
+    <p class="card-text">
+        {{ range .Rule.GetClient }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetClient}}
+    <h5 class="card-title">Userinfo Pairs</h5>
+    <p class="card-text">
+        {{ range .Rule.GetUserinfo }}
+        <div>{{ .GetProperty }}: {{ .GetValue }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetClient}}
+    <h5 class="card-title">Quake 2 Clients</h5>
+    <p class="card-text">
+        {{ range .Rule.GetClient }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetMessage}}
+    <h5 class="card-title">Messages to Player</h5>
+    <p class="card-text">
+        {{ range .Rule.GetMessage }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetExpirationTime}}
+    <h5 class="card-title">Expiration</h5>
+    <p class="card-text">
+        <div>{{ .Rule.GetExpirationTime }}</div>
+    </p>
+    {{ end }}
+    {{ if .Rule.Vpn}}
+    <h5 class="card-title">Via VPN</h5>
+    <p class="card-text">
+        {{ range .Rule.GetVpn }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetUserInfo }}
+    <h5 class="card-title">Userinfo Pairs</h5>
+    <p class="card-text">
+        {{ range .Rule.GetUserInfo }}
+        <div>{{ .GetProperty }}: {{ .GetValue }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetTimespec }}
+    <h5 class="card-title">TimeSpec</h5>
+    <p class="card-text">
+        {{ if .Rule.GetTimespec.GetBefore }}<div>Before: {{ .Rule.GetTimespec.GetBefore }}</div>{{ end }}
+        {{ if .Rule.GetTimespec.GetAfter }}<div>After: {{ .Rule.GetTimespec.GetAfter }}</div>{{ end }}
+        {{ if .Rule.GetTimespec.GetEvery }}<div>Every: {{ .Rule.GetTimespec.GetEvery }}</div>{{ end }}
+        {{ if .Rule.GetTimespec.GetPlayTime }}<div>Play time: {{ .Rule.GetTimespec.GetPlayTime }}</div>{{ end }}
+    </p>
+    {{ end }}
+  </div>
+</div>
+
+{{ if .Rule.Exception }}
+<div class="card">
+  <div class="card-header">
+    Exceptions
+  </div>
+  <div class="card-body">
+    {{ if .Rule.GetException.GetDescription }}
+    <h5 class="card-title">Addresses</h5>
+    <p class="card-text">
+        {{ range .Rule.GetException.GetDescription }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetException.GetAddress }}
+    <h5 class="card-title">Addresses</h5>
+    <p class="card-text">
+        {{ range .Rule.GetAddress }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetException.GetHostname }}
+    <h5 class="card-title">Hostnames</h5>
+    <p class="card-text">
+        {{ range .Rule.GetException.GetHostnames }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetException.GetName }}
+    <h5 class="card-title">Name</h5>
+    <p class="card-text">
+        {{ range .Rule.GetException.GetName }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetException.GetClient }}
+    <h5 class="card-title">Quake 2 Client</h5>
+    <p class="card-text">
+        {{ range .Rule.GetException.GetClient }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetException.GetUserInfo }}
+    <h5 class="card-title">Userinfo Pairs</h5>
+    <p class="card-text">
+        {{ range .Rule.GetException.GetUserInfo }}
+        <div>{{ . }}</div>
+        {{ end }}
+    </p>
+    {{ end }}
+    {{ if .Rule.GetException.GetExpiration }}
+    <h5 class="card-title">Expiration</h5>
+    <p class="card-text">
+        <div>{{ .Rule.GetException.GetExpiration }}</div>
+    </p>
+    {{ end }}
+    {{ if .Rule.GetException.GetTimespec }}
+    <h5 class="card-title">TimeSpec</h5>
+    <p class="card-text">
+        {{ if .Rule.GetException.GetTimespec.GetBefore }}<div class="row"><div class="col">Before:</div><div class="col">{{ .Rule.GetException.GetTimespec.GetBefore }}</div></div>{{ end }}
+        {{ if .Rule.GetException.GetTimespec.GetAfter }}<div class="row"><div class="col">After:</div><div class="col">{{ .Rule.GetException.GetTimespec.GetAfter }}</div></div>{{ end }}
+        {{ if .Rule.GetException.GetTimespec.GetEvery }}<div class="row"><div class="col">Every:</div><div class="col">{{ .Rule.GetException.GetTimespec.GetEvery }}</div></div>{{ end }}
+        {{ if .Rule.GetException.GetTimespec.GetPlayTime }}<div class="row"><div class="col">Play time:</div><div class="col">{{ .Rule.GetException.GetTimespec.GetPlayTime }}</div></div>{{ end }}
+    </p>
+    {{ end }}
+  </div>
+</div>
+{{ end }}
+
+{{ template "footer" . }}
+{{ end }}

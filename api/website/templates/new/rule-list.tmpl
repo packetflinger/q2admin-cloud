@@ -1,0 +1,22 @@
+{{ define "rule-list" }}
+{{ template "header" .}}
+
+<h1 class="h3 mb-3">Rules for <b>{{ .Frontend.Name }}</b></h1>
+
+<div class="row">
+    <div class="col-1 d-none d-sm-block">Created</div>
+    <div class="col-2">ID</div>
+    <div class="col-2">Type</div>
+    <div class="col-7">Description</div>
+{{ range .Frontend.Rules }}
+    <div class="row">
+        <div class="col-1 visble-sm-block">{{ .GetCreationTime }}</div>
+        <div class="col-2"><a href="/rules/{{ .GetUuid }}/view">{{ slice .GetUuid 0 8 }}</a></div>
+        <div class="col-2">{{ .GetType }}</div>
+        <div class="col-7">{{ .GetDescription }}</div>
+    </div>
+{{ end }}
+</div>
+
+{{ template "footer" . }}
+{{ end }}

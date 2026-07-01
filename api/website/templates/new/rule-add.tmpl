@@ -1,0 +1,77 @@
+{{ define "rule-add" }}
+{{ template "header" .}}
+
+<h1 class="h3 mb-3">Create a new rule</b></h1>
+<form action="" method="post">
+<!--
+    <p>
+    <label for="newruletype" class="form-label">Rule Type</label>
+    <select class="form-select" aria-label="Rule Type" id="newruletype" name="ruletype">
+        <option selected>Rule Type</option>
+        <option value="1">Ban</option>
+        <option value="2">Mute</option>
+        <option value="3">Stifle</option>
+        <option value="4">Message</option>
+    </select>
+    </p>
+
+    <p class="mb-3">
+        <label for="newrulename" class="form-label">Player name (case-insensitive regex)</label>
+        <input type="ip" class="form-control" id="newrulename" placeholder="shithead.*">
+    </p>
+    <p class="mb-3">
+        <label for="newruleip" class="form-label">IP Address (CIDR notation for networks (/24))</label>
+        <input type="ip" class="form-control" id="newruleip" name="ruleip" placeholder="100.64.8.4">
+    </p>
+    <p class="mb-3">
+        <label for="newrulehostname" class="form-label">Hostname (case-insensitive regex)</label>
+        <input type="ip" class="form-control" id="newrulehostname" placeholder=".clients.isp.net">
+    </p>
+    <p class="mb-3">
+        <label for="newruleversion" class="form-label">Client software version (case-insensitive regex)</label>
+        <input type="ip" class="form-control" id="newruleversion" placeholder="r1q2-v1.01.*">
+    </p>
+-->
+
+    <div class="input-group mb-3">
+        <span class="input-group-text" id="basic-addon1">Rule Type:</span>
+        <select class="form-select" aria-label="Rule Type" id="newruletype" name="ruletype">
+            <option selected></option>
+            <option value="1">Ban</option>
+            <option value="2">Mute</option>
+            <option value="3">Stifle</option>
+            <option value="4">Message</option>
+        </select>
+    </div>
+
+    <div class="input-group mb-3">
+        <span class="input-group-text" id="basic-addon1">Player Name:</span>
+        <input type="text" class="form-control" placeholder="unnamed_player" aria-label="Player Name" name="ruleplayername">
+    </div>
+
+    <div class="input-group mb-3">
+        <span class="input-group-text" id="basic-addon1">IP Address:</span>
+        <input type="text" class="form-control" placeholder="100.64.32.16" aria-label="IP Address" name="ruleipaddress">
+    </div>
+
+    <div class="input-group mb-3">
+        <span class="input-group-text" id="basic-addon1">Hostname:</span>
+        <input type="text" class="form-control" placeholder="blah.google.com" aria-label="Hostname" name="rulehostname">
+    </div>
+
+    <div class="input-group mb-3">
+        <span class="input-group-text" id="basic-addon1">Client Version:</span>
+        <input type="text" class="form-control" placeholder="r1q2-v1.01.*" aria-label="Version" name="ruleversion">
+    </div>
+
+    <div class="form-check">
+        <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault" name="rulefromvpn">
+        <label class="form-check-label" for="flexCheckDefault">From VPN IP</label>
+    </div>
+</form>
+
+
+
+
+{{ template "footer" . }}
+{{ end }}

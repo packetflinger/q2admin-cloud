@@ -33,6 +33,7 @@ type WebRoutes struct {
 	RuleList         string
 	RuleView         string
 	RuleEdit         string
+	RuleAdd          string
 	ServerKeys       string
 }
 
@@ -72,6 +73,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.Privacy = "/privacy-policy"
 	Routes.RuleView = "/rules/{uuid}/view"
 	Routes.RuleEdit = "/rules/{uuid}/edit"
+	Routes.RuleAdd = "/rules/create"
 	Routes.SearchServer = "/search/{UUID}"
 	Routes.Search = "/search"
 	Routes.AuthLogin = "/sign-in"
@@ -107,6 +109,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.RuleView, RuleViewHandler)
 	r.HandleFunc(Routes.RuleEdit, RuleEditHandler)
 	r.HandleFunc(Routes.RuleList, RuleListHandler)
+	r.HandleFunc(Routes.RuleAdd, RuleAddHandler)
 	r.HandleFunc(Routes.ServerKeys, ServerKeysHandler)
 
 	r.PathPrefix(Routes.Static).Handler(http.FileServer(http.Dir("./api/website")))
