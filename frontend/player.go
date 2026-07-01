@@ -101,8 +101,9 @@ func (player *Player) LoadPlayerHash() {
 	}
 }
 
-// Check if a client ID is valid for a particular server context,
-// does not care if a valid player structure is located there or not
+// Check if a client ID is valid for a particular server context. This does not
+// account for whether an actual player is using that slot or not. Check that
+// `$player.ConnectTime > 0` to determine if this player ID is in use.
 func (fe *Frontend) ValidPlayerID(client int) bool {
 	if fe == nil {
 		return false
@@ -110,7 +111,9 @@ func (fe *Frontend) ValidPlayerID(client int) bool {
 	return client >= 0 && client < len(fe.Players)
 }
 
-// Remove a player from the players slice (used when player quits)
+// Remove a player from the players slice (used when player quits). This also
+// writes this player's stats (frags/deaths/etc) to the database for later
+// consideration.
 func (fe *Frontend) RemovePlayer(client int) {
 	if fe == nil {
 		return
