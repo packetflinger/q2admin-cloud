@@ -233,6 +233,7 @@ func CreateSessionToken(u *pb.User, id string, length int64, secret []byte) (str
 }
 
 // Ensure the JWT is valid
+//
 // 1. Crypto signature matches
 // 2. Token is not yet expired
 // 3. Token Id is not in our internal revocation list (todo)
