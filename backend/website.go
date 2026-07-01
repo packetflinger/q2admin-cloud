@@ -51,17 +51,17 @@ var (
 )
 
 type PlayerDatabaseInfo struct {
-	Id          int
-	Server_id   int
-	Name        string
-	IP          string
-	Hostname    string
-	Vpn         bool
-	Cookie      string
-	Version     string
-	Userinfo    string
 	ConnectTime int64
+	Cookie      string
+	Hostname    string
+	Id          int
+	IP          string
+	Name        string
 	ServerUUID  string
+	Server_id   int
+	Userinfo    string
+	Version     string
+	Vpn         bool
 }
 
 // PageResponse holds all the possible data to render the pages fort he site.
