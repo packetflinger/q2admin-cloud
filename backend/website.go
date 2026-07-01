@@ -1,3 +1,10 @@
+// Implement the managment website for Cloudadmin.
+//
+// Whether this HTTP service is started depends on the `api_enable` property
+// in the main config proto. This service does not use TLS, is just straight
+// up HTTP. It should use an ephemeral port (not 80 or 443) and be placed
+// behind an appropriate application-layer firewall/proxy like NGINX that
+// implements HTTPS for production use.
 package backend
 
 import (
