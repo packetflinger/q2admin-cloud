@@ -178,6 +178,9 @@ var WSUpgrader = websocket.Upgrader{
 //
 // Called at the start of each website request
 func GetSessionUser(r *http.Request) (*pb.User, error) {
+	if r == nil {
+		return nil, fmt.Errorf("nil request")
+	}
 	cookie, e := r.Cookie(CookieName)
 	if e != nil {
 		return nil, e
