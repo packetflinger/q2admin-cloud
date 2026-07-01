@@ -44,7 +44,9 @@ type Player struct {
 	VPN              bool
 }
 
-// Get a pointer to a player based on a client number
+// Get a pointer to a player based on a client number. This pointer is the
+// actual location for the player in the Frontend struct, so properties set
+// on this struct will persist.
 func (fe *Frontend) FindPlayer(client int) (*Player, error) {
 	if fe == nil {
 		return nil, fmt.Errorf("error finding player: null receiver")
