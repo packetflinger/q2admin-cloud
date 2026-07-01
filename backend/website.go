@@ -211,6 +211,12 @@ func CreateSessionToken(u *pb.User, id string, length int64, secret []byte) (str
 	if len(secret) == 0 {
 		return "", fmt.Errorf("can't create session token: empty secret")
 	}
+	if id == "" {
+		id = uuid.NewString() // bad practice to change func params
+	}
+	if length < 600 {
+		length = 600 // anything less than 10 minutes is kind of stupid
+	}
 	now := time.Now().Unix()
 	claims := jwt.StandardClaims{
 		ExpiresAt: now + length,
