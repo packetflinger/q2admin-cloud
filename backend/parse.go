@@ -281,7 +281,8 @@ func ParseDisconnect(fe *frontend.Frontend) {
 	clientnum := int((&fe.Message).ReadByte())
 
 	if clientnum < 0 || clientnum > fe.MaxPlayers {
-		log.Printf("Invalid client number: %d\n%s\n", clientnum, hex.Dump(fe.Message.Data))
+		fe.Log.Printf("Invalid client ID in player disconnect: %d", clientnum)
+		be.Logf(LogLevelInfo, "Invalid client number: %d\n%s\n", clientnum, hex.Dump(fe.Message.Data))
 		return
 	}
 
@@ -418,9 +419,9 @@ func ParsePlayer(fe *frontend.Frontend) *frontend.Player {
 	fe.Players[newplayer.ClientID] = newplayer
 	fe.PlayerCount++
 
-	err = fe.AddPlayer(&newplayer)
+	err = fe.AddPlayer(&fe.Players[newplayer.ClientID])
 	if err != nil {
-		log.Println(err)
+		be.Logln(LogLevelInfo, err)
 	}
 	return &fe.Players[newplayer.ClientID]
 }

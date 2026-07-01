@@ -392,13 +392,18 @@ func (fe *Frontend) AddPlayer(pl *Player) error {
 	qry := `
 		INSERT INTO player (server, name, ip, hostname, vpn, cookie, version, userinfo, time) 
 		VALUES (?,?,?,?,?,?,?,?,?)`
-	_, err := fe.Data.Handle.Exec(
+	res, err := fe.Data.Handle.Exec(
 		qry, pl.Frontend.Name, pl.Name, pl.IP, pl.Hostname, pl.VPN,
 		pl.Cookie, pl.Version, pl.Userinfo, time.Now().Unix(),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting player %s[%s]: %v", pl.Name, pl.IP, err)
 	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("error getting id from inserted player %q: %v", pl.Name, err)
+	}
+	pl.Database_ID = id
 	return nil
 }
 
@@ -511,4 +516,48 @@ func (fe *Frontend) CalculateKDR(cid int) float64 {
 		return math.Abs(float64(nom)) * float64(multiplier)
 	}
 	return math.Abs(float64(nom)/float64(denom)) * float64(multiplier)
+}
+
+// WritePlayer will write a player's stats to the database. This includes data
+// like their frag counts, death counts, KDR, etc. This will typically happen
+// when the player quits (or teleports) or in the event the backend server is
+// shutdown.
+func (fe *Frontend) WritePlayer(client int) error {
+	pls := fe.Players
+	if client < 0 || client >= fe.MaxPlayers {
+		return fmt.Errorf("invalid client id: %d", client)
+	}
+	if pls[client].ConnectTime == 0 {
+		return nil
+	}
+	p := pls[client]
+	qry := `
+			INSERT INTO player_stat
+				(player, frags, deaths, suicides, kdr, play_time)
+			VALUES
+				(?,?,?,?,?,?)`
+	_, err := fe.Data.Handle.Exec(qry,
+		p.Database_ID,
+		p.Frags,
+		p.Deaths,
+		p.Suicides,
+		p.KDR,
+		(time.Now().Unix() - p.ConnectTime),
+	)
+	if err != nil {
+		return fmt.Errorf("error writing player %s:%d[%d]: %v", fe.Name, p.ClientID, p.Database_ID, err)
+	}
+	return nil
+}
+
+// Write player data to the database for all players on a particular frontend.
+func (fe *Frontend) WritePlayers() error {
+	var err error
+	for _, p := range fe.Players {
+		err = fe.WritePlayer(p.ClientID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

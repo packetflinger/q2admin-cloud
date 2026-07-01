@@ -119,13 +119,22 @@ func (fe *Frontend) RemovePlayer(client int) {
 		log.Printf("invalid client number (%d) when removing player\n", client)
 		return
 	}
-
+	/* wtf why?
 	for i := range fe.Players {
 		if fe.Players[i].ClientID == client {
 			fe.Players[i] = Player{}
 			fe.PlayerCount--
 			return
 		}
+	}
+	*/
+	if fe.Players[client].ConnectTime > 0 {
+		err := fe.WritePlayer(client)
+		if err != nil {
+			log.Println(err)
+		}
+		fe.Players[client] = Player{}
+		fe.PlayerCount--
 	}
 }
 

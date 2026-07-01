@@ -574,7 +574,16 @@ func (b *Backend) UserFrontends(u string) []*frontend.Frontend {
 // Gracefully shut everything down. Close database connection, write states to
 // disk, etc
 func Shutdown() {
-	be.Logf(LogLevelNormal, "Shutting down...")
+	be.Logf(LogLevelNormal, "Shutdown initiated...")
+	be.Logf(LogLevelNormal, "  Writing all player stats to database")
+	var err error
+	for _, f := range be.frontends {
+		err = f.WritePlayers()
+		if err != nil {
+			be.Logf(LogLevelNormal, "    error writing players for %q: %v", f.Name, err)
+		}
+	}
+	be.Logf(LogLevelNormal, "  Closing database")
 	db.Handle.Close() // not sure if this is necessary
 }
 

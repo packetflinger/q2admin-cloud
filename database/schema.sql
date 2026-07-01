@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS "frontend" (
 );
 CREATE TABLE IF NOT EXISTS "player" (
 	"id"	INTEGER,
-	"server_id"	INTEGER,
+	"server"	TEXT,
 	"name"	TEXT,
 	"ip"	TEXT,
 	"hostname"	TEXT,
@@ -29,4 +29,16 @@ CREATE TABLE IF NOT EXISTS "player" (
 	"time"	INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-
+CREATE TABLE IF NOT EXISTS "player_stat" (
+        "id"    INTEGER,
+        "player"        INTEGER,
+        "frags" INTEGER,
+        "deaths"        INTEGER,
+        "suicides"      INTEGER,
+        "kdr"   INTEGER,
+        "play_time"     INTEGER,
+        PRIMARY KEY("id" AUTOINCREMENT)
+);
+CREATE INDEX "player_idx" ON "player_stat" (
+        "player"
+);
