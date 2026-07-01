@@ -192,16 +192,6 @@ func GetSessionUser(r *http.Request) (*pb.User, error) {
 	return user, nil
 }
 
-// Make a new session for a user
-func CreateSession() *pb.Session {
-	sess := pb.Session{
-		Id:         uuid.NewString(),
-		Creation:   time.Now().Unix(),
-		Expiration: time.Now().Unix() + (86400 * 2), // 2 days from now
-	}
-	return &sess
-}
-
 // Create a JSON web token to write as the cookie data for the session. The `u`
 // parameter is the user this session is for, `id` is just a unique identifier
 // for the session, `length` is the number of seconds from now the session
