@@ -192,11 +192,18 @@ func GetSessionUser(r *http.Request) (*pb.User, error) {
 	return user, nil
 }
 
-// Create a JSON web token to write as the cookie data for the session. The `u`
-// parameter is the user this session is for, `id` is just a unique identifier
-// for the session, `length` is the number of seconds from now the session
-// should be valid for, and `secret` is a key used to cryptographically sign
-// the token to ensure the integrity of the claims.
+// Create a JSON web token to write as the cookie data for the session.
+//
+// Parameters:
+//
+//	`u`      is the user this session is for
+//	`id`     is just a unique identifier for the session
+//	`length` is the number of seconds the session should be valid for
+//	`secret` is a key used to cryptographically sign the token
+//
+// Returns a token string that is marshalled JSON with a signature appended to
+// it and base64 encoded. This should be used for the contents of the session
+// cookie.
 func CreateSessionToken(u *pb.User, id string, length int64, secret []byte) (string, error) {
 	if u == nil {
 		return "", fmt.Errorf("can't create session token: nil user")
