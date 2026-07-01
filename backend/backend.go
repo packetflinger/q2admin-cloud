@@ -47,15 +47,16 @@ var (
 )
 
 const (
-	ProtocolMagic       = 1128346193 // "Q2AC"
-	versionRequired     = 715        // git revision number
-	challengeLength     = 16         // bytes
-	TeleportWidth       = 80         // max chars per line for teleport replies
-	StifleMax           = 300        // 5 minutes
+	challengeLength = 16  // bytes
+	versionRequired = 715 // git revision number
+
 	GreetingLength      = 306
-	NetReadLength       = 5000
-	MaxInviteTokens     = 3
 	InviteTokenInterval = 300 // seconds per token added
+	MaxInviteTokens     = 3
+	NetReadLength       = 5000
+	ProtocolMagic       = 1128346193 // "Q2AC"
+	StifleMax           = 300        // 5 minutes
+	TeleportWidth       = 80         // max chars per line for teleport replies
 )
 
 // Commands sent from a frontend to us
