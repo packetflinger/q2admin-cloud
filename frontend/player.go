@@ -48,9 +48,6 @@ type Player struct {
 // actual location for the player in the Frontend struct, so properties set
 // on this struct will persist.
 func (fe *Frontend) FindPlayer(client int) (*Player, error) {
-	if fe == nil {
-		return nil, fmt.Errorf("error finding player: null receiver")
-	}
 	if !fe.ValidPlayerID(client) {
 		return nil, fmt.Errorf("invalid player id %q", client)
 	}
@@ -80,9 +77,6 @@ func (fe *Frontend) FindPlayer(client int) (*Player, error) {
 //
 // TODO: figure out the database-ness
 func (player *Player) LoadPlayerHash() {
-	if player == nil {
-		return
-	}
 	phash := player.UserinfoMap["phash"]
 	if phash != "" {
 		player.UserInfoHash = phash
@@ -107,9 +101,6 @@ func (player *Player) LoadPlayerHash() {
 // account for whether an actual player is using that slot or not. Check that
 // `$player.ConnectTime > 0` to determine if this player ID is in use.
 func (fe *Frontend) ValidPlayerID(client int) bool {
-	if fe == nil {
-		return false
-	}
 	return client >= 0 && client < len(fe.Players)
 }
 
@@ -117,9 +108,6 @@ func (fe *Frontend) ValidPlayerID(client int) bool {
 // writes this player's stats (frags/deaths/etc) to the database for later
 // consideration.
 func (fe *Frontend) RemovePlayer(client int) {
-	if fe == nil {
-		return
-	}
 	if !fe.ValidPlayerID(client) {
 		log.Printf("invalid client number (%d) when removing player\n", client)
 		return
@@ -166,9 +154,6 @@ func UserinfoMap(ui string) map[string]string {
 //
 // Called from CalculateDeath()
 func (fe *Frontend) FindPlayerByName(name string) *Player {
-	if fe == nil {
-		return nil
-	}
 	for i, p := range fe.Players {
 		if p.Name == name {
 			return &fe.Players[i]
