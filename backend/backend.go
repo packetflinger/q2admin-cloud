@@ -143,6 +143,7 @@ func (b *Backend) CreateFrontend(f frontend.Frontend) error {
 		return err
 	}
 	f.ID = int(id)
+	f.Data = &db
 	b.frontends = append(b.frontends, f)
 	return nil
 }
