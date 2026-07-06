@@ -1,0 +1,21 @@
+{{define "server-add"}}
+{{template "header" .}}
+    <form action="" method="post">
+        <h2>Add a Quake 2 Server to Manage</h2>
+        <div class="mb-3">
+            <label for="newservername" class="form-label"><b>Unique Name</b><br>Letters and numbers only, use dashes for spaces</label>
+            <input type="text" class="form-control" name="NewServerName" id="newservername" placeholder="my-cool-srvr">
+        </div>
+        <div class="mb-3">
+            <label for="serveraddress" class="form-label"><b>IP/Hostname</b></label>
+            <input type="text" class="form-control" name="NewServerAddress" id="serveraddress" placeholder="100.64.32.16 or cool.server.net">
+        </div>
+        <div class="mb-3">
+            <label for="serverport" class="form-label"><b>Port</b></label>
+            <input type="text" class="form-control" name="NewServerPort" id="serverport" placeholder="27910">
+        </div>
+        <input class="btn btn-primary" type="submit" name="AddButton" value="Add">
+        <a href="#" class="btn btn-secondary">Cancel</a>
+    </form>
+{{template "footer" .}}
+{{end}}

@@ -435,55 +435,103 @@ func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 }
 
 func WebAddServer(w http.ResponseWriter, r *http.Request) {
-	/*
-		user := GetSessionUser(r)
-		r.ParseForm()
-		name := r.Form.Get("servername")
-		ip := r.Form.Get("ipaddr")
-		port, err := strconv.Atoi(r.Form.Get("port"))
-		if err != nil {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+
+	// The add button was pressed to submit the form
+	if r.PostFormValue("AddButton") != "" {
+		name := r.PostFormValue("NewServerName")
+		address := r.PostFormValue("NewServerAddress")
+		port := r.PostFormValue("NewServerPort")
+		if name == "" || address == "" {
+			fmt.Fprintf(w, "error - form fields are empty")
 			return
 		}
-		uuid := uuid.New().String()
-		owner := user.ID
-		code := "abc123"
-
-		sql := "INSERT INTO server (uuid, owner, name, ip, port, disabled, verified, verify_code) VALUES (?,?,?,?,?,0,0,?)"
-		_, err = db.Exec(sql, uuid, owner, name, ip, port, code)
+		if port == "" {
+			port = "27910"
+		}
+		iPort, err := strconv.Atoi(port)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintf(w, "error - invalid port %q", port)
 			return
 		}
+		name = strings.ReplaceAll(strings.ToLower(strings.Trim(name, " \n\r\t")), " ", "-")
+		f := frontend.Frontend{
+			Enabled:       false,
+			IPAddress:     address,
+			Name:          name,
+			Owner:         user.Email,
+			Path:          path.Join(be.config.ClientDirectory, name),
+			Port:          iPort,
+			UUID:          uuid.NewString(),
+			Description:   "",
+			AllowTeleport: false,
+			AllowInvite:   false,
+			PublicKeyData: "",
+			Verified:      false,
+		}
+		err = be.CreateFrontend(f)
+		if err != nil {
+			fmt.Fprintf(w, "error creating frontend: %v", err)
+			return
+		}
+		http.Redirect(w, r, Routes.Index, http.StatusFound)
+		return
+	}
 
-		q2a.clients = RehashServers()
+	data := PageResponse{
+		Title:       "Add Server | Q2Admin CloudAdmin",
+		HeaderTitle: "Add Server",
+		SessionUser: user,
+	}
+	data.Head.Description = "Add a new server to manange"
 
-		http.Redirect(w, r, routes.Dashboard, http.StatusFound) // 302
-	*/
-}
+	tmpl, e := template.ParseFiles(
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "server-add.tmpl"),
+		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
+	)
 
-// Handler to delete a user's server
-func WebDelServer(w http.ResponseWriter, r *http.Request) {
-	/*
-		//user := GetSessionUser(r)
-		vars := mux.Vars(r)
-
-		uuid_to_delete := vars["id"]
-		srv, err := FindClient(uuid_to_delete)
+	if e != nil {
+		log.Println(e)
+	} else {
+		err = tmpl.ExecuteTemplate(w, "server-add", data)
 		if err != nil {
 			log.Println(err)
-			return
 		}
+	}
+}
 
-		// check ownership
-		//if srv.Owner != user.ID {
-		//	log.Printf("%s unsuccessfuly tried to delete %s, non-ownership", user.Email, srv.Name)
-		//	return
-		//}
-
-		RemoveServer(srv.UUID)
-		q2a.clients = RehashServers()
-		http.Redirect(w, r, Routes.Dashboard, http.StatusFound)
-	*/
+// Handler to delete a user's frontend
+func WebDelServer(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	uuid := vars["ServerUUID"]
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	fe, err := be.FindFrontend(uuid)
+	if err != nil {
+		fmt.Fprintf(w, "500 - unable to locate frontend %q", uuid)
+		be.Logf(LogLevelInfo, "deleting frontend: %v", err)
+		return
+	}
+	if fe.Owner != user.Email {
+		fmt.Fprintf(w, "403 - not owner")
+		be.Logf(LogLevelInfo, "Non-owner %q attempt to delete %q", user.Email, fe.Name)
+		return
+	}
+	err = be.DeleteFrontend(fe.Name)
+	if err != nil {
+		fmt.Fprintf(w, "500 - error deleting frontend")
+		be.Logf(LogLevelInfo, "%s", err)
+		return
+	}
+	http.Redirect(w, r, "/my-servers", http.StatusSeeOther)
 }
 
 // Remove any active sessions
@@ -681,11 +729,12 @@ func WebEditServer(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "error 500 - bad form submission")
 		return
 	}
-	name := r.PostFormValue("srvname")
+	name := r.PostFormValue("servername")
 	if name == "" {
 		fmt.Fprintln(w, "error 500 - bad form submission")
 		return
 	}
+	name = strings.Trim(strings.ReplaceAll(name, " ", "-"), " \n\r\t")
 	addr := r.PostFormValue("serveraddr")
 	if addr == "" {
 		fmt.Fprintln(w, "500 - empty frontend address")
@@ -694,6 +743,7 @@ func WebEditServer(w http.ResponseWriter, r *http.Request) {
 	enabled := r.PostFormValue("switchenabled") == "on"
 	teleport := r.PostFormValue("switchteleport") == "on"
 	invite := r.PostFormValue("switchinvite") == "on"
+	protect := r.PostFormValue("switchprotect") == "on"
 	f, err := be.FindFrontend(uuid)
 	if err != nil {
 		log.Println(err)
@@ -717,8 +767,14 @@ func WebEditServer(w http.ResponseWriter, r *http.Request) {
 	f.Enabled = enabled
 	f.AllowTeleport = teleport
 	f.AllowInvite = invite
-	if err = f.Materialize(); err != nil {
-		fmt.Fprintln(w, "error 500 - error saving frontend")
+	f.Name = name
+	f.DeleteProtect = protect
+
+	qry := "UPDATE frontend SET name=?, ip_address=?, port=?, enabled=?, allow_teleport=?, allow_invite=?, delete_protection=? WHERE id=?"
+	_, err = db.Handle.Exec(qry, f.Name, f.IPAddress, f.Port, f.Enabled, f.AllowTeleport, f.AllowInvite, f.DeleteProtect, f.ID)
+	if err != nil {
+		fmt.Fprintf(w, "500 - error updating frontend in database")
+		log.Printf("error updating frontend %q: %v\n", f.Name, err)
 		return
 	}
 	http.Redirect(w, r, path.Join("/sv", uuid, name), http.StatusSeeOther)

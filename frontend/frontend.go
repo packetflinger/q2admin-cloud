@@ -38,6 +38,7 @@ type Frontend struct {
 	ConnectTime   int64                   // unix timestamp when connection made
 	CurrentMap    string                  // what map is currently running
 	Data          *database.Database      // pointer to database
+	DeleteProtect bool                    // can be deleted or not
 	Description   string                  // used in teleporting
 	Enabled       bool                    // actually use it
 	Encrypted     bool                    // are the messages AES encrypted?
@@ -216,6 +217,11 @@ func LoadSettings(name string, clientsDir string) (Frontend, error) {
 		if err == nil { // is nil!
 			fe.PublicKeyData = string(contents)
 		}
+		rules, err := fe.FetchRules()
+		if err != nil {
+			log.Printf("error fetching rules for %q: %v\n", fe.Name, err)
+		}
+		fe.Rules = rules
 	}
 	return fe, nil
 }
@@ -441,6 +447,9 @@ func (fe *Frontend) GetDatabaseID() (int, error) {
 
 // Record when this frontend was last seen in the database
 func (fe *Frontend) Seen() error {
+	if fe.Data == nil {
+		return fmt.Errorf("null database pointer in %q, can't update seen data", fe.Name)
+	}
 	qry := "UPDATE connection SET last_seen = ? WHERE frontend = ?"
 	_, err := fe.Data.Handle.Exec(qry, time.Now().Unix(), fe.ID)
 	if err != nil {

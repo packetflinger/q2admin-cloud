@@ -60,12 +60,12 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.ServerConsole = "/sv/{ServerUUID}/{ServerName}/console"
 	Routes.ServerChangeUUID = "/sv/{ServerUUID}/{ServerName}/change-uuid"
 	Routes.ServerView = "/sv/{ServerUUID}/{ServerName}"
+	Routes.ServerRemove = "/sv/{ServerUUID}/{ServerName}/delete"
 
 	Routes.ServerAdd = "/add-server"
 	Routes.ConnectedServers = "/api/GetConnectedServers"
 	Routes.AuthDiscord = "/auth/discord"
 	Routes.AuthGoogle = "/auth/google"
-	Routes.ServerRemove = "/dashboard/rm/{id}"
 	Routes.Dashboard = "/dashboard"
 	Routes.Groups = "/my-groups"
 	Routes.Servers = "/my-servers"
@@ -86,7 +86,7 @@ func LoadWebsiteRoutes() *mux.Router {
 
 	r := mux.NewRouter()
 	r.HandleFunc(Routes.Index, WebsiteHandlerIndex)
-	r.HandleFunc(Routes.ServerAdd, WebAddServer).Methods("POST")
+	r.HandleFunc(Routes.ServerAdd, WebAddServer)
 	r.HandleFunc(Routes.AuthLogin, WebsiteHandlerSignin)
 	r.HandleFunc(Routes.AuthLogout, WebSignout)
 	r.HandleFunc(Routes.AuthDiscord, ProcessDiscordLogin)

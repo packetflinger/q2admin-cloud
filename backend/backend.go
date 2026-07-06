@@ -4,13 +4,13 @@ import (
 	"context"
 	"crypto/rsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
-	"io/fs"
+	"io"
 	"log"
 	"net"
 	"os"
 	"path"
-	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -22,7 +22,6 @@ import (
 	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/database"
 	"github.com/packetflinger/q2admind/frontend"
-	"github.com/packetflinger/q2admind/maprotator"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -127,6 +126,51 @@ const (
 	LogTypeCommand
 )
 
+// CreateFrontend will add a new record for a frontend in the database and in
+// memory.
+func (b *Backend) CreateFrontend(f frontend.Frontend) error {
+	qry := `
+	INSERT INTO frontend 
+		(uuid, name, owner, enabled, description, allow_teleport, allow_invite, ip_address, port, public_key_data, verified)
+	VALUES
+		(?,?,?,?,?,?,?,?,?,?,?)`
+	res, err := db.Handle.Exec(qry, f.UUID, f.Name, f.Owner, f.Enabled, f.Description, f.AllowTeleport, f.AllowInvite, f.IPAddress, f.Port, f.PublicKeyData, f.Verified)
+	if err != nil {
+		return err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	f.ID = int(id)
+	b.frontends = append(b.frontends, f)
+	return nil
+}
+
+// DeleteFrontend will remove a particular frontend from the database and the
+// backend's list of known frontends. If the frontend is connected at the time
+// it'll immediately be disconnected.
+func (b *Backend) DeleteFrontend(name string) error {
+	fe, err := b.FindFrontendByName(name)
+	if err != nil {
+		return fmt.Errorf("error finding frontend %q: %v", name, err)
+	}
+	qry := "DELETE FROM frontend WHERE id = ?"
+	_, err = db.Handle.Exec(qry, fe.ID)
+	if err != nil {
+		return fmt.Errorf("error removing frontend %q from database: %v", name, err)
+	}
+	var frontends []frontend.Frontend
+	for _, f := range b.frontends {
+		if f.Name == name {
+			continue
+		}
+		frontends = append(frontends, f)
+	}
+	be.frontends = frontends
+	return nil
+}
+
 // Locate the struct of the frontend for a particular ID, get a pointer to it
 func (b *Backend) FindFrontend(lookup string) (*frontend.Frontend, error) {
 	if lookup == "" {
@@ -223,6 +267,27 @@ func RotateKeys(fe *frontend.Frontend) {
 	fe.InitVector = newIV
 }
 
+func (b *Backend) LoadFrontends() ([]frontend.Frontend, error) {
+	var fes []frontend.Frontend
+	qry := "SELECT * FROM frontend"
+	rs, err := db.Handle.Query(qry)
+	if err != nil {
+		return nil, fmt.Errorf("error selecting frontends: %v", err)
+	}
+	defer rs.Close()
+	for rs.Next() {
+		var fe frontend.Frontend
+		err = rs.Scan(&fe.ID, &fe.UUID, &fe.Name, &fe.Owner, &fe.Enabled, &fe.Description, &fe.AllowTeleport, &fe.AllowInvite, &fe.IPAddress, &fe.Port, &fe.PublicKeyData, &fe.Verified, &fe.Invites.Tokens, &fe.Invites.Freq, &fe.DeleteProtect)
+		if err != nil {
+			return fes, fmt.Errorf("error scanning frontend: %v", err)
+		}
+		fe.Data = &db
+		fes = append(fes, fe)
+	}
+	return fes, nil
+}
+
+/*
 // ParseFrontends will build a slice of Frontend structs based on the files on
 // disk. Each frontend is in its own directory in the client directory. The
 // clients directory is specified in the main server config. Only clients with
@@ -246,32 +311,10 @@ func (b *Backend) ParseFrontends() ([]frontend.Frontend, error) {
 			if info.Name() == b.config.GetClientDirectory() {
 				return nil
 			}
-			fe, err := frontend.LoadSettings(info.Name(), b.config.GetClientDirectory())
+			fe, err := b.UnmarshalFrontend(info.Name(), b.config.GetClientDirectory())
 			if err != nil {
 				return err
 			}
-			fe.Data = &db
-			rules, err := fe.FetchRules()
-			if err != nil {
-				b.Logf(LogLevelInfo, "error fetching rules for %q: %v\n", fe.Name, err)
-			}
-			fe.Rules = rules
-			fe.Server = b
-			fe.ID, err = fe.GetDatabaseID()
-			if err != nil {
-				b.Logln(LogLevelInfo, err)
-			}
-			fe.Invites = frontend.InviteBucket{
-				Tokens: MaxInviteTokens,
-				Max:    MaxInviteTokens,
-				Freq:   InviteTokenInterval,
-			}
-			fe.Maplist = maprotator.NewMapRotation("default", []string{
-				"q2dm7",
-				"tltf",
-				"q2rdm2",
-				"q2dm8",
-			})
 			if fe.Enabled {
 				frontends = append(frontends, fe)
 			}
@@ -283,7 +326,42 @@ func (b *Backend) ParseFrontends() ([]frontend.Frontend, error) {
 	}
 	return frontends, nil
 }
+*/
 
+/*
+// Load a particular frontend from disk into memory. This happens for each
+// frontend at startup, when created from the web interface or ssh termainal.
+//
+// Returns a partially populated Frontend struct for use in the backend. It
+// still needs to be dynamically added to the backend's slice of frontends to
+// act on it.
+func (b *Backend) UnmarshalFrontend(name, path string) (frontend.Frontend, error) {
+	var fe frontend.Frontend
+	fe, err := frontend.LoadSettings(name, path)
+	if err != nil {
+		return fe, err
+	}
+	fe.Data = &db
+	fe.Server = b
+	fe.ID, err = fe.GetDatabaseID()
+	if err != nil {
+		log.Println(err)
+	}
+	fe.Invites = frontend.InviteBucket{
+		Tokens: MaxInviteTokens,
+		Max:    MaxInviteTokens,
+		Freq:   InviteTokenInterval,
+	}
+	fe.Maplist = maprotator.NewMapRotation("default", []string{
+		"q2dm7",
+		"tltf",
+		"q2rdm2",
+		"q2dm8",
+	})
+	return fe, nil
+}
+*/
+/*
 // Write the frontends proto to disk as text-format
 func MaterializeFrontends(outfile string, frontends []frontend.Frontend) error {
 	if outfile == "" {
@@ -314,6 +392,7 @@ func MaterializeFrontends(outfile string, frontends []frontend.Frontend) error {
 	}
 	return nil
 }
+*/
 
 // SendError is a way of letting the client know there's a problem.
 func SendError(fe *frontend.Frontend, pl *frontend.Player, severity int, err string) {
@@ -421,17 +500,14 @@ func (b *Backend) HandleConnection(c net.Conn) {
 	fe.Connected = true
 	fe.Version = greeting.version
 	fe.MaxPlayers = greeting.maxPlayers
+	fe.Server = &be
 
-	keyFile := path.Join(be.config.ClientDirectory, fe.Name, "key")
-
-	be.Logf(LogLevelInfo, "[%s] Loading public key: %s\n", fe.Name, keyFile)
-	pubkey, err := crypto.LoadPublicKey(keyFile)
+	pubkey, err := crypto.LoadPublicKey([]byte(fe.PublicKeyData))
 	if err != nil {
 		be.Logf(LogLevelNormal, "error loading public key: %v\n", err)
 		return
 	}
 	fe.PublicKey = pubkey
-
 	fe.Challenge = crypto.RandomBytes(challengeLength)
 	blob := append(hash, fe.Challenge...)
 
@@ -505,6 +581,11 @@ func (b *Backend) HandleConnection(c net.Conn) {
 		input := make([]byte, NetReadLength)
 		size, err := c.Read(input)
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				be.Logf(LogLevelInfo, "[%s] disconnected\n", fe.Name)
+				fe.Log.Println("frontend disconnected")
+				break
+			}
 			be.Logf(LogLevelInfo, "[%s] read error: %v\n", fe.Name, err)
 			fe.Log.Println("read error:", err)
 			break
@@ -681,7 +762,7 @@ func Startup(configFile string, foreground bool) {
 	be.Logf(LogLevelInfo, "  found %s\n", english.Plural(len(be.users), "user", ""))
 
 	be.Logf(LogLevelNormal, "loading clients from %q\n", be.config.ClientDirectory)
-	frontends, err := be.ParseFrontends()
+	frontends, err := be.LoadFrontends()
 	if err != nil {
 		log.Fatal(err)
 	} else {
