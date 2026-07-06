@@ -268,6 +268,7 @@ func RotateKeys(fe *frontend.Frontend) {
 	fe.InitVector = newIV
 }
 
+// Fetch all frontends from the database
 func (b *Backend) LoadFrontends() ([]frontend.Frontend, error) {
 	var fes []frontend.Frontend
 	qry := "SELECT * FROM frontend"
