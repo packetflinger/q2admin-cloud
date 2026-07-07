@@ -148,26 +148,23 @@ func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
 	return nil, errors.New("something went wrong")
 }
 
-// Read an RSA public key from the filesystem and get
-// it ready to use
-func LoadPublicKey(keyfile string) (*rsa.PublicKey, error) {
-	pub, err := os.ReadFile(keyfile)
-	if err != nil {
-		return nil, err
-	}
-
+// Read an RSA public key from the filesystem and get it ready to use
+func LoadPublicKey(pub []byte) (*rsa.PublicKey, error) {
 	pubPem, _ := pem.Decode(pub)
-
 	if pubPem.Type == "PUBLIC KEY" {
-		public, _ := x509.ParsePKIXPublicKey(pubPem.Bytes)
+		public, err := x509.ParsePKIXPublicKey(pubPem.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("parsing PKIX key: %v", err)
+		}
 		return public.(*rsa.PublicKey), nil
 	}
-
 	if pubPem.Type == "RSA PUBLIC KEY" {
-		public, _ := x509.ParsePKCS1PublicKey(pubPem.Bytes)
+		public, err := x509.ParsePKCS1PublicKey(pubPem.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("parsing PKCS1 key: %v", err)
+		}
 		return public, nil
 	}
-
 	return nil, errors.New("not a public key file")
 }
 
