@@ -18,18 +18,37 @@ import (
 
 	"github.com/dustin/go-humanize/english"
 	"github.com/packetflinger/libq2/message"
-	"github.com/packetflinger/q2admind/api"
 	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/database"
 	"github.com/packetflinger/q2admind/frontend"
-	"google.golang.org/protobuf/encoding/prototext"
 
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
+// All the config options pulled from the database on startup
+type Config struct {
+	Address         string
+	DebugMode       bool
+	LogFile         string
+	MaintenanceTime int
+	Port            int
+	PrivateKey      string // PEM-encoded
+	RpcAddress      string
+	RpcPort         int
+	SshAddress      string
+	SshHostKey      string
+	SshPort         int
+	VerboseLevel    int
+	WebEnable       bool
+	WebAddress      string
+	WebPort         int
+	WebRoot         string
+}
+
 // "This" admin server
 type Backend struct {
-	config     pb.Config           // global config
+	config     *pb.Config // global config
+	cf         Config
 	frontends  []frontend.Frontend // managed quake 2 servers
 	maintCount int                 // total maintenance runs
 	privateKey *rsa.PrivateKey     // private to us
@@ -37,12 +56,14 @@ type Backend struct {
 	rpcCancel  context.CancelFunc  // call this to kill the RPC server
 	rpcStart   int64               // unix timestamp
 	rules      []*pb.Rule          // bans/mutes/etc
-	users      []*pb.User          // website users
+	//users      []Q2AUser
+	users []*pb.User // website users
 }
 
 var (
 	be Backend // this server
 	db database.Database
+	cf Config
 )
 
 const (
@@ -125,6 +146,50 @@ const (
 	LogTypeDisconnect
 	LogTypeCommand
 )
+
+// Fetch the config from the database and return it in proto form
+func (b *Backend) LoadConfig() (*pb.Config, error) {
+	var c pb.Config
+	qry := "SELECT * FROM config"
+	r := db.Handle.QueryRow(qry)
+	err := r.Scan(&c.DebugMode, &c.VerboseLevel, &c.Address, &c.Port, &c.PrivateKey, &c.ApiEnabled, &c.ApiAddress, &c.ApiPort, &c.WebRoot, &c.MaintenanceTime, &c.RpcAddress, &c.RpcPort, &c.LogFile, &c.SshAddress, &c.SshPort, &c.SshHostkey)
+	if err != nil {
+		return nil, fmt.Errorf("error scanning config from database: %v", err)
+	}
+	return &c, nil
+}
+
+// Fetch the config from the database and return it in proto form
+func (b *Backend) LoadUsers() ([]*pb.User, error) {
+	var users []*pb.User
+	qry := "SELECT * FROM user"
+	r, err := db.Handle.Query(qry)
+	if err != nil {
+		return users, fmt.Errorf("error selecting users: %v", err)
+	}
+	defer r.Close()
+	var nullID int
+	for r.Next() {
+		var u pb.User
+		err := r.Scan(&nullID, &u.Uuid, &u.Email, &u.Disabled, &u.AllowSsh, &u.PublicKey, &u.AllowRpc, &u.RpcPublicKey)
+		if err != nil {
+			return users, fmt.Errorf("error scanning users from database: %v", err)
+		}
+		users = append(users, &u)
+	}
+	return users, nil
+}
+
+// Load the private key from it's PEM-encoded form to an actual struct. The
+// associated public key struct is also returned at the same time.
+func (b *Backend) LoadKeys(keydata []byte) (*rsa.PrivateKey, *rsa.PublicKey, error) {
+	privkey, err := crypto.LoadPrivateKey(keydata)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error loading private key: %v\n", err)
+	}
+	pubkey := privkey.Public().(*rsa.PublicKey)
+	return privkey, pubkey, nil
+}
 
 // CreateFrontend will add a new record for a frontend in the database and in
 // memory.
@@ -284,8 +349,16 @@ func (b *Backend) LoadFrontends() ([]frontend.Frontend, error) {
 			return fes, fmt.Errorf("error scanning frontend: %v", err)
 		}
 		fe.Data = &db
+		fe.Rules, err = fe.FetchRules()
+		if err != nil {
+			b.Logln(LogLevelInfo, err)
+			fe.Rules = nil
+		}
 		fes = append(fes, fe)
 	}
+	slices.SortFunc(fes, func(a, b frontend.Frontend) int {
+		return strings.Compare(a.Name, b.Name)
+	})
 	return fes, nil
 }
 
@@ -482,7 +555,7 @@ func (b *Backend) HandleConnection(c net.Conn) {
 		return
 	}
 
-	fe.Path = path.Join(be.config.GetClientDirectory(), fe.Name)
+	fe.Path = path.Join("clients", fe.Name)
 
 	fe.Log, err = NewFrontendLogger(fe)
 	if err != nil {
@@ -707,75 +780,53 @@ func (b *Backend) Logln(level int, args ...any) {
 }
 
 // Start the cloud admin server backend
-func Startup(configFile string, foreground bool) {
-	if configFile == "" {
-		log.Fatalln("no config file specified")
-	}
-	log.Printf("%-21s %s\n", "Loading config:", configFile)
-	textpb, err := os.ReadFile(configFile)
+func Startup(configFile, databaseFile string, foreground bool) {
+	var err error
+	db, err = database.Open(databaseFile)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
-	err = prototext.Unmarshal(textpb, &be.config)
+	be.config, err = be.LoadConfig()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
 	if !foreground {
 		f, err := os.OpenFile(be.config.GetLogFile(), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
-			panic(err)
+			log.Fatalln(err)
 		}
 		defer f.Close()
 		log.SetOutput(f)
 	}
 
-	be.Logf(LogLevelInfo, "%-21s %s\n", "loading private key:", be.config.GetPrivateKey())
-	privkey, err := crypto.LoadPrivateKey(be.config.GetPrivateKey())
+	be.privateKey, be.publicKey, err = be.LoadKeys([]byte(be.config.PrivateKey))
 	if err != nil {
-		log.Fatalf("error loading private key: %v\n", err)
+		log.Fatalf("error loading backend private key: %v\n", err)
 	}
-
-	pubkey := privkey.Public().(*rsa.PublicKey)
-	be.privateKey = privkey
-	be.publicKey = pubkey
-
-	be.Logf(LogLevelInfo, "%-21s %s\n", "opening database:", be.config.Database)
-	db, err = database.Open(be.config.Database)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	be.Logf(LogLevelInfo, "%-21s %s\n", "loading global rules:", be.config.GetRuleFile())
-	rules, err := FetchRules(be.config.GetRuleFile())
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		be.rules = rules
-	}
-
-	be.Logf(LogLevelInfo, "%-21s %s\n", "loading users:", be.config.GetUserFile())
-	users, err := api.ReadUsersFromDisk(be.config.GetUserFile())
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		be.users = users
-	}
-	be.Logf(LogLevelInfo, "  found %s\n", english.Plural(len(be.users), "user", ""))
-
-	be.Logf(LogLevelNormal, "loading clients from %q\n", be.config.ClientDirectory)
-	frontends, err := be.LoadFrontends()
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		be.Logf(LogLevelNormal, "found %s:\n", english.Plural(len(frontends), "client", ""))
-		slices.SortFunc(frontends, func(a, b frontend.Frontend) int {
-			return strings.Compare(a.Name, b.Name)
-		})
-		be.frontends = frontends
-		for _, c := range be.frontends {
-			be.Logf(LogLevelNormal, "  %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
+	/*
+		be.Logf(LogLevelInfo, "%-21s %s\n", "loading global rules:", be.config.GetRuleFile())
+		rules, err := FetchRules(be.config.GetRuleFile())
+		if err != nil {
+			log.Fatal(err)
+		} else {
+			be.rules = rules
 		}
+	*/
+
+	be.users, err = be.LoadUsers()
+	if err != nil {
+		be.Logf(LogLevelInfo, "%s\n", err)
+	}
+	be.Logf(LogLevelInfo, "Loaded %s\n", english.Plural(len(be.users), "user", ""))
+
+	be.frontends, err = be.LoadFrontends()
+	if err != nil {
+		log.Fatal(err)
+	}
+	be.Logf(LogLevelNormal, "loaded %s:\n", english.Plural(len(be.frontends), "frontend", ""))
+	for _, c := range be.frontends {
+		be.Logf(LogLevelNormal, "  %-25s [%s:%d]", c.Name, c.IPAddress, c.Port)
 	}
 
 	port := fmt.Sprintf("%s:%d", be.config.Address, be.config.Port)
