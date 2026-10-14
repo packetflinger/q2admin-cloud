@@ -13,6 +13,7 @@ import (
 
 var (
 	config     = flag.String("config", "config/config.pb", "The main config file")
+	db         = flag.String("db", "q2a.sqlite", "Where to find the sqlite3 database")
 	foreground = flag.Bool("foreground", false, "Log to the console or file")
 )
 
@@ -28,5 +29,5 @@ func main() {
 		os.Exit(0)
 	}()
 
-	backend.Startup(*config, *foreground)
+	backend.Startup(*config, *db, *foreground)
 }
