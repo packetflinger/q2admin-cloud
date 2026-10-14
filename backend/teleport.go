@@ -99,7 +99,7 @@ func Teleport(fe *frontend.Frontend) {
 		return
 	}
 
-	for i, f := range sv.frontends {
+	for _, f := range sv.frontends {
 		if strings.EqualFold(f.Name, target) {
 			notice := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, f.Name, f.IPAddress, f.Port)
 			SayEveryone(fe, PRINT_CHAT, notice)
@@ -108,7 +108,7 @@ func Teleport(fe *frontend.Frontend) {
 			StuffPlayer(fe, p, cmd)
 			p.LastTeleport = time.Now().Unix()
 			p.Teleports++
-			sv.frontends[i].TeleportCount++
+			f.TeleportCount++
 			return
 		}
 	}

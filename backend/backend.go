@@ -49,13 +49,13 @@ type Config struct {
 type Backend struct {
 	config     *pb.Config // global config
 	cf         Config
-	frontends  []frontend.Frontend // managed quake 2 servers
-	maintCount int                 // total maintenance runs
-	privateKey *rsa.PrivateKey     // private to us
-	publicKey  *rsa.PublicKey      // known to clients
-	rpcCancel  context.CancelFunc  // call this to kill the RPC server
-	rpcStart   int64               // unix timestamp
-	rules      []*pb.Rule          // bans/mutes/etc
+	frontends  []*frontend.Frontend // managed quake 2 servers
+	maintCount int                  // total maintenance runs
+	privateKey *rsa.PrivateKey      // private to us
+	publicKey  *rsa.PublicKey       // known to clients
+	rpcCancel  context.CancelFunc   // call this to kill the RPC server
+	rpcStart   int64                // unix timestamp
+	rules      []*pb.Rule           // bans/mutes/etc
 	//users      []Q2AUser
 	users []*pb.User // website users
 }
@@ -193,7 +193,7 @@ func (b *Backend) LoadKeys(keydata []byte) (*rsa.PrivateKey, *rsa.PublicKey, err
 
 // CreateFrontend will add a new record for a frontend in the database and in
 // memory.
-func (b *Backend) CreateFrontend(f frontend.Frontend) error {
+func (b *Backend) CreateFrontend(f *frontend.Frontend) error {
 	qry := `
 	INSERT INTO frontend 
 		(uuid, name, owner, enabled, description, allow_teleport, allow_invite, ip_address, port, public_key_data, verified)
@@ -226,7 +226,7 @@ func (b *Backend) DeleteFrontend(name string) error {
 	if err != nil {
 		return fmt.Errorf("error removing frontend %q from database: %v", name, err)
 	}
-	var frontends []frontend.Frontend
+	var frontends []*frontend.Frontend
 	for _, f := range b.frontends {
 		if f.Name == name {
 			continue
@@ -244,7 +244,7 @@ func (b *Backend) FindFrontend(lookup string) (*frontend.Frontend, error) {
 	}
 	for i := range b.frontends {
 		if b.frontends[i].UUID == lookup {
-			return &b.frontends[i], nil
+			return b.frontends[i], nil
 		}
 	}
 	return nil, fmt.Errorf("unknown client: %q", lookup)
@@ -257,7 +257,7 @@ func (b *Backend) FindFrontendByName(name string) (*frontend.Frontend, error) {
 	}
 	for i := range b.frontends {
 		if b.frontends[i].Name == name {
-			return &b.frontends[i], nil
+			return b.frontends[i], nil
 		}
 	}
 	return nil, fmt.Errorf("unknown client: %q", name)
@@ -285,14 +285,14 @@ func FrontendsByContext(ctx *IdentityContext) []*frontend.Frontend {
 	if ctx == nil {
 		return cls
 	}
-	for i, cl := range be.frontends {
+	for _, cl := range be.frontends {
 		if cl.Owner == ctx.user.Email {
-			cls = append(cls, &be.frontends[i])
+			cls = append(cls, cl)
 			continue
 		}
 		for _, key := range cl.APIKeys.GetKey() {
 			if key.GetSecret() == ctx.apiKey {
-				cls = append(cls, &be.frontends[i])
+				cls = append(cls, cl)
 			}
 		}
 	}
@@ -306,9 +306,9 @@ func FrontendsByIdentity(ident string) []*frontend.Frontend {
 	if ident == "" {
 		return list
 	}
-	for i, cl := range be.frontends {
+	for _, cl := range be.frontends {
 		if strings.EqualFold(cl.Owner, ident) {
-			list = append(list, &be.frontends[i])
+			list = append(list, cl)
 		}
 	}
 	return list
@@ -334,8 +334,8 @@ func RotateKeys(fe *frontend.Frontend) {
 }
 
 // Fetch all frontends from the database
-func (b *Backend) LoadFrontends() ([]frontend.Frontend, error) {
-	var fes []frontend.Frontend
+func (b *Backend) LoadFrontends() ([]*frontend.Frontend, error) {
+	var fes []*frontend.Frontend
 	qry := "SELECT * FROM frontend"
 	rs, err := db.Handle.Query(qry)
 	if err != nil {
@@ -343,7 +343,7 @@ func (b *Backend) LoadFrontends() ([]frontend.Frontend, error) {
 	}
 	defer rs.Close()
 	for rs.Next() {
-		var fe frontend.Frontend
+		fe := &frontend.Frontend{}
 		err = rs.Scan(&fe.ID, &fe.UUID, &fe.Name, &fe.Owner, &fe.Enabled, &fe.Description, &fe.AllowTeleport, &fe.AllowInvite, &fe.IPAddress, &fe.Port, &fe.PublicKeyData, &fe.Verified, &fe.Invites.Tokens, &fe.Invites.Freq, &fe.DeleteProtect)
 		if err != nil {
 			return fes, fmt.Errorf("error scanning frontend: %v", err)
@@ -356,7 +356,7 @@ func (b *Backend) LoadFrontends() ([]frontend.Frontend, error) {
 		}
 		fes = append(fes, fe)
 	}
-	slices.SortFunc(fes, func(a, b frontend.Frontend) int {
+	slices.SortFunc(fes, func(a, b *frontend.Frontend) int {
 		return strings.Compare(a.Name, b.Name)
 	})
 	return fes, nil
@@ -721,7 +721,7 @@ func (b *Backend) UserFrontends(u string) []*frontend.Frontend {
 	for _, f := range b.frontends {
 		for k := range f.WebUsers {
 			if strings.EqualFold(k, u) {
-				out = append(out, &f)
+				out = append(out, f)
 			}
 		}
 	}

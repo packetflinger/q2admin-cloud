@@ -459,7 +459,7 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		name = strings.ReplaceAll(strings.ToLower(strings.Trim(name, " \n\r\t")), " ", "-")
-		f := frontend.Frontend{
+		f := &frontend.Frontend{
 			Enabled:       false,
 			IPAddress:     address,
 			Name:          name,
@@ -1054,7 +1054,7 @@ func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
 	for _, f := range be.frontends {
 		for j, r := range f.Rules {
 			if r.GetUuid() == lookup {
-				data.Frontend = &f
+				data.Frontend = f
 				data.Rule = f.Rules[j]
 			}
 		}

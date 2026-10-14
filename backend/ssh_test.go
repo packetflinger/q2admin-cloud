@@ -141,12 +141,12 @@ func TestCanManage(t *testing.T) {
 	stranger := &pb.User{Email: "stranger@example.com"}
 	saved := be.frontends
 	defer func() { be.frontends = saved }()
-	be.frontends = []frontend.Frontend{{
+	be.frontends = []*frontend.Frontend{{
 		Name:  "fe1",
 		Owner: owner.Email,
 		Users: map[*pb.User][]*pb.Role{delegate: {{Context: pb.Context_SSH}}},
 	}}
-	fe := &be.frontends[0]
+	fe := be.frontends[0]
 	for _, tc := range []struct {
 		user *pb.User
 		want bool

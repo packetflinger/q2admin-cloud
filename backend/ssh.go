@@ -809,10 +809,9 @@ func MyFrontends(u *pb.User) []*frontend.Frontend {
 	if u == nil {
 		return fes
 	}
-	for i := range be.frontends {
-		c := &be.frontends[i]
+	for _, c := range be.frontends {
 		if c.Owner == u.Email {
-			fes = append(fes, &be.frontends[i])
+			fes = append(fes, c)
 		}
 	}
 	return fes
@@ -824,15 +823,14 @@ func MyDelegates(u *pb.User) []*frontend.Frontend {
 	if u == nil {
 		return fes
 	}
-	for i := range be.frontends {
-		f := &be.frontends[i]
+	for _, f := range be.frontends {
 		roles, ok := f.Users[u]
 		if !ok {
 			continue
 		}
 		for _, r := range roles {
 			if r.Context == pb.Context_SSH {
-				fes = append(fes, &be.frontends[i])
+				fes = append(fes, f)
 			}
 		}
 	}

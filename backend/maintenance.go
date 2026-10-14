@@ -19,11 +19,11 @@ func (s *Backend) startMaintenance() {
 
 		s.Logf(LogLevelDeveloperPlus, "running maintenance")
 		// check time-based player rules
-		for i, cl := range be.frontends {
+		for _, cl := range be.frontends {
 			if !cl.Connected && !cl.Trusted {
 				continue
 			}
-			s.frontends[i].Invites.InviteBucketAdd()
+			cl.Invites.InviteBucketAdd()
 			for _, p := range cl.Players {
 				if p.ConnectTime == 0 {
 					continue
