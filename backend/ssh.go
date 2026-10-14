@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -154,6 +155,8 @@ type SSHTerminal struct {
 	// When the terminal is resumed, these messages are sent to the terminal
 	// and the structure set to nil.
 	buffer []string
+	// Guards paused and buffer, shared with the console stream goroutine
+	mu sync.Mutex
 }
 
 // TerminalMessage is a struct that is sent from the client to the SSH server
@@ -306,7 +309,7 @@ func sessionHandler(s ssh.Session) {
 				ctx, cancel = context.WithCancel(context.Background())
 
 				newterm := make(chan string)
-				fe.Terminals = append(fe.Terminals, &newterm)
+				fe.AddTerminal(&newterm)
 
 				go linkFrontendToTerminal(ctx, activeFE, &sshterm, &newterm)
 				defer cancel()
@@ -540,22 +543,15 @@ func sessionHandler(s ssh.Session) {
 			// Stop the terminal from scrolling with in-game messages (frags,
 			// chat, etc). The pause will automatically expire after a default
 			// of 10 minutes. Msgs are buffered while paused.
-			if sshterm.paused > 0 {
-				continue
+			sshterm.mu.Lock()
+			if sshterm.paused == 0 {
+				sshterm.paused = time.Now().Unix() + PauseLength
+				sshterm.SetPrompt(fmt.Sprintf("%s [%s]", sshterm.prompt, red("paused")), false)
 			}
-			sshterm.paused = time.Now().Unix() + PauseLength
-			sshterm.SetPrompt(fmt.Sprintf("%s [%s]", sshterm.prompt, red("paused")), false)
+			sshterm.mu.Unlock()
 
 		} else if c.command == "unpause" {
-			if sshterm.paused == 0 {
-				continue
-			}
-			sshterm.paused = 0
-			for _, line := range sshterm.buffer {
-				sshterm.Println(line)
-			}
-			sshterm.RestorePrompt()
-			sshterm.buffer = nil
+			sshterm.unpause()
 
 		} else if c.command == "search" {
 			if c.argc == 0 {
@@ -681,13 +677,15 @@ func linkFrontendToTerminal(ctx context.Context, fe *frontend.Frontend, t *SSHTe
 		case srvmsg := <-*stream:
 			now = time.Now().Format("15:04:05")
 			msg = fmt.Sprintf("%s %s\n", now, srvmsg)
+			t.mu.Lock()
 			if t.paused > 0 {
 				t.buffer = append(t.buffer, msg)
 			} else {
 				t.Println(msg)
 			}
+			t.mu.Unlock()
 		case <-ctx.Done(): // cancel() called from SSH thread
-			fe.Terminals = fe.TerminalDisconnected(stream)
+			fe.TerminalDisconnected(stream)
 			return
 		}
 	}
@@ -753,9 +751,24 @@ func ParseCmdArgs(input string) (CmdArgs, error) {
 	}, nil
 }
 
+// unpause resumes the console stream, printing anything buffered while paused.
+func (t *SSHTerminal) unpause() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.paused == 0 {
+		return
+	}
+	t.paused = 0
+	for _, line := range t.buffer {
+		t.Println(line)
+	}
+	t.buffer = nil
+	t.RestorePrompt()
+}
+
 // Println will send str to the SSH terminal. If the input string is missing
 // a newline, it's added before sending.
-func (t SSHTerminal) Println(str string) {
+func (t *SSHTerminal) Println(str string) {
 	if str == "" {
 		return
 	}
@@ -767,7 +780,7 @@ func (t SSHTerminal) Println(str string) {
 
 // Printf is a wrapper to emulate the functionality of fmt.Printf and output
 // to the SSH terminal.
-func (t SSHTerminal) Printf(format string, a ...any) {
+func (t *SSHTerminal) Printf(format string, a ...any) {
 	if format == "" {
 		return
 	}

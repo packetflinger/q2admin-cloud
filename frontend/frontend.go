@@ -12,8 +12,10 @@ import (
 	"net"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/packetflinger/libq2/message"
@@ -24,6 +26,10 @@ import (
 
 	pb "github.com/packetflinger/q2admind/proto"
 )
+
+// terminalsMu guards every Frontend's Terminals. It's package-level because
+// Frontend values are copied around and can't hold a mutex.
+var terminalsMu sync.Mutex
 
 // This struct is partially populated by parsing a config file
 // on disk during init and the rest is filled in when the game
@@ -357,6 +363,8 @@ func (fe *Frontend) SSHPrintln(text string) {
 	if fe == nil || text == "" {
 		return
 	}
+	terminalsMu.Lock()
+	defer terminalsMu.Unlock()
 	for i := range fe.Terminals {
 		select {
 		case *fe.Terminals[i] <- text:
@@ -367,21 +375,22 @@ func (fe *Frontend) SSHPrintln(text string) {
 	}
 }
 
-// The terminal goroutine will call this when disconnecting so the frontend can
-// close the console stream channel.
-func (fe *Frontend) TerminalDisconnected(t *chan string) []*chan string {
-	var terms []*chan string
+// AddTerminal subscribes t to this frontend's console stream.
+func (fe *Frontend) AddTerminal(t *chan string) {
+	terminalsMu.Lock()
+	defer terminalsMu.Unlock()
+	fe.Terminals = append(fe.Terminals, t)
+}
+
+// The terminal goroutine will call this when disconnecting to unsubscribe from
+// the console stream. The channel isn't closed, nothing ranges over it.
+func (fe *Frontend) TerminalDisconnected(t *chan string) {
 	if fe == nil {
-		return terms
+		return
 	}
-	for i := range fe.Terminals {
-		if fe.Terminals[i] == t {
-			close(*fe.Terminals[i])
-			continue
-		}
-		terms = append(terms, fe.Terminals[i])
-	}
-	return terms
+	terminalsMu.Lock()
+	defer terminalsMu.Unlock()
+	fe.Terminals = slices.DeleteFunc(fe.Terminals, func(c *chan string) bool { return c == t })
 }
 
 // Query the frontend for all the server vars
