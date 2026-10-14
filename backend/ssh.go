@@ -286,7 +286,6 @@ func sessionHandler(s ssh.Session) {
 		}
 
 		if c.command == "server" || c.command == "servers" {
-			msg := ""
 			if c.argc == 0 {
 				u, err := User(s.User())
 				if err != nil {
@@ -327,7 +326,6 @@ func sessionHandler(s ssh.Session) {
 
 				sshterm.SetPrompt(fmt.Sprintf("%s/%s", TopLevelPrompt, fe.Name), true)
 			}
-			sshterm.Println(msg)
 
 		} else if c.command == "quit" || c.command == "exit" || c.command == "logout" || c.command == "q" {
 			break
