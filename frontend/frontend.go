@@ -111,21 +111,22 @@ func (b *InviteBucket) InviteBucketAdd() {
 // Read rules from disk and return a scoped slice of them
 func (fe *Frontend) FetchRules() ([]*pb.Rule, error) {
 	var rules []*pb.Rule
-	if fe == nil {
-		return rules, fmt.Errorf("error fetching rules: null receiver")
-	}
-	filename := path.Join(fe.Path, "rules.pb")
-	contents, err := os.ReadFile(filename)
+	qry := "SELECT * FROM rule WHERE frontend = ?"
+	rows, err := fe.Data.Handle.Query(qry, fe.ID)
 	if err != nil {
-		return nil, err
+		return rules, fmt.Errorf("error selecting rules: %v", err)
 	}
-	rl := pb.Rules{}
-	err = prototext.Unmarshal(contents, &rl)
-	if err != nil {
-		return nil, err
+	defer rows.Close()
+	var r pb.Rule
+	r.Timespec = &pb.TimeSpec{}
+	for rows.Next() {
+		err := rows.Scan(&r.Id, &r.FrontendId, &r.Uuid, &r.Type, &r.CreationTime, &r.ExpirationTime, &r.Delay, &r.StifleLength, &r.Disabled, &r.Scope, &r.Timespec.Before, &r.Timespec.After, &r.Timespec.Every, &r.Timespec.PlayTime)
+		if err != nil {
+			return rules, fmt.Errorf("error scanning rules: %v", err)
+		}
+		rules = append(rules, &r)
 	}
-	rules = rl.GetRule()
-	fe.ScopeRules("client", rules)
+	//fe.ScopeRules("client", rules)
 	return rules, nil
 }
 
