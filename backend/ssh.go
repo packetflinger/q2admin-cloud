@@ -248,7 +248,7 @@ func sessionHandler(s ssh.Session) {
 		},
 		"green":     green,
 		"red":       red,
-		"yello":     yellow,
+		"yellow":    yellow,
 		"magenta":   magenta,
 		"underline": underline,
 		"checkMark": checkMark,
