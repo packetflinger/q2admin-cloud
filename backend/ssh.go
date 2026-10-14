@@ -142,6 +142,36 @@ Name                  Status     Ver  Time      Peer
 `
 )
 
+// Parsed once at startup, so a broken template fails immediately rather than
+// mid-session.
+var (
+	funcmap = template.FuncMap{
+		"join": strings.Join,
+		"truncate": func(s int, str string) string {
+			if len(str) > s {
+				return str[0:s]
+			}
+			return str
+		},
+		"green":     green,
+		"red":       red,
+		"yellow":    yellow,
+		"magenta":   magenta,
+		"underline": underline,
+		"checkMark": checkMark,
+		"connected": connectionIndicator,
+		"now":       func() int64 { return time.Now().Unix() },
+		"ago":       util.TimeAgo,
+	}
+
+	helpTmpl   = template.Must(template.New("helpout").Funcs(funcmap).Parse(helpTemplate))
+	statusTmpl = template.Must(template.New("statusout").Funcs(funcmap).Parse(statusTemplate))
+	searchTmpl = template.Must(template.New("searchout").Funcs(funcmap).Parse(searchTemplate))
+	rulesTmpl  = template.Must(template.New("rulesout").Funcs(funcmap).Parse(rulesTemplate))
+	whoisTmpl  = template.Must(template.New("whoisout").Funcs(funcmap).Parse(whoisTemplate))
+	srvTmpl    = template.Must(template.New("srvout").Funcs(funcmap).Parse(serversTemplate))
+)
+
 // SSHTerminal is a basic wrapper to enable making it easier to write data
 // to the *term.Terminal pointer for this SSH session
 type SSHTerminal struct {
@@ -237,32 +267,6 @@ func sessionHandler(s ssh.Session) {
 	cancel := context.CancelFunc(func() {}) // stops the current console stream
 	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "> ")}
 	sshterm.SetPrompt(TopLevelPrompt, true)
-
-	funcmap := template.FuncMap{
-		"join": strings.Join,
-		"truncate": func(s int, str string) string {
-			if len(str) > s {
-				return str[0:s]
-			}
-			return str
-		},
-		"green":     green,
-		"red":       red,
-		"yellow":    yellow,
-		"magenta":   magenta,
-		"underline": underline,
-		"checkMark": checkMark,
-		"connected": connectionIndicator,
-		"now":       time.Now().Unix,
-		"ago":       util.TimeAgo,
-	}
-
-	helpTmpl := template.Must(template.New("helpout").Funcs(funcmap).Parse(helpTemplate))
-	statusTmpl := template.Must(template.New("statusout").Funcs(funcmap).Parse(statusTemplate))
-	searchTmpl := template.Must(template.New("searchout").Funcs(funcmap).Parse(searchTemplate))
-	rulesTmpl := template.Must(template.New("rulesout").Funcs(funcmap).Parse(rulesTemplate))
-	whoisTmpl := template.Must(template.New("whoisout").Funcs(funcmap).Parse(whoisTemplate))
-	srvTmpl := template.Must(template.New("srvout").Funcs(funcmap).Parse(serversTemplate))
 
 	defer be.Logf(LogLevelInfo, "SSH user %q [%s] disconnected\n", s.User(), s.RemoteAddr().String())
 	defer s.Close()
