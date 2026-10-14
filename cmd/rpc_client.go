@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/packetflinger/q2admind/crypto"
@@ -67,7 +68,11 @@ func makeToken(email string, ttl int64, privkey *rsa.PrivateKey) string {
 
 func main() {
 	flag.Parse()
-	privkey, err := crypto.LoadPrivateKey(*key)
+	data, err := os.ReadFile(*key)
+	if err != nil {
+		log.Fatalf("%v\n", err)
+	}
+	privkey, err := crypto.LoadPrivateKey(data)
 	if err != nil {
 		log.Fatalf("error loading private key: %v\n", err)
 	}
