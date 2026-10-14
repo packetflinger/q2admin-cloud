@@ -340,7 +340,8 @@ func sessionHandler(s ssh.Session) {
 				ctx, stop := context.WithCancel(s.Context())
 				cancel = stop
 
-				newterm := make(chan string)
+				// buffered: SSHPrintln drops messages when this is full
+				newterm := make(chan string, 64)
 				fe.AddTerminal(&newterm)
 
 				go linkFrontendToTerminal(ctx, activeFE, &sshterm, &newterm)
