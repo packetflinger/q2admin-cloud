@@ -172,3 +172,95 @@ func TestNext(t *testing.T) {
 		})
 	}
 }
+
+func TestCurrent(t *testing.T) {
+	tests := []struct {
+		name string
+		rot  *pb.MapRotation
+		want *pb.Map
+	}{
+		{
+			name: "nil",
+			rot:  nil,
+			want: &pb.Map{
+				Name: "blah",
+			},
+		},
+		{
+			name: "negative",
+			rot: &pb.MapRotation{
+				Name:      "name",
+				Size:      3,
+				Index:     -3,
+				Direction: pb.MapRotationDirection_MapRotationDirectionForward,
+				Maps: []*pb.Map{
+					{Name: "q2dm1"},
+					{Name: "q2dm2"},
+					{Name: "q2dm3"},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "too big",
+			rot: &pb.MapRotation{
+				Name:      "name",
+				Size:      3,
+				Index:     6,
+				Direction: pb.MapRotationDirection_MapRotationDirectionForward,
+				Maps: []*pb.Map{
+					{Name: "q2dm1"},
+					{Name: "q2dm2"},
+					{Name: "q2dm3"},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "dm1",
+			rot: &pb.MapRotation{
+				Name:      "name",
+				Size:      3,
+				Index:     0,
+				Direction: pb.MapRotationDirection_MapRotationDirectionForward,
+				Maps: []*pb.Map{
+					{Name: "q2dm1"},
+					{Name: "q2dm2"},
+					{Name: "q2dm3"},
+				},
+			},
+			want: &pb.Map{
+				Name: "q2dm1",
+			},
+		},
+		{
+			name: "dm3",
+			rot: &pb.MapRotation{
+				Name:      "name",
+				Size:      3,
+				Index:     2,
+				Direction: pb.MapRotationDirection_MapRotationDirectionForward,
+				Maps: []*pb.Map{
+					{Name: "q2dm1"},
+					{Name: "q2dm2"},
+					{Name: "q2dm3"},
+				},
+			},
+			want: &pb.Map{
+				Name: "q2dm3",
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := (MapList{tc.rot}).Current
+			options := []cmp.Option{
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pb.Map{}, "uuid"),
+			}
+			if diff := cmp.Diff(got, tc.want, options...); diff != "" {
+				t.Errorf("Current(%v) resulted in proto diff (+want -got):\n%s", tc.rot, diff)
+			}
+		})
+	}
+}

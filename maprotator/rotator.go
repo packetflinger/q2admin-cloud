@@ -87,3 +87,28 @@ func (m MapList) Shuffle() MapList {
 	m.Maps = maps
 	return m
 }
+
+func (m MapList) Current() *pb.Map {
+	if m == (MapList{}) {
+		return nil
+	}
+	if m.GetSize() == 0 {
+		return nil
+	}
+	if m.GetIndex() >= m.GetSize() || m.GetIndex() < 0 {
+		return nil
+	}
+	return m.GetMaps()[m.GetIndex()]
+}
+
+func (m MapList) ToProto() *pb.MapRotation {
+	return &pb.MapRotation{
+		Name:       m.Name,
+		Uuid:       m.Uuid,
+		Index:      m.Index,
+		Direction:  m.Direction,
+		Iterations: m.Iterations,
+		Size:       m.Size,
+		Maps:       m.Maps,
+	}
+}
