@@ -4,8 +4,11 @@ syntax="proto3";
 option go_package = "github.com/packetflinger/q2admind/proto";
 package proto;
 
+import "maprotator.proto";
+
 service Q2Admin {
     rpc FetchStatus(StatusRequest) returns (StatusResponse) {}
+    rpc FetchMaplist(FetchMaplistRequest) returns (FetchMaplistResponse) {}
 }
 
 message StatusRequest {
@@ -17,4 +20,13 @@ message StatusResponse {
     string name = 2;
     string map = 3;
     string player_count = 4;
+}
+
+message FetchMaplistRequest {
+    string server = 1;
+}
+
+message FetchMaplistResponse {
+    string server = 1;
+    MapRotation rotation = 2;
 }

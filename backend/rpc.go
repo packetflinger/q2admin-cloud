@@ -188,20 +188,7 @@ func validateBearerToken(t string) (bool, string, error) {
 		return false, u.GetEmail(), fmt.Errorf("expired token")
 	}
 
-	// The `rpc_public_key` property of the User proto message is repeated.
-	// This is because PEM encoding expects newline characters at specific
-	// points; you can't just use a PEM-encoded public key as a single-line
-	// string. In addition, you can't have a string in a proto that contains
-	// any newlines. Usually you just read public keys from files, but in this
-	// case we wanted to encode them directly in the `User` proto. So, each
-	// line of the public key is a separate `rpc_public_key` property, that
-	// must be joined together (by newlines) as a single byte slice in order
-	// to properly decode the PEM formatting.
-	//
-	// Alternatively, we could've just encoded the data in base64 or something
-	// for a single-line, but the data is already encoded and it's visually
-	// obvious what it is, a huge base64 string would be more error prone.
-	pubData := []byte(strings.Join(u.GetRpcPublicKey(), "\n"))
+	pubData := []byte(u.GetRpcPublicKey())
 	pubPem, _ := pem.Decode(pubData)
 	if pubPem == nil {
 		return false, u.GetEmail(), fmt.Errorf("invalid public key data")

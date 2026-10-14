@@ -14,6 +14,8 @@ import (
 	"github.com/packetflinger/q2admind/crypto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 
 	pb "github.com/packetflinger/q2admind/proto"
 )
@@ -24,6 +26,8 @@ var (
 	key      = flag.String("key", "id_ecdsa", "Your private key file")
 	user     = flag.String("user", "", "email address with access")
 	tokenTTL = flag.Int("token_ttl", 5, "Seconds the token is valid, DON'T CHANGE THIS")
+	endpoint = flag.String("endpoint", "", "The RPC endpoint to call")
+	reqProto = flag.String("proto", "", "The request text proto")
 )
 
 type tokenAuth struct {
@@ -85,9 +89,18 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.FetchStatus(ctx, &pb.StatusRequest{Server: "test"})
-	if err != nil {
-		log.Fatalf("error: %v", err)
+
+	// var req, resp proto.Message
+	switch *endpoint {
+	case "FetchMaplist":
+		var req *pb.FetchMaplistRequest
+		proto.Unmarshal([]byte(*reqProto), req)
+		resp, err := c.FetchMaplist(ctx, req)
+		if err != nil {
+			log.Fatalf("error: %v", err)
+		}
+		fmt.Println(prototext.Format(resp))
+	default:
+		fmt.Printf("unknown endpoint %q\n", *endpoint)
 	}
-	log.Printf("UUID: %s", r.GetUuid())
 }

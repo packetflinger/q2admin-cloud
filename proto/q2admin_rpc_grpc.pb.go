@@ -22,7 +22,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Q2Admin_FetchStatus_FullMethodName = "/proto.Q2Admin/FetchStatus"
+	Q2Admin_FetchStatus_FullMethodName  = "/proto.Q2Admin/FetchStatus"
+	Q2Admin_FetchMaplist_FullMethodName = "/proto.Q2Admin/FetchMaplist"
 )
 
 // Q2AdminClient is the client API for Q2Admin service.
@@ -30,6 +31,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type Q2AdminClient interface {
 	FetchStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	FetchMaplist(ctx context.Context, in *FetchMaplistRequest, opts ...grpc.CallOption) (*FetchMaplistResponse, error)
 }
 
 type q2AdminClient struct {
@@ -49,11 +51,21 @@ func (c *q2AdminClient) FetchStatus(ctx context.Context, in *StatusRequest, opts
 	return out, nil
 }
 
+func (c *q2AdminClient) FetchMaplist(ctx context.Context, in *FetchMaplistRequest, opts ...grpc.CallOption) (*FetchMaplistResponse, error) {
+	out := new(FetchMaplistResponse)
+	err := c.cc.Invoke(ctx, Q2Admin_FetchMaplist_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Q2AdminServer is the server API for Q2Admin service.
 // All implementations must embed UnimplementedQ2AdminServer
 // for forward compatibility
 type Q2AdminServer interface {
 	FetchStatus(context.Context, *StatusRequest) (*StatusResponse, error)
+	FetchMaplist(context.Context, *FetchMaplistRequest) (*FetchMaplistResponse, error)
 	mustEmbedUnimplementedQ2AdminServer()
 }
 
@@ -63,6 +75,9 @@ type UnimplementedQ2AdminServer struct {
 
 func (UnimplementedQ2AdminServer) FetchStatus(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchStatus not implemented")
+}
+func (UnimplementedQ2AdminServer) FetchMaplist(context.Context, *FetchMaplistRequest) (*FetchMaplistResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FetchMaplist not implemented")
 }
 func (UnimplementedQ2AdminServer) mustEmbedUnimplementedQ2AdminServer() {}
 
@@ -95,6 +110,24 @@ func _Q2Admin_FetchStatus_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Q2Admin_FetchMaplist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FetchMaplistRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(Q2AdminServer).FetchMaplist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Q2Admin_FetchMaplist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(Q2AdminServer).FetchMaplist(ctx, req.(*FetchMaplistRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Q2Admin_ServiceDesc is the grpc.ServiceDesc for Q2Admin service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -105,6 +138,10 @@ var Q2Admin_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "FetchStatus",
 			Handler:    _Q2Admin_FetchStatus_Handler,
+		},
+		{
+			MethodName: "FetchMaplist",
+			Handler:    _Q2Admin_FetchMaplist_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
