@@ -392,18 +392,9 @@ func sessionHandler(s ssh.Session) {
 				activeFE.SSHPrintln("Usage: whois <id>")
 				continue
 			}
-			pid, err := strconv.Atoi(c.argv[0])
+			p, err := resolvePlayer(activeFE, c.argv[0])
 			if err != nil {
-				sshterm.Println("whois error: " + err.Error())
-				continue
-			}
-			if pid < 0 || pid > activeFE.MaxPlayers {
-				sshterm.Printf("whois error: invalid player ID: %d\n", pid)
-				continue
-			}
-			p := activeFE.Players[pid]
-			if p.ConnectTime == 0 {
-				sshterm.Printf("whois: client_id %q not in use\n", c.argv[0])
+				sshterm.Printf("whois: %v\n", err)
 				continue
 			}
 			var msg bytes.Buffer
@@ -417,18 +408,9 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println("Usage: stuff <id> <command>")
 				continue
 			}
-			pid, err := strconv.Atoi(c.argv[0])
+			p, err := resolvePlayer(activeFE, c.argv[0])
 			if err != nil {
-				sshterm.Println("stuff error: " + err.Error())
-				continue
-			}
-			if pid < 0 || pid > activeFE.MaxPlayers {
-				sshterm.Printf("stuff error: invalid player ID: %d\n", pid)
-				continue
-			}
-			p := &activeFE.Players[pid]
-			if p.ConnectTime == 0 {
-				sshterm.Printf("stuff: client_id %q not in use\n", c.argv[0])
+				sshterm.Printf("stuff: %v\n", err)
 				continue
 			}
 			StuffPlayer(fe, p, strings.Join(c.argv[1:], " "))
@@ -463,18 +445,9 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println("Usage: sayplayer <id> [message]")
 				continue
 			}
-			id, err := strconv.Atoi(c.argv[0])
+			p, err := resolvePlayer(activeFE, c.argv[0])
 			if err != nil {
-				sshterm.Printf("sayplayer: invalid client_id %q\n", c.argv[0])
-				continue
-			}
-			if id < 0 || id > activeFE.MaxPlayers {
-				sshterm.Printf("sayplayer: invalid client_id %q\n", c.argv[0])
-				continue
-			}
-			p := &activeFE.Players[id]
-			if p.ConnectTime == 0 {
-				sshterm.Printf("sayperson: client_id %q not in use\n", c.argv[0])
+				sshterm.Printf("sayperson: %v\n", err)
 				continue
 			}
 			SayPlayer(fe, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
@@ -484,18 +457,9 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println("Usage: kick <id> [message]")
 				continue
 			}
-			id, err := strconv.Atoi(c.argv[0])
+			p, err := resolvePlayer(activeFE, c.argv[0])
 			if err != nil {
-				sshterm.Printf("kick: invalid client_id %q\n", c.argv[0])
-				continue
-			}
-			if id < 0 || id > activeFE.MaxPlayers {
-				sshterm.Printf("kick: invalid client_id %q\n", c.argv[0])
-				continue
-			}
-			p := &activeFE.Players[id]
-			if p.ConnectTime == 0 {
-				sshterm.Printf("kick: client_id %q not in use\n", c.argv[0])
+				sshterm.Printf("kick: %v\n", err)
 				continue
 			}
 			KickPlayer(fe, p, strings.Join(c.argv[1:], " "))
@@ -518,23 +482,18 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println(details + "\nUsage: mute <player_id> <seconds>")
 				continue
 			}
-			id, err := strconv.Atoi(c.argv[0])
-			if err != nil {
-				sshterm.Printf("mute: invalid client_id %q\n", c.argv[0])
+			if c.argc < 2 {
+				sshterm.Println("Usage: mute <player_id> <seconds>")
 				continue
 			}
-			if id < 0 || id > activeFE.MaxPlayers {
-				sshterm.Printf("mute: invalid client_id %q\n", c.argv[0])
+			p, err := resolvePlayer(activeFE, c.argv[0])
+			if err != nil {
+				sshterm.Printf("mute: %v\n", err)
 				continue
 			}
 			secs, err := strconv.Atoi(c.argv[1])
 			if err != nil {
 				sshterm.Printf("mute: invalid seconds %q\n", c.argv[1])
-				continue
-			}
-			p := &activeFE.Players[id]
-			if p.ConnectTime == 0 {
-				sshterm.Printf("mute: client_id %q not in use\n", c.argv[0])
 				continue
 			}
 			MutePlayer(fe, p, secs)
@@ -562,13 +521,13 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println(details.String() + "\nUsage: stifle <player_id> <seconds>")
 				continue
 			}
-			players, err := activeFE.ResolvePlayers(c.argv[0])
-			if err != nil {
-				sshterm.Printf("stifle: unable to resolve player: %q\n", err)
+			if c.argc < 2 {
+				sshterm.Println("Usage: stifle <player_id> <seconds>")
 				continue
 			}
-			if len(players) != 1 {
-				sshterm.Printf("stifle: %q doesn't match exactly 1 player\n", c.argv[0])
+			p, err := resolvePlayer(activeFE, c.argv[0])
+			if err != nil {
+				sshterm.Printf("stifle: %v\n", err)
 				continue
 			}
 			secs, err := strconv.Atoi(c.argv[1])
@@ -576,7 +535,7 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("stifle: invalid seconds %q\n", c.argv[1])
 				continue
 			}
-			StiflePlayer(fe, players[0], secs)
+			StiflePlayer(fe, p, secs)
 
 		} else if c.command == "pause" {
 			// Stop the terminal from scrolling with in-game messages (frags,
@@ -869,6 +828,19 @@ func MyDelegates(u *pb.User) []*frontend.Frontend {
 		}
 	}
 	return fes
+}
+
+// resolvePlayer finds the single connected player on fe matching in, which is
+// a client ID or part of a name.
+func resolvePlayer(fe *frontend.Frontend, in string) (*frontend.Player, error) {
+	players, err := fe.ResolvePlayers(in)
+	if err != nil {
+		return nil, err
+	}
+	if len(players) != 1 {
+		return nil, fmt.Errorf("%q doesn't match exactly 1 player", in)
+	}
+	return players[0], nil
 }
 
 // canManage reports whether u owns fe or has been delegated SSH access to it.

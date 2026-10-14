@@ -150,6 +150,13 @@ func TestResolvePlayer(t *testing.T) {
 			wantErr:  true,
 		},
 		{
+			name:     "player id one past the end",
+			frontend: fe,
+			input:    "8",
+			want:     []*Player{},
+			wantErr:  true,
+		},
+		{
 			name:     "by id",
 			frontend: fe,
 			input:    "1",

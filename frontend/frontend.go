@@ -285,13 +285,13 @@ func (fe *Frontend) ResolvePlayers(in string) ([]*Player, error) {
 		in = in[:14]
 	}
 	id, err := strconv.Atoi(in)
-	if id < 0 || id > fe.MaxPlayers {
+	if id < 0 || id >= fe.MaxPlayers {
 		return []*Player{}, fmt.Errorf("invalid player ID")
 	}
 	if err != nil {
 		// it's not a number
 		for _, p := range fe.Players {
-			if strings.Contains(strings.ToLower(p.Name), strings.ToLower(in)) {
+			if p.ConnectTime > 0 && strings.Contains(strings.ToLower(p.Name), strings.ToLower(in)) {
 				found = append(found, &p)
 			}
 		}
