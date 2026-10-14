@@ -20,7 +20,11 @@ func (s *Backend) startMaintenance() {
 		s.Logf(LogLevelDeveloperPlus, "running maintenance")
 		// check time-based player rules
 		for _, cl := range be.frontends {
+			// network call, done before taking the lock
+			vars, err := cl.FetchServerVars()
+			cl.Mu.Lock()
 			if !cl.Connected && !cl.Trusted {
+				cl.Mu.Unlock()
 				continue
 			}
 			cl.Invites.InviteBucketAdd()
@@ -49,11 +53,11 @@ func (s *Backend) startMaintenance() {
 				ApplyMatchedRules(p, SortRules(matches))
 			}
 
-			vars, err := cl.FetchServerVars()
 			if err != nil {
 				be.Logf(LogLevelInfo, "error fetching %q vars: %v", cl.Name, err)
 			}
 			cl.ServerVars = vars
+			cl.Mu.Unlock()
 		}
 		be.maintCount++
 	}

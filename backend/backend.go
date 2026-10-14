@@ -681,17 +681,21 @@ func (b *Backend) HandleConnection(c net.Conn) {
 				}
 			}
 		}
+		fe.Mu.Lock()
 		fe.Message = message.NewBuffer(input[:size])
 		ParseMessage(fe)
 		SendMessages(fe)
+		fe.Mu.Unlock()
 	}
 	err = fe.Seen()
 	if err != nil {
 		be.Logln(LogLevelInfo, err)
 	}
+	fe.Mu.Lock()
 	fe.Connection = nil
 	fe.Connected = false
 	fe.Trusted = false
+	fe.Mu.Unlock()
 }
 
 // Send all messages in the outgoing queue to the frontend. If the frontend

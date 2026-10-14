@@ -11,7 +11,7 @@ func TestFindFrontend(t *testing.T) {
 		name      string
 		lookup    string
 		frontends []*frontend.Frontend
-		want      frontend.Frontend
+		want      *frontend.Frontend
 	}{
 		{
 			name:   "test1",
@@ -26,7 +26,7 @@ func TestFindFrontend(t *testing.T) {
 					UUID: "4bbd2bde-9ab3-4134-8024-93a67db3b3d3",
 				},
 			},
-			want: frontend.Frontend{
+			want: &frontend.Frontend{
 				Name: "fe2",
 				UUID: "4bbd2bde-9ab3-4134-8024-93a67db3b3d3",
 			},
@@ -50,7 +50,7 @@ func TestFindFrontendByName(t *testing.T) {
 		name      string
 		lookup    string
 		frontends []*frontend.Frontend
-		want      frontend.Frontend
+		want      *frontend.Frontend
 	}{
 		{
 			name:   "test1",
@@ -65,7 +65,7 @@ func TestFindFrontendByName(t *testing.T) {
 					UUID: "4bbd2bde-9ab3-4134-8024-93a67db3b3d3",
 				},
 			},
-			want: frontend.Frontend{
+			want: &frontend.Frontend{
 				Name: "fe2",
 				UUID: "4bbd2bde-9ab3-4134-8024-93a67db3b3d3",
 			},

@@ -14,13 +14,13 @@ func TestGetPlayerFromPrint(t *testing.T) {
 	tests := []struct {
 		name string
 		text string
-		fe   Frontend
+		fe   *Frontend
 		want []string
 	}{
 		{
 			name: "test1",
 			text: "claire: blah blah blah",
-			fe: Frontend{
+			fe: &Frontend{
 				Players: []Player{
 					{
 						Name: "claire",
@@ -34,7 +34,7 @@ func TestGetPlayerFromPrint(t *testing.T) {
 		{
 			name: "test2",
 			text: "claire: blah blah blah",
-			fe: Frontend{
+			fe: &Frontend{
 				Players: []Player{
 					{
 						Name: "claire",
@@ -55,7 +55,7 @@ func TestGetPlayerFromPrint(t *testing.T) {
 		{
 			name: "test3",
 			text: "claire: dude: blah blah blah",
-			fe: Frontend{
+			fe: &Frontend{
 				Players: []Player{
 					{
 						Name: "claire",
@@ -97,7 +97,7 @@ func TestGetPlayerFromPrint(t *testing.T) {
 }
 
 func TestResolvePlayer(t *testing.T) {
-	fe := Frontend{
+	fe := &Frontend{
 		MaxPlayers: 8,
 		Players: []Player{
 			{
@@ -130,7 +130,7 @@ func TestResolvePlayer(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		frontend Frontend
+		frontend *Frontend
 		input    string
 		want     []*Player
 		wantErr  bool
@@ -297,7 +297,7 @@ func TestCalculateKDR(t *testing.T) {
 }
 
 func TestResolvePlayersReturnsSlotPointers(t *testing.T) {
-	fe := Frontend{
+	fe := &Frontend{
 		MaxPlayers: 2,
 		Players: []Player{
 			{ClientID: 0, ConnectTime: 100, Name: "alpha"},

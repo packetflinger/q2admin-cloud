@@ -58,6 +58,7 @@ type Frontend struct {
 	MaxPlayers    int                     // total number
 	Message       message.Buffer          // incoming byte stream
 	MessageOut    message.Buffer          // outgoing byte stream
+	Mu            sync.Mutex              // guards state shared by the connection goroutine, SSH sessions and maintenance
 	Name          string                  // the teleport name
 	Owner         string                  // email addr
 	Path          string                  // the fs path for this client
@@ -174,8 +175,8 @@ func (fe *Frontend) MaterializeRules(rules []*pb.Rule) error {
 
 // Read settings file for client from disk and make a Frontend struct
 // from them.
-func LoadSettings(name string, clientsDir string) (Frontend, error) {
-	var fe Frontend
+func LoadSettings(name string, clientsDir string) (*Frontend, error) {
+	fe := &Frontend{}
 	if name == "" {
 		return fe, fmt.Errorf("error loading settings: blank client name supplied")
 	}

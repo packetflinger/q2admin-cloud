@@ -53,9 +53,22 @@ func Invite(fe *frontend.Frontend) {
 
 	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, fe.Name, fe.IPAddress, fe.Port)
 	for _, s := range be.frontends {
-		if s.Enabled && s.Connected && s.AllowInvite {
-			SayEveryone(s, PRINT_CHAT, inv)
+		if s == fe {
+			if fe.Enabled && fe.AllowInvite { // already locked by our caller
+				SayEveryone(fe, PRINT_CHAT, inv)
+			}
+			continue
 		}
+		// Deliver from a goroutine: blocking on s's lock while holding fe's
+		// could deadlock with s inviting to fe at the same time.
+		go func() {
+			s.Mu.Lock()
+			defer s.Mu.Unlock()
+			if s.Enabled && s.Connected && s.AllowInvite {
+				SayEveryone(s, PRINT_CHAT, inv)
+				SendMessages(s)
+			}
+		}()
 	}
 
 	p.Invites++

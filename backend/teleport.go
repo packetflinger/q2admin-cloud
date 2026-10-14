@@ -32,10 +32,20 @@ Empty servers:
 )
 
 // Build the proto to render using the output template.
-func (s *Backend) teleportDestinations() (*pb.TeleportReply, error) {
+func (s *Backend) teleportDestinations(self *frontend.Frontend) (*pb.TeleportReply, error) {
 	var reply pb.TeleportReply
 	var empty []string
 	for _, fe := range s.frontends {
+		// The caller holds its own frontend's lock. Waiting on another's could
+		// deadlock with that server listing destinations at the same time.
+		// shortcut: a server busy mid-packet is left out of this listing, cache
+		// a per-server snapshot if that turns out to be noticeable.
+		if fe != self {
+			if !fe.Mu.TryLock() {
+				continue
+			}
+			defer fe.Mu.Unlock()
+		}
 		if !fe.Trusted {
 			continue
 		}
@@ -86,7 +96,7 @@ func Teleport(fe *frontend.Frontend) {
 	}
 	if target == "" {
 		teleTmpl := template.Must(template.New("teleout").Parse(teleportTemplate))
-		dests, err := sv.teleportDestinations()
+		dests, err := sv.teleportDestinations(fe)
 		if err != nil {
 			sv.Logf(LogLevelInfo, "error collecting teleport destinations: %v\n", err)
 			return

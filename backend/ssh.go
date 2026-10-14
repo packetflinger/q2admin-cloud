@@ -272,10 +272,27 @@ func sessionHandler(s ssh.Session) {
 	defer s.Close()
 	defer func() { cancel() }() // closure: cancel is reassigned on server switch
 
+	// The active frontend is locked while a command runs, never while waiting
+	// for input. Every continue returns here, so the unlock is at the top.
+	var locked *frontend.Frontend
+	defer func() {
+		if locked != nil {
+			locked.Mu.Unlock()
+		}
+	}()
+
 	for {
+		if locked != nil {
+			locked.Mu.Unlock()
+			locked = nil
+		}
 		line, err := sshterm.terminal.ReadLine()
 		if err != nil {
 			break
+		}
+		if activeFE != nil {
+			activeFE.Mu.Lock()
+			locked = activeFE
 		}
 		if activeFE != nil && !activeFE.Connected { // server dropped
 			sshterm.Printf(yellow("** server connection to %s dropped **\n"), activeFE.Name)
@@ -330,6 +347,7 @@ func sessionHandler(s ssh.Session) {
 
 				sshterm.SetPrompt(fmt.Sprintf("%s/%s", TopLevelPrompt, fe.Name), true)
 			}
+			continue // activeFE may have changed and isn't locked yet
 
 		} else if c.command == "quit" || c.command == "exit" || c.command == "logout" || c.command == "q" {
 			break
@@ -648,7 +666,9 @@ func sessionHandler(s ssh.Session) {
 				}
 				sshterm.Printf("Rule %q removed.\n", found.Uuid)
 			} else if c.argc == 1 && c.argv[0] == "add" {
+				activeFE.Mu.Unlock() // the wizard waits for input
 				r, err := AddRuleWizard(&sshterm, activeFE)
+				activeFE.Mu.Lock()
 				if err != nil {
 					sshterm.Println(err.Error())
 					continue
