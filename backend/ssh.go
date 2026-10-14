@@ -383,7 +383,7 @@ func sessionHandler(s ssh.Session) {
 					{Cmd: "", Desc: ""},
 					{Cmd: "say", Desc: "broadcasts <text> to all players"},
 					{Cmd: "consolesay", Desc: "send print to server from console"},
-					{Cmd: "sayplayer <id> <msg>", Desc: "say something to player #id"},
+					{Cmd: "sayperson <id> <msg>", Desc: "say something to player #id"},
 					{Cmd: "", Desc: ""},
 					{Cmd: "kick <#> [msg]", Desc: "kick player # with msg"},
 					{Cmd: "mute <#> <secs>", Desc: "mute player # for secs seconds"},
@@ -453,7 +453,7 @@ func sessionHandler(s ssh.Session) {
 
 		} else if c.command == "sayperson" {
 			if len(c.args) == 0 {
-				sshterm.Println("Usage: sayplayer <id> [message]")
+				sshterm.Println("Usage: sayperson <id> [message]")
 				continue
 			}
 			p, err := resolvePlayer(activeFE, c.argv[0])
