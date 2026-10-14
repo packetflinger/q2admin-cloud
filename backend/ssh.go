@@ -218,7 +218,6 @@ func CreateHostKeySigner(keydata []byte) (ssh.Signer, error) {
 // terminal by using the "server" command. With no argument, all accessible
 // servers will be listed.
 func sessionHandler(s ssh.Session) {
-	var fe *frontend.Frontend
 	var activeFE *frontend.Frontend
 	var ctx context.Context
 	var cancel context.CancelFunc
@@ -293,7 +292,7 @@ func sessionHandler(s ssh.Session) {
 					sshterm.Println("problems identifying you...")
 					continue
 				}
-				fe, err = be.FindFrontendByName(c.argv[0])
+				fe, err := be.FindFrontendByName(c.argv[0])
 				// same message for unknown and unauthorized so names can't be probed
 				if err != nil || !canManage(u, fe) {
 					sshterm.Printf("server: unable to locate %q\n", c.argv[0])
@@ -349,7 +348,7 @@ func sessionHandler(s ssh.Session) {
 				continue
 			}
 			sshterm.Println(magenta(c.args))
-			SayEveryone(fe, PRINT_CHAT, c.args)
+			SayEveryone(activeFE, PRINT_CHAT, c.args)
 
 		} else if c.command == "help" || c.command == "?" {
 			help := HelpCommands{
@@ -413,7 +412,7 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("stuff: %v\n", err)
 				continue
 			}
-			StuffPlayer(fe, p, strings.Join(c.argv[1:], " "))
+			StuffPlayer(activeFE, p, strings.Join(c.argv[1:], " "))
 
 		} else if c.command == "rcon" {
 			// this is not a real rcon command (out-of-band over UDP), just
@@ -426,7 +425,7 @@ func sessionHandler(s ssh.Session) {
 
 		} else if c.command == "status" {
 			var msg bytes.Buffer
-			if err := statusTmpl.Execute(&msg, fe); err != nil {
+			if err := statusTmpl.Execute(&msg, activeFE); err != nil {
 				log.Println("error executing status command template:", err)
 			}
 			sshterm.Println(msg.String())
@@ -436,8 +435,8 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Println("Usage: consolesay <message>")
 				continue
 			}
-			ConsoleSay(fe, c.args)
-			fe.Log.Println("console:", c.args)
+			ConsoleSay(activeFE, c.args)
+			activeFE.Log.Println("console:", c.args)
 			sshterm.Println("console: " + c.args)
 
 		} else if c.command == "sayperson" {
@@ -450,7 +449,7 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("sayperson: %v\n", err)
 				continue
 			}
-			SayPlayer(fe, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
+			SayPlayer(activeFE, p, PRINT_CHAT, strings.Join(c.argv[1:], " "))
 
 		} else if c.command == "kick" {
 			if len(c.args) == 0 {
@@ -462,7 +461,7 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("kick: %v\n", err)
 				continue
 			}
-			KickPlayer(fe, p, strings.Join(c.argv[1:], " "))
+			KickPlayer(activeFE, p, strings.Join(c.argv[1:], " "))
 
 		} else if c.command == "mute" {
 			if len(c.args) == 0 { // list all mutes
@@ -496,7 +495,7 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("mute: invalid seconds %q\n", c.argv[1])
 				continue
 			}
-			MutePlayer(fe, p, secs)
+			MutePlayer(activeFE, p, secs)
 
 		} else if c.command == "stifle" || c.command == "stifled" || c.command == "stifles" {
 			if len(c.args) == 0 { // list all mutes
@@ -535,7 +534,7 @@ func sessionHandler(s ssh.Session) {
 				sshterm.Printf("stifle: invalid seconds %q\n", c.argv[1])
 				continue
 			}
-			StiflePlayer(fe, p, secs)
+			StiflePlayer(activeFE, p, secs)
 
 		} else if c.command == "pause" {
 			// Stop the terminal from scrolling with in-game messages (frags,
@@ -581,9 +580,9 @@ func sessionHandler(s ssh.Session) {
 			continue
 		} else if c.command == "rules" || c.command == "rule" {
 			if c.argc == 0 {
-				sshterm.Printf("%s %s\n", underline("Local rules affecting"), yellow(fe.Name))
+				sshterm.Printf("%s %s\n", underline("Local rules affecting"), yellow(activeFE.Name))
 				var msg bytes.Buffer
-				if err := rulesTmpl.Execute(&msg, fe.Rules); err != nil {
+				if err := rulesTmpl.Execute(&msg, activeFE.Rules); err != nil {
 					log.Println("error executing rules template:", err)
 				}
 				sshterm.Println(msg.String())
@@ -594,7 +593,7 @@ func sessionHandler(s ssh.Session) {
 				}
 				sshterm.Println(msg.String())
 			} else if c.argc > 1 && c.argv[0] == "show" {
-				for _, r := range append(fe.Rules, be.rules...) {
+				for _, r := range append(activeFE.Rules, be.rules...) {
 					if strings.HasPrefix(r.GetUuid(), c.argv[1]) {
 						sshterm.Printf(underline("Details for rule [%s]:\n\n"), yellow(c.argv[1]))
 						sshterm.Println(prototext.Format(r))
@@ -620,19 +619,19 @@ func sessionHandler(s ssh.Session) {
 				}
 				var found *pb.Rule
 				var newrules []*pb.Rule
-				for i, r := range fe.Rules {
+				for i, r := range activeFE.Rules {
 					if strings.HasPrefix(r.Uuid, id) {
 						found = r
 						continue
 					}
-					newrules = append(newrules, fe.Rules[i])
+					newrules = append(newrules, activeFE.Rules[i])
 				}
 				if found == nil {
 					sshterm.Printf("error: no client-scoped rule found with ID %q\n", id)
 					continue
 				}
-				fe.Rules = newrules
-				err = fe.MaterializeRules(fe.Rules)
+				activeFE.Rules = newrules
+				err = activeFE.MaterializeRules(activeFE.Rules)
 				if err != nil {
 					log.Println(err)
 					sshterm.Println("error writing rules to persistent storage")
@@ -640,14 +639,14 @@ func sessionHandler(s ssh.Session) {
 				}
 				sshterm.Printf("Rule %q removed.\n", found.Uuid)
 			} else if c.argc == 1 && c.argv[0] == "add" {
-				r, err := AddRuleWizard(&sshterm, fe)
+				r, err := AddRuleWizard(&sshterm, activeFE)
 				if err != nil {
 					sshterm.Println(err.Error())
 					continue
 				}
 				sshterm.Printf("Adding rule proto:\n%s\n", prototext.Format(r))
-				fe.Rules = append(fe.Rules, r)
-				err = fe.MaterializeRules(fe.Rules)
+				activeFE.Rules = append(activeFE.Rules, r)
+				err = activeFE.MaterializeRules(activeFE.Rules)
 				if err != nil {
 					sshterm.Printf("%s", err.Error())
 				}
@@ -655,7 +654,7 @@ func sessionHandler(s ssh.Session) {
 		} else if c.command == "settings" {
 			sshterm.Printf("%s\n", prototext.Format(activeFE.ToProto()))
 		}
-		SendMessages(fe)
+		SendMessages(activeFE)
 	}
 }
 
