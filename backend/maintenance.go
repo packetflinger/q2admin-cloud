@@ -24,7 +24,8 @@ func (s *Backend) startMaintenance() {
 				continue
 			}
 			cl.Invites.InviteBucketAdd()
-			for _, p := range cl.Players {
+			for i := range cl.Players {
+				p := &cl.Players[i]
 				if p.ConnectTime == 0 {
 					continue
 				}
@@ -33,19 +34,19 @@ func (s *Backend) startMaintenance() {
 				for _, r := range cl.Rules {
 					ts := r.GetTimespec()
 					if len(ts.GetPlayTime()) > 0 {
-						match := CheckRule(&p, r, time.Now())
+						match := CheckRule(p, r, time.Now())
 						if match {
 							matches = append(matches, r)
 						}
 					}
 					if len(ts.GetAfter()) > 0 {
-						match := CheckRule(&p, r, time.Now())
+						match := CheckRule(p, r, time.Now())
 						if match {
 							matches = append(matches, r)
 						}
 					}
 				}
-				ApplyMatchedRules(&p, SortRules(matches))
+				ApplyMatchedRules(p, SortRules(matches))
 			}
 
 			vars, err := cl.FetchServerVars()
