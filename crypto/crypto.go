@@ -116,36 +116,22 @@ func GenerateKeys(bitlength int) bool {
 }
 
 // Read an RSA private key into memory from the filesystem
-func LoadPrivateKey(keyfile string) (*rsa.PrivateKey, error) {
-	if keyfile == "" {
-		return nil, fmt.Errorf("error loading private key: blank file path")
-	}
-	priv, err := os.ReadFile(keyfile)
-	if err != nil {
-		panic(err)
-	}
-	privPem, _ := pem.Decode(priv)
-
+func LoadPrivateKey(keybytes []byte) (*rsa.PrivateKey, error) {
+	var err error
+	privPem, _ := pem.Decode(keybytes)
 	if privPem.Type != "PRIVATE KEY" {
-		return nil, errors.New("not a private key file")
+		return nil, fmt.Errorf("not a private key file")
 	}
-
 	var parsedKey interface{}
 	if parsedKey, err = x509.ParsePKCS1PrivateKey(privPem.Bytes); err != nil {
 		if parsedKey, err = x509.ParsePKCS8PrivateKey(privPem.Bytes); err != nil { // note this returns type `interface{}`
-			return nil, errors.New("unable to parse private key file")
+			return nil, fmt.Errorf("unable to parse private key file")
 		}
 	}
-
-	var privateKey *rsa.PrivateKey
-	var ok bool
-	privateKey, ok = parsedKey.(*rsa.PrivateKey)
-
-	if ok {
+	if privateKey, ok := parsedKey.(*rsa.PrivateKey); ok {
 		return privateKey, nil
 	}
-
-	return nil, errors.New("something went wrong")
+	return nil, fmt.Errorf("something went wrong parsing private key")
 }
 
 // Read an RSA public key from the filesystem and get it ready to use
