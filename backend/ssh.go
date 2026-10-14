@@ -30,6 +30,9 @@ import (
 const (
 	TopLevelPrompt = "q2a"
 	PauseLength    = 600 // 10 minutes
+	// Drop SSH connections with no reads or writes for this long. Console
+	// output counts as activity, so watching a busy server stays connected.
+	SSHIdleTimeout = 30 * time.Minute
 )
 
 const (
@@ -182,6 +185,7 @@ func (b *Backend) startSSHServer() {
 		),
 		Handler:          sessionHandler,
 		PublicKeyHandler: publicKeyHandler,
+		IdleTimeout:      SSHIdleTimeout,
 	}
 	if hostkey != nil {
 		sv.AddHostKey(hostkey) // has to be set outside server config creation
