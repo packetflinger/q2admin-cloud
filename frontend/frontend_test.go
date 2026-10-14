@@ -295,3 +295,19 @@ func TestCalculateKDR(t *testing.T) {
 		})
 	}
 }
+
+func TestResolvePlayersReturnsSlotPointers(t *testing.T) {
+	fe := Frontend{
+		MaxPlayers: 2,
+		Players: []Player{
+			{ClientID: 0, ConnectTime: 100, Name: "alpha"},
+			{ClientID: 1, ConnectTime: 100, Name: "bravo"},
+		},
+	}
+	for _, in := range []string{"1", "brav"} {
+		got, err := fe.ResolvePlayers(in)
+		if err != nil || len(got) != 1 || got[0] != &fe.Players[1] {
+			t.Errorf("ResolvePlayers(%q) did not return a pointer into fe.Players", in)
+		}
+	}
+}

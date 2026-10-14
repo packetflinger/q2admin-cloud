@@ -290,17 +290,17 @@ func (fe *Frontend) ResolvePlayers(in string) ([]*Player, error) {
 	}
 	if err != nil {
 		// it's not a number
-		for _, p := range fe.Players {
+		for i, p := range fe.Players {
 			if p.ConnectTime > 0 && strings.Contains(strings.ToLower(p.Name), strings.ToLower(in)) {
-				found = append(found, &p)
+				found = append(found, &fe.Players[i])
 			}
 		}
 		return found, nil
 	}
 	// it's a number
-	for _, p := range fe.Players {
+	for i, p := range fe.Players {
 		if p.ClientID == id && p.ConnectTime > 0 {
-			found = append(found, &p)
+			found = append(found, &fe.Players[i])
 		}
 	}
 	return found, nil
