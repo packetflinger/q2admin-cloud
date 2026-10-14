@@ -1,7 +1,39 @@
-{{define "search"}}
-{{template "header" .}}
+{{ define "search" }}
+{{ template "header" .}}
 
-<h1 class="h3 mb-3">{{.Title}}</h1>
+<h1 class="h3 mb-3"><a href="/sv/{{ .Frontend.UUID }}/{{ .Frontend.Name }}">{{ .Frontend.Name}}</a> > {{ .Title }}</h1>
 
-{{template "footer" .}}
-{{end}}
+<div class="row">
+    <div>
+        <form method="get" action="/search/{{ .Frontend.UUID }}">
+            <div class="input-group mb-3">
+                <input type="text" name="q" value="{{ .SearchQuery }}" class="form-control" placeholder="Search IPs, player names, more" aria-label="Example text with button addon" aria-describedby="searchbutton">
+                <button class="btn btn-primary" type="submit" id="searchbutton">Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<table class="table table-hover">
+    <thead>
+        <th scope="col">Name</th>
+        <th scope="col">IP</th>
+        <th scope="col">Hostname</th>
+        <th scope="col">Version</th>
+        <th scope="col">Connected</th>
+    </thead>
+    <tbody>
+    {{ range .SearchResults }}
+        <tr role="button" onclick="window.location='/player/{{ .Lookup }}';">
+            <td>{{ .Name }}</td>
+            <td>{{ .IP }}</td>
+            <td>{{ .Hostname }}</td>
+            <td>{{ .Version }}</td>
+            <td>{{ .ConnectTime | datetime }}</td>
+        </tr>
+    {{ end }}
+    </tbody>
+</table>
+
+{{ template "footer" . }}
+{{ end }}
