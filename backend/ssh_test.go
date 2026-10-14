@@ -1,10 +1,16 @@
 package backend
 
 import (
+	"bytes"
+	"context"
+	"io"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/packetflinger/q2admind/frontend"
+	"golang.org/x/term"
 
 	pb "github.com/packetflinger/q2admind/proto"
 )
@@ -133,5 +139,41 @@ func TestCanManage(t *testing.T) {
 		if got := canManage(tc.user, fe); got != tc.want {
 			t.Errorf("canManage(%s) = %v, want %v", tc.user.Email, got, tc.want)
 		}
+	}
+}
+
+func TestPauseExpires(t *testing.T) {
+	var out bytes.Buffer
+	rw := struct {
+		io.Reader
+		io.Writer
+	}{strings.NewReader(""), &out}
+	st := &SSHTerminal{terminal: term.NewTerminal(rw, "> ")}
+	stream := make(chan string)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		linkFrontendToTerminal(ctx, &frontend.Frontend{Name: "fe1"}, st, &stream)
+		close(done)
+	}()
+
+	st.mu.Lock()
+	st.paused = time.Now().Unix() + PauseLength
+	st.mu.Unlock()
+	stream <- "held"
+	st.mu.Lock()
+	st.paused = time.Now().Unix() - 1 // expire it
+	st.mu.Unlock()
+	stream <- "after"
+	cancel()
+	<-done
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if st.paused != 0 || st.buffer != nil {
+		t.Errorf("pause not lifted: paused=%d buffer=%v", st.paused, st.buffer)
+	}
+	if got := out.String(); !strings.Contains(got, "held") || strings.Index(got, "held") > strings.Index(got, "after") {
+		t.Errorf("buffered message not flushed before new one, output: %q", got)
 	}
 }

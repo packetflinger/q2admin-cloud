@@ -677,12 +677,17 @@ func linkFrontendToTerminal(ctx context.Context, fe *frontend.Frontend, t *SSHTe
 			now = time.Now().Format("15:04:05")
 			msg = fmt.Sprintf("%s %s\n", now, srvmsg)
 			t.mu.Lock()
-			if t.paused > 0 {
+			paused := t.paused
+			if paused > 0 && time.Now().Unix() < paused {
 				t.buffer = append(t.buffer, msg)
-			} else {
-				t.Println(msg)
+				t.mu.Unlock()
+				continue
 			}
 			t.mu.Unlock()
+			if paused > 0 { // pause expired
+				t.unpause()
+			}
+			t.Println(msg)
 		case <-ctx.Done(): // cancel() called from SSH thread
 			fe.TerminalDisconnected(stream)
 			return
