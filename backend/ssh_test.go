@@ -3,6 +3,10 @@ package backend
 import (
 	"slices"
 	"testing"
+
+	"github.com/packetflinger/q2admind/frontend"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
 func TestCheckmark(t *testing.T) {
@@ -107,5 +111,27 @@ func TestParseCmdArgs(t *testing.T) {
 				t.Error("got:", got, "want:", tc.want)
 			}
 		})
+	}
+}
+
+func TestCanManage(t *testing.T) {
+	owner := &pb.User{Email: "owner@example.com"}
+	delegate := &pb.User{Email: "delegate@example.com"}
+	stranger := &pb.User{Email: "stranger@example.com"}
+	saved := be.frontends
+	defer func() { be.frontends = saved }()
+	be.frontends = []frontend.Frontend{{
+		Name:  "fe1",
+		Owner: owner.Email,
+		Users: map[*pb.User][]*pb.Role{delegate: {{Context: pb.Context_SSH}}},
+	}}
+	fe := &be.frontends[0]
+	for _, tc := range []struct {
+		user *pb.User
+		want bool
+	}{{owner, true}, {delegate, true}, {stranger, false}} {
+		if got := canManage(tc.user, fe); got != tc.want {
+			t.Errorf("canManage(%s) = %v, want %v", tc.user.Email, got, tc.want)
+		}
 	}
 }

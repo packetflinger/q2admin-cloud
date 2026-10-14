@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
@@ -287,8 +288,14 @@ func sessionHandler(s ssh.Session) {
 				}
 				sshterm.Println(msg.String())
 			} else {
-				fe, err = be.FindFrontendByName(c.argv[0])
+				u, err := User(s.User())
 				if err != nil {
+					sshterm.Println("problems identifying you...")
+					continue
+				}
+				fe, err = be.FindFrontendByName(c.argv[0])
+				// same message for unknown and unauthorized so names can't be probed
+				if err != nil || !canManage(u, fe) {
 					sshterm.Printf("server: unable to locate %q\n", c.argv[0])
 					continue
 				}
@@ -862,6 +869,11 @@ func MyDelegates(u *pb.User) []*frontend.Frontend {
 		}
 	}
 	return fes
+}
+
+// canManage reports whether u owns fe or has been delegated SSH access to it.
+func canManage(u *pb.User, fe *frontend.Frontend) bool {
+	return slices.Contains(MyFrontends(u), fe) || slices.Contains(MyDelegates(u), fe)
 }
 
 // User returns a user proto for the given email address
