@@ -801,24 +801,6 @@ func (t *SSHTerminal) Printf(format string, a ...any) {
 	t.terminal.Write([]byte(str))
 }
 
-// FrontendsByUser will get a list of clients this particular user has access
-// to.
-func FrontendsByUser(user *pb.User) []*frontend.Frontend {
-	var fes []*frontend.Frontend
-	if user == nil {
-		return fes
-	}
-	for i := range be.frontends {
-		c := &be.frontends[i]
-		for k := range c.Users {
-			if user.Email == k.Email {
-				fes = append(fes, c)
-			}
-		}
-	}
-	return fes
-}
-
 // Get the frontends owned by this user
 func MyFrontends(u *pb.User) []*frontend.Frontend {
 	var fes []*frontend.Frontend
@@ -931,47 +913,6 @@ func (t *SSHTerminal) RestorePrompt() {
 		t.prompt = "> "
 	}
 	t.SetPrompt(t.prompt, false)
-}
-
-// MyServersResponse will format a string containing all the gameservers and
-// states related to the logged in user. It shows servers they own first and
-// then servers that have had access delegated to them.
-func MyServersResponse(s ssh.Session) (string, error) {
-	output := ""
-	u, err := User(s.User())
-	if err != nil {
-		return "", err
-	}
-	mycls := MyFrontends(u)
-	if len(mycls) > 0 {
-		var status string
-		output = "Your Frontends:\n"
-		for _, c := range mycls {
-			status = ""
-			if c.Connected && c.Trusted {
-				status = fmt.Sprintf(" [%s]", green("connected"))
-			} else {
-				status = fmt.Sprintf(" [%s]", red("offline"))
-			}
-			output += fmt.Sprintf("  %-20s%s\n", c.Name, status)
-		}
-	}
-
-	mydels := MyDelegates(u)
-	if len(mydels) > 0 {
-		var status string
-		output = "Delegated Frontends:\n"
-		for _, c := range mydels {
-			status = ""
-			if c.Connected && c.Trusted {
-				status = fmt.Sprintf(" [%s]", green("connected"))
-			} else {
-				status = fmt.Sprintf(" [%s]", red("offline"))
-			}
-			output += fmt.Sprintf("  %-20s%s\n", c.Name, status)
-		}
-	}
-	return output, nil
 }
 
 // AddRuleWizard will prompt the user to enter all the data needed to construct
