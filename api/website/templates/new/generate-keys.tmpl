@@ -1,0 +1,26 @@
+{{ define "keygen" }}
+{{ template "header" .}}
+
+<h1 class="h3 mb-3">Encryption Keys Info and Generation</h1>
+<p>CloudAdmin uses public key encryption for frontend/backend authentication.
+Your frontend (Quake 2 server) will authenticate the backend (our CloudAdmin server) by using the backend's public key to decrypt a challenge.
+The backend will then authenticate your frontend by decrypting a challenge using your public key.</p>
+<p>
+Generally, it's a bad idea to to transmit a private key over the internet. You should be generating your frontend's key pair on your frontend.
+However, this isn't a high-risk system so you'll most likely be fine having this server generate a private key for you and display it for you to copy/paste on your frontend.
+Only the public key will be saved and associated with your frontend.
+</p>
+
+<h2>Why not use certificates?</h2>
+<p>Encryption keys don't expire, certificates do. Using certificate auth would require:</p>
+<ul>
+    <li>Maintaining a certificate authority</li>
+    <li>Maintaining a revocation list</li>
+    <li>Frontend owners actively manage certs</li>
+    <li>Create/manage renewal automation</li>
+<ui>
+
+
+
+{{ template "footer" . }}
+{{ end }}
