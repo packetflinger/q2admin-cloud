@@ -740,12 +740,9 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 // typical `argc`, `argv`, `args` functionality to make it easier to understand
 // what the user is actually trying to do.
 func ParseCmdArgs(input string) (CmdArgs, error) {
-	if input == "" {
-		return CmdArgs{}, nil
-	}
-	tokens := strings.Split(strings.Trim(input, " \n\t"), " ")
+	tokens := strings.Fields(input)
 	if len(tokens) == 0 {
-		return CmdArgs{}, fmt.Errorf("ParseCmdArgs(%q) - can't parse command", input)
+		return CmdArgs{}, nil
 	}
 	return CmdArgs{
 		command: strings.ToLower(tokens[0]),

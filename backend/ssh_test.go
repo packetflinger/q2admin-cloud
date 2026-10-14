@@ -99,6 +99,21 @@ func TestParseCmdArgs(t *testing.T) {
 				args:    "\"eeny meeny miny moe\"",
 			},
 		},
+		{
+			name:  "extra whitespace",
+			input: "  kick   3\tbye ",
+			want: CmdArgs{
+				command: "kick",
+				argc:    2,
+				argv:    []string{"3", "bye"},
+				args:    "3 bye",
+			},
+		},
+		{
+			name:  "whitespace only",
+			input: " \t ",
+			want:  CmdArgs{argv: []string{}},
+		},
 	}
 
 	for _, tc := range tests {
