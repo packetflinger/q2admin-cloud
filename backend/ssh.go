@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"reflect"
 	"slices"
 	"strconv"
@@ -991,10 +992,16 @@ gettype:
 		r.Type = pb.RuleType_MESSAGE
 	}
 
+getaddr:
 	t.Printf("  [Rule Wizard] What network address should this affect (CIDR notation (8.8.8.0/24))? ")
 	in, err = t.terminal.ReadLine()
 	if err != nil {
 		return nil, fmt.Errorf("error reading rule wizard input: %v", err)
+	}
+	// same parser the rule matcher uses
+	if _, _, err := net.ParseCIDR(in); err != nil {
+		t.Println("Invalid CIDR address")
+		goto getaddr
 	}
 	r.Address = append(r.Address, in)
 

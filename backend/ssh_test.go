@@ -192,3 +192,22 @@ func TestPauseExpires(t *testing.T) {
 		t.Errorf("buffered message not flushed before new one, output: %q", got)
 	}
 }
+
+func TestAddRuleWizardRejectsBadCIDR(t *testing.T) {
+	in := strings.NewReader("ban\r8.8.8.8\r8.8.8.0/24\rdesc\rmsg\r")
+	var out bytes.Buffer
+	st := &SSHTerminal{terminal: term.NewTerminal(struct {
+		io.Reader
+		io.Writer
+	}{in, &out}, "> ")}
+	r, err := AddRuleWizard(st, &frontend.Frontend{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(r.GetAddress(), []string{"8.8.8.0/24"}) {
+		t.Errorf("address = %v, want [8.8.8.0/24]", r.GetAddress())
+	}
+	if !strings.Contains(out.String(), "Invalid CIDR address") {
+		t.Error("bare IP was not rejected")
+	}
+}
