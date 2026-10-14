@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -167,7 +166,7 @@ type TerminalMessage struct {
 
 // Start listening for SSH connections
 func (b *Backend) startSSHServer() {
-	hostkey, err := CreateHostKeySigner(be.config.GetSshHostkey())
+	hostkey, err := CreateHostKeySigner([]byte(be.config.GetSshHostkey()))
 	if err != nil {
 		b.Logf(LogLevelNormal, "SSH host key error: %v", err)
 	}
@@ -198,14 +197,10 @@ func (b *Backend) startSSHServer() {
 //
 //	ssh-keygen -t rsa -b 1024  # usually go with a high bit length
 //	ssh-keygen -t ecdsa -b 521
-func CreateHostKeySigner(keyfile string) (ssh.Signer, error) {
-	data, err := os.ReadFile(keyfile)
+func CreateHostKeySigner(keydata []byte) (ssh.Signer, error) {
+	s, err := gossh.ParsePrivateKey(keydata)
 	if err != nil {
-		return nil, fmt.Errorf("CreateHostkeySigner(%q): %v", keyfile, err)
-	}
-	s, err := gossh.ParsePrivateKey(data)
-	if err != nil {
-		return nil, fmt.Errorf("ParsePrivateKey() in CreateHostkeySigner(%q): %v", keyfile, err)
+		return nil, fmt.Errorf("parsing private key data: %v", err)
 	}
 	return s, nil
 }
