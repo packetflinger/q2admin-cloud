@@ -13,6 +13,7 @@ import (
 //
 // Called from Startup() in a goroutine
 func (s *Backend) startMaintenance() {
+	be.Logf(LogLevelInfo, "starting maintenance thread (%d secs)\n", s.config.GetMaintenanceTime())
 	for {
 		time.Sleep(time.Duration(be.config.MaintenanceTime) * time.Second)
 
