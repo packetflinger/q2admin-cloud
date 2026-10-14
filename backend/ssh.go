@@ -174,9 +174,16 @@ type TerminalMessage struct {
 
 // Start listening for SSH connections
 func (b *Backend) startSSHServer() {
-	hostkey, err := CreateHostKeySigner([]byte(be.config.GetSshHostkey()))
-	if err != nil {
-		b.Logf(LogLevelNormal, "SSH host key error: %v", err)
+	var hostkey ssh.Signer
+	if keydata := be.config.GetSshHostkey(); keydata == "" {
+		b.Logf(LogLevelNormal, "no SSH host key configured, generating a temporary one")
+	} else {
+		var err error
+		hostkey, err = CreateHostKeySigner([]byte(keydata))
+		if err != nil {
+			// a temporary key would trigger host-key-changed warnings for every user
+			log.Fatalf("SSH host key error: %v", err)
+		}
 	}
 	sv := &ssh.Server{
 		Addr: fmt.Sprintf("%s:%d",
