@@ -222,8 +222,7 @@ func CreateHostKeySigner(keydata []byte) (ssh.Signer, error) {
 // servers will be listed.
 func sessionHandler(s ssh.Session) {
 	var activeFE *frontend.Frontend
-	var ctx context.Context
-	var cancel context.CancelFunc
+	cancel := context.CancelFunc(func() {}) // stops the current console stream
 	sshterm := SSHTerminal{terminal: term.NewTerminal(s, "> ")}
 	sshterm.SetPrompt(TopLevelPrompt, true)
 
@@ -255,6 +254,7 @@ func sessionHandler(s ssh.Session) {
 
 	defer be.Logf(LogLevelInfo, "SSH user %q [%s] disconnected\n", s.User(), s.RemoteAddr().String())
 	defer s.Close()
+	defer func() { cancel() }() // closure: cancel is reassigned on server switch
 
 	for {
 		line, err := sshterm.terminal.ReadLine()
@@ -263,9 +263,7 @@ func sessionHandler(s ssh.Session) {
 		}
 		if activeFE != nil && !activeFE.Connected { // server dropped
 			sshterm.Printf(yellow("** server connection to %s dropped **\n"), activeFE.Name)
-			if cancel != nil {
-				cancel()
-			}
+			cancel()
 			sshterm.SetPrompt(TopLevelPrompt, true)
 			activeFE = nil
 			continue
@@ -305,14 +303,15 @@ func sessionHandler(s ssh.Session) {
 					sshterm.Printf("%q is offline, it can't be managed currently\n", c.argv[0])
 					continue
 				}
+				cancel() // detach from the previous server's stream
 				activeFE = fe
-				ctx, cancel = context.WithCancel(context.Background())
+				ctx, stop := context.WithCancel(s.Context())
+				cancel = stop
 
 				newterm := make(chan string)
 				fe.AddTerminal(&newterm)
 
 				go linkFrontendToTerminal(ctx, activeFE, &sshterm, &newterm)
-				defer cancel()
 
 				sshterm.SetPrompt(fmt.Sprintf("%s/%s", TopLevelPrompt, fe.Name), true)
 			}
