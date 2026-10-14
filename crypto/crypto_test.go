@@ -33,13 +33,13 @@ func TestLoadPrivateKey(t *testing.T) {
 	}{
 		{
 			desc:       "test1",
-			privatekey: "private.pem",
+			privatekey: ";kljasflkjafojwefoijwfjkslfsdf",
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			privkey, err := LoadPrivateKey(tc.privatekey)
+			privkey, err := LoadPrivateKey([]byte(tc.privatekey))
 			if err != nil {
 				t.Error(err)
 			}
