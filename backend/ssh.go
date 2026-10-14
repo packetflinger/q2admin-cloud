@@ -390,7 +390,7 @@ func sessionHandler(s ssh.Session) {
 
 		} else if c.command == "whois" {
 			if len(c.args) == 0 {
-				activeFE.SSHPrintln("Usage: whois <id>")
+				sshterm.Println("Usage: whois <id>")
 				continue
 			}
 			p, err := resolvePlayer(activeFE, c.argv[0])
