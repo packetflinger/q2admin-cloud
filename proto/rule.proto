@@ -109,6 +109,8 @@ message Rule {
     TimeSpec timespec = 21;            // time-related stuff
     bool disabled = 22;                // ignore this rule?
     string scope = 23;                 // where is this rule applied? (server/client)
+    int32 id = 24;                     // the database id of this rule
+    int32 frontend_id = 25;            // the database id of the associated frontend
 }
 
 // A collection of rules
