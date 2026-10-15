@@ -85,6 +85,23 @@
 					</div>
 					<div class="form-text" id="stifle-help">They can say one thing, then are muted for this long, repeatedly. Up to 300.</div>
 				</form>
+				<form method="post" action="{{$action}}" data-q2a-confirm="Ban {{.IP}} from this server and kick {{.Name}}?">
+					<label class="form-label" for="ban">Ban</label>
+					<div class="input-group">
+						<input type="text" class="form-control" id="ban" name="msg" maxlength="150" placeholder="Reason shown to the player (optional)" aria-describedby="ban-help">
+						<button class="btn btn-danger" type="submit" name="action" value="ban">Ban</button>
+					</div>
+					<div class="form-text" id="ban-help">Adds a ban rule for <span class="q2a-mono">{{.IP}}</span> and kicks them.</div>
+				</form>
+				<form method="post" action="{{$action}}" data-q2a-confirm="Blackhole {{.IP}}?">
+					<div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+						<div>
+							<div>Blackhole</div>
+							<div class="form-text mt-0">Sends <span class="q2a-mono">addblackhole {{.IP}}</span> to the server.</div>
+						</div>
+						<button class="btn btn-outline-danger" type="submit" name="action" value="blackhole">Blackhole</button>
+					</div>
+				</form>
 				<form method="post" action="{{$action}}" data-q2a-confirm="Kick {{.Name}}?">
 					<label class="form-label" for="kick">Kick</label>
 					<div class="input-group">

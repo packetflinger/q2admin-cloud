@@ -38,6 +38,7 @@ import (
 	"github.com/packetflinger/q2admind/util"
 
 	pb "github.com/packetflinger/q2admind/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -58,6 +59,8 @@ var (
 		"summarize":  summarize,
 		"join":       strings.Join,
 		"userinfo":   frontend.UserinfoMap,
+		"lines":      func(l []string) string { return strings.Join(l, "\n") },
+		"uilines":    userinfoLines,
 	}
 )
 
@@ -334,6 +337,15 @@ func validateNewServer(name, address, port string) (string, int, error) {
 	return name, p, nil
 }
 
+// userinfoLines formats a rule's userinfo patterns for the rule form.
+func userinfoLines(uis []*pb.UserInfo) string {
+	var l []string
+	for _, ui := range uis {
+		l = append(l, ui.GetProperty()+"="+ui.GetValue())
+	}
+	return strings.Join(l, "\n")
+}
+
 // playersOnline counts fe's occupied player slots. PlayerCount isn't used
 // because it isn't reset when a frontend reconnects.
 func playersOnline(fe *frontend.Frontend) int {
@@ -484,19 +496,23 @@ type Notice struct {
 // notices are looked up by the "notice" query parameter, so pages only ever
 // show these fixed messages.
 var notices = map[string]*Notice{
-	"map":      {"success", "Map change sent. The current map updates once the server reports it."},
-	"badmap":   {"danger", "Map names can only contain letters, numbers, dashes, underscores and slashes."},
-	"offline":  {"warning", "That needs the server to be connected."},
-	"saved":    {"success", "Settings saved."},
-	"uuid":     {"success", "New UUID generated. Update the server's q2admin config to use it."},
-	"key":      {"success", "Public key saved."},
-	"badkey":   {"danger", "That isn't a valid PEM-encoded RSA public key."},
-	"noplayer": {"warning", "That player isn't connected any more."},
-	"badinput": {"danger", "Check the message or number of seconds and try again."},
-	"sent":     {"success", "Message sent."},
-	"kicked":   {"success", "Player kicked."},
-	"muted":    {"success", "Player muted."},
-	"stifled":  {"success", "Player stifled."},
+	"map":         {"success", "Map change sent. The current map updates once the server reports it."},
+	"badmap":      {"danger", "Map names can only contain letters, numbers, dashes, underscores and slashes."},
+	"offline":     {"warning", "That needs the server to be connected."},
+	"saved":       {"success", "Settings saved."},
+	"uuid":        {"success", "New UUID generated. Update the server's q2admin config to use it."},
+	"key":         {"success", "Public key saved."},
+	"badkey":      {"danger", "That isn't a valid PEM-encoded RSA public key."},
+	"noplayer":    {"warning", "That player isn't connected any more."},
+	"badinput":    {"danger", "Check the message or number of seconds and try again."},
+	"sent":        {"success", "Message sent."},
+	"kicked":      {"success", "Player kicked."},
+	"muted":       {"success", "Player muted."},
+	"stifled":     {"success", "Player stifled."},
+	"banned":      {"success", "Player banned and kicked. The ban rule is on the Rules tab."},
+	"blackholed":  {"success", "Blackhole command sent for the player's address."},
+	"rulesaved":   {"success", "Rule saved."},
+	"ruledeleted": {"success", "Rule deleted."},
 }
 
 var mapNameRE = regexp.MustCompile(`^[A-Za-z0-9_/-]{1,64}$`)
@@ -956,6 +972,38 @@ func PlayerActionHandler(w http.ResponseWriter, r *http.Request) {
 		SendMessages(fe)
 		http.Redirect(w, r, path.Join("/sv", fe.UUID, fe.Name)+"?notice=kicked#players", http.StatusSeeOther)
 		return
+	case "ban":
+		rule := &pb.Rule{
+			Uuid:        uuid.NewString(),
+			Type:        pb.RuleType_BAN,
+			Scope:       "local",
+			Address:     []string{p.IP + "/32"},
+			Description: []string{fmt.Sprintf("%s banned by %s from the website", p.Name, user.GetEmail())},
+		}
+		if msg != "" {
+			rule.Message = []string{msg}
+		}
+		if net.ParseIP(p.IP).To4() == nil {
+			rule.Address = []string{p.IP + "/128"}
+		}
+		if err := fe.InsertRule(rule); err != nil {
+			log.Println(err)
+			http.Error(w, "500 - unable to save the ban rule", http.StatusInternalServerError)
+			return
+		}
+		fe.Rules = append(fe.Rules, rule)
+		KickPlayer(fe, p, msg)
+		SendMessages(fe)
+		http.Redirect(w, r, path.Join("/sv", fe.UUID, fe.Name)+"?notice=banned#players", http.StatusSeeOther)
+		return
+	case "blackhole":
+		ip := net.ParseIP(p.IP)
+		if ip == nil { // it goes out as a console command
+			notice = "badinput"
+			break
+		}
+		ConsoleCommand(fe, "addblackhole "+ip.String())
+		notice = "blackholed"
 	case "mute":
 		if secsErr != nil || secs < 0 || secs > 86400 {
 			notice = "badinput"
@@ -1211,133 +1259,258 @@ func PlayerSearchViewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RuleViewHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := GetSessionUser(r)
-	if err != nil {
-		RedirectToSignon(w, r)
-		return
-	}
-	data := PageResponse{}
-	data.Head.Title = "Rule View | Q2Admin CloudAdmin"
-	data.Title = "Rule"
-	data.SessionUser = user
-
-	lookup := mux.Vars(r)["uuid"]
-	var owner *frontend.Frontend // whose Rules the page renders
-	for _, f := range be.UserFrontends(user.GetEmail()) {
-		f.Mu.Lock()
-		for _, r := range f.Rules {
-			if r.GetUuid() == lookup {
-				data.Rules = f.Rules
-				data.Rule = r
-				owner = f
-			}
-		}
-		f.Mu.Unlock()
-	}
-
-	tmpl, e := parsePage("rule-view.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = executeLocked(w, tmpl, "rule", data, owner)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-}
-
-func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := GetSessionUser(r)
-	if err != nil {
-		RedirectToSignon(w, r)
-		return
-	}
-	data := PageResponse{}
-	//data.Head.Title = "Frontend Rules | Q2Admin CloudAdmin"
-	//data.Title = "Rules"
-	data.SessionUser = user
-
-	lookup := mux.Vars(r)["uuid"]
-	//fes := be.UserFrontends(user.GetEmail())
-	for _, f := range be.Frontends() {
-		f.Mu.Lock()
-		for j, r := range f.Rules {
-			if r.GetUuid() == lookup {
-				data.Frontend = f
-				data.Rule = f.Rules[j]
-			}
-		}
-		f.Mu.Unlock()
-	}
-
-	tmpl, e := parsePage("rule-edit.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = executeLocked(w, tmpl, "rule-edit", data, data.Frontend)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-}
-
-func RuleAddHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := GetSessionUser(r)
-	if err != nil {
-		RedirectToSignon(w, r)
-		return
-	}
-	data := PageResponse{}
-	data.Head.Title = "Frontend Rules | Q2Admin CloudAdmin"
-	data.Title = "Rules"
-	data.SessionUser = user
-
-	tmpl, e := parsePage("rule-add.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = tmpl.ExecuteTemplate(w, "rule-add", data)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-}
-
+// RuleListHandler lists a frontend's rules.
 func RuleListHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
 		return
 	}
-	data := PageResponse{}
-	data.Head.Title = "Frontend Rules | Q2Admin CloudAdmin"
-	data.Title = "Rules"
-	data.SessionUser = user
-
-	lookup := mux.Vars(r)["ServerUUID"]
-	fes := be.UserFrontends(user.GetEmail())
-	for _, f := range fes {
-		f.Mu.Lock()
-		if f.UUID == lookup {
-			data.Frontend = f
-			data.Frontend.Rules = SortRules(data.Frontend.Rules)
-		}
-		f.Mu.Unlock()
-		if data.Frontend != nil {
-			break
-		}
+	fe := ownedFrontend(w, r, user)
+	if fe == nil {
+		return
 	}
+	data := PageResponse{SessionUser: user, Frontend: fe, Notice: notices[r.URL.Query().Get("notice")]}
+	data.Head.Title = "Rules | CloudAdmin"
+	data.NavHighlight.Servers = "active"
+	fe.Mu.Lock()
+	data.Rules = SortRules(fe.Rules) // a sorted copy, fe.Rules keeps its order
+	fe.Mu.Unlock()
+	renderRulePage(w, "rule-list.tmpl", "rule-list", data, fe)
+}
 
-	tmpl, e := parsePage("rule-list.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = executeLocked(w, tmpl, "rule-list", data, data.Frontend)
-		if err != nil {
+// RuleViewHandler shows one of the user's rules.
+func RuleViewHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	fe, rule := findMyRule(user, mux.Vars(r)["uuid"])
+	if rule == nil {
+		http.NotFound(w, r)
+		return
+	}
+	data := PageResponse{SessionUser: user, Frontend: fe, Rule: rule, Notice: notices[r.URL.Query().Get("notice")]}
+	data.Head.Title = "Rule | CloudAdmin"
+	data.NavHighlight.Servers = "active"
+	renderRulePage(w, "rule-view.tmpl", "rule", data, fe)
+}
+
+// RuleAddHandler shows the new-rule form for a frontend and creates the rule.
+func RuleAddHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	fe := ownedFrontend(w, r, user)
+	if fe == nil {
+		return
+	}
+	data := PageResponse{SessionUser: user, Frontend: fe, Rule: &pb.Rule{Type: pb.RuleType_BAN, StifleLength: 60}}
+	data.Head.Title = "New rule | CloudAdmin"
+	data.NavHighlight.Servers = "active"
+	if r.Method == http.MethodPost {
+		rule := &pb.Rule{Uuid: uuid.NewString(), Scope: "local"}
+		if err := ruleFromForm(r, rule); err != nil {
+			data.Rule, data.FormError = rule, err.Error()
+		} else {
+			fe.Mu.Lock()
+			err := fe.InsertRule(rule)
+			if err == nil {
+				fe.Rules = append(fe.Rules, rule)
+			}
+			fe.Mu.Unlock()
+			if err == nil {
+				http.Redirect(w, r, "/rules/"+rule.Uuid+"/view?notice=rulesaved", http.StatusSeeOther)
+				return
+			}
 			log.Println(err)
+			data.Rule, data.FormError = rule, "unable to save the rule, try again"
 		}
 	}
+	renderRulePage(w, "rule-edit.tmpl", "rule-edit", data, fe)
+}
+
+// RuleEditHandler shows the edit form for one of the user's rules and saves it.
+func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	fe, rule := findMyRule(user, mux.Vars(r)["uuid"])
+	if rule == nil {
+		http.NotFound(w, r)
+		return
+	}
+	data := PageResponse{SessionUser: user, Frontend: fe, Rule: rule}
+	data.Head.Title = "Edit rule | CloudAdmin"
+	data.NavHighlight.Servers = "active"
+	if r.Method == http.MethodPost {
+		fe.Mu.Lock()
+		edited := proto.Clone(rule).(*pb.Rule) // fe.Rules is only changed once saved
+		fe.Mu.Unlock()
+		if err := ruleFromForm(r, edited); err != nil {
+			data.Rule, data.FormError = edited, err.Error()
+		} else {
+			fe.Mu.Lock()
+			err := fe.UpdateRule(edited)
+			if err == nil {
+				for i := range fe.Rules {
+					if fe.Rules[i] == rule {
+						fe.Rules[i] = edited
+					}
+				}
+			}
+			fe.Mu.Unlock()
+			if err == nil {
+				http.Redirect(w, r, "/rules/"+edited.Uuid+"/view?notice=rulesaved", http.StatusSeeOther)
+				return
+			}
+			log.Println(err)
+			data.Rule, data.FormError = edited, "unable to save the rule, try again"
+		}
+	}
+	renderRulePage(w, "rule-edit.tmpl", "rule-edit", data, fe)
+}
+
+// RuleDeleteHandler removes one of the user's rules.
+func RuleDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	fe, rule := findMyRule(user, mux.Vars(r)["uuid"])
+	if rule == nil {
+		http.NotFound(w, r)
+		return
+	}
+	fe.Mu.Lock()
+	defer fe.Mu.Unlock()
+	if err := fe.DeleteRule(rule.GetUuid()); err != nil {
+		log.Println(err)
+		http.Error(w, "500 - unable to delete the rule", http.StatusInternalServerError)
+		return
+	}
+	fe.Rules = slices.DeleteFunc(slices.Clone(fe.Rules), func(x *pb.Rule) bool { return x == rule })
+	http.Redirect(w, r, path.Join("/sv", fe.UUID, fe.Name, "rules")+"?notice=ruledeleted", http.StatusSeeOther)
+}
+
+// findMyRule finds the rule with this UUID among the user's frontends.
+func findMyRule(user *pb.User, id string) (*frontend.Frontend, *pb.Rule) {
+	for _, fe := range FrontendsByIdentity(user.GetEmail()) {
+		fe.Mu.Lock()
+		for _, rule := range fe.Rules {
+			if rule.GetUuid() == id {
+				fe.Mu.Unlock()
+				return fe, rule
+			}
+		}
+		fe.Mu.Unlock()
+	}
+	return nil, nil
+}
+
+func renderRulePage(w http.ResponseWriter, file, name string, data PageResponse, fe *frontend.Frontend) {
+	tmpl, err := parsePage(file)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := executeLocked(w, tmpl, name, data, fe); err != nil {
+		log.Println(err)
+	}
+}
+
+// ruleFromForm copies the rule form into rule, then validates it. rule is
+// filled in even when invalid, so the form can be shown again as entered.
+// Fields the form doesn't cover (UUID, timespec, exceptions) are left alone.
+func ruleFromForm(r *http.Request, rule *pb.Rule) error {
+	lines := func(field string) []string { return splitFormLines(r.PostFormValue(field)) }
+	typ, typeOK := pb.RuleType_value[strings.ToUpper(r.PostFormValue("type"))]
+	rule.Type = pb.RuleType(typ)
+	rule.Description = lines("description")
+	rule.Address = lines("addresses")
+	rule.Name = lines("names")
+	rule.Hostname = lines("hostnames")
+	rule.Client = lines("clients")
+	rule.Message = lines("messages")
+	rule.Vpn = r.PostFormValue("vpn") == "on"
+	rule.Disabled = r.PostFormValue("disabled") == "on"
+	rule.UserInfo = nil
+	for _, line := range lines("userinfo") {
+		k, v, _ := strings.Cut(line, "=")
+		rule.UserInfo = append(rule.UserInfo, &pb.UserInfo{Property: strings.TrimSpace(k), Value: strings.TrimSpace(v)})
+	}
+	stifle, stifleErr := strconv.Atoi(r.PostFormValue("stifle_length"))
+	if stifleErr == nil {
+		rule.StifleLength = int32(stifle)
+	}
+	switch expires := r.PostFormValue("expires"); expires {
+	case "keep":
+	case "", "never":
+		rule.ExpirationTime = 0
+	default:
+		secs, err := strconv.ParseInt(expires, 10, 64)
+		if err != nil || secs <= 0 {
+			return errors.New("pick when the rule expires")
+		}
+		rule.ExpirationTime = time.Now().Unix() + secs
+	}
+
+	if !typeOK {
+		return errors.New("pick a rule type")
+	}
+	for i, a := range rule.Address {
+		if ip := net.ParseIP(a); ip != nil { // a single address
+			if ip.To4() != nil {
+				rule.Address[i] = a + "/32"
+			} else {
+				rule.Address[i] = a + "/128"
+			}
+		} else if _, _, err := net.ParseCIDR(a); err != nil {
+			return fmt.Errorf("%q isn't an IP address or CIDR network", a)
+		}
+	}
+	for _, list := range [][]string{rule.Name, rule.Hostname, rule.Client} {
+		for _, re := range list {
+			if _, err := regexp.Compile(re); err != nil {
+				return fmt.Errorf("%q isn't a valid regular expression", re)
+			}
+		}
+	}
+	for _, ui := range rule.UserInfo {
+		if ui.Property == "" {
+			return errors.New("userinfo lines need to look like property=pattern")
+		}
+		if _, err := regexp.Compile(ui.Value); err != nil {
+			return fmt.Errorf("%q isn't a valid regular expression", ui.Value)
+		}
+	}
+	if len(rule.Address)+len(rule.Name)+len(rule.Hostname)+len(rule.Client)+len(rule.UserInfo) == 0 && !rule.Vpn {
+		return errors.New("add at least one thing to match: an address, name, hostname, client, userinfo or VPN")
+	}
+	if rule.Type == pb.RuleType_MESSAGE && len(rule.Message) == 0 {
+		return errors.New("message rules need a message to show")
+	}
+	if rule.Type == pb.RuleType_STIFLE && (stifleErr != nil || stifle < 1 || stifle > StifleMax) {
+		return fmt.Errorf("stifle length must be 1 to %d seconds", StifleMax)
+	}
+	return nil
+}
+
+// splitFormLines splits a textarea into its non-blank, trimmed lines.
+func splitFormLines(s string) []string {
+	var out []string
+	for _, line := range strings.Split(s, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			out = append(out, line)
+		}
+	}
+	return out
 }
 
 // ServerKeysHandler shows the key page for a frontend, generates a key pair

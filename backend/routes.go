@@ -39,6 +39,7 @@ type WebRoutes struct {
 	RuleView         string
 	RuleEdit         string
 	RuleAdd          string
+	RuleDelete       string
 	ServerKeys       string
 }
 
@@ -61,6 +62,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.PlayerView = "/sv/{ServerUUID}/{ServerName}/player/{ClientNum}"
 	Routes.PlayerAction = "/sv/{ServerUUID}/{ServerName}/player/{ClientNum}/action"
 	Routes.RuleList = "/sv/{ServerUUID}/{ServerName}/rules"
+	Routes.RuleAdd = "/sv/{ServerUUID}/{ServerName}/rules/add"
 	Routes.ServerKeys = "/sv/{ServerUUID}/{ServerName}/manage-keys"
 	Routes.ServerEdit = "/sv/{ServerUUID}/{ServerName}/edit"
 	Routes.ServerConsole = "/sv/{ServerUUID}/{ServerName}/console"
@@ -82,7 +84,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.Privacy = "/privacy-policy"
 	Routes.RuleView = "/rules/{uuid}/view"
 	Routes.RuleEdit = "/rules/{uuid}/edit"
-	Routes.RuleAdd = "/rules/create"
+	Routes.RuleDelete = "/rules/{uuid}/delete"
 	Routes.SearchServer = "/search/{UUID}"
 	Routes.Search = "/search"
 	Routes.AuthLogin = "/sign-in"
@@ -122,9 +124,10 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.SearchServer, ServerSearchHandler)
 	r.HandleFunc(Routes.PlayerSearchView, PlayerSearchViewHandler)
 	r.HandleFunc(Routes.RuleView, RuleViewHandler)
-	r.HandleFunc(Routes.RuleEdit, RuleEditHandler)
+	r.HandleFunc(Routes.RuleEdit, RuleEditHandler).Methods("GET", "POST")
+	r.HandleFunc(Routes.RuleDelete, RuleDeleteHandler).Methods("POST")
 	r.HandleFunc(Routes.RuleList, RuleListHandler)
-	r.HandleFunc(Routes.RuleAdd, RuleAddHandler)
+	r.HandleFunc(Routes.RuleAdd, RuleAddHandler).Methods("GET", "POST")
 	r.HandleFunc(Routes.ServerKeys, ServerKeysHandler)
 
 	r.PathPrefix(Routes.Static).Handler(http.FileServer(http.Dir("./api/website")))

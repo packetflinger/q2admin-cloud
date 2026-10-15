@@ -1,8 +1,111 @@
-{{ define "rule-edit" }}
-{{ template "header" .}}
+{{define "rule-edit"}}
+{{template "header" .}}
+{{$fe := .Frontend}}
+{{$base := printf "/sv/%s/%s" $fe.UUID $fe.Name}}
+{{with .Rule}}
+{{$editing := .GetId}}
+<div class="q2a-page-head">
+	<div class="min-w-0">
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item"><a href="{{$base}}">{{$fe.Name}}</a></li><li class="breadcrumb-item"><a href="{{$base}}/rules">Rules</a></li><li class="breadcrumb-item active" aria-current="page">{{if $editing}}Edit{{else}}New{{end}}</li></ol></nav>
+		<h1>{{if $editing}}Edit rule{{else}}New rule for {{$fe.Name}}{{end}}</h1>
+	</div>
+</div>
 
-<h1 class="h3 mb-3">Edit rule {{ .Frontend.Name }}</h1>
+<form method="post" action="{{if $editing}}/rules/{{.GetUuid}}/edit{{else}}{{$base}}/rules/add{{end}}">
+	{{if $.FormError}}<div class="alert alert-danger" role="alert">{{$.FormError}}</div>{{end}}
+	<div class="row g-3">
+		<div class="col-12 col-xl-6">
+			<div class="q2a-panel h-100">
+				<div class="q2a-panel-head">What the rule does</div>
+				<div class="q2a-panel-body">
+					<div class="row g-3 mb-3">
+						<div class="col-12 col-sm-6">
+							<label class="form-label" for="type">Type</label>
+							<select class="form-select" id="type" name="type" required>
+								{{$t := .GetType.String}}
+								<option value="ban" {{if eq $t "BAN"}}selected{{end}}>Ban: can't connect</option>
+								<option value="mute" {{if eq $t "MUTE"}}selected{{end}}>Mute: can't talk</option>
+								<option value="stifle" {{if eq $t "STIFLE"}}selected{{end}}>Stifle: talk once per interval</option>
+								<option value="message" {{if eq $t "MESSAGE"}}selected{{end}}>Message: show them a message</option>
+							</select>
+						</div>
+						<div class="col-12 col-sm-6">
+							<label class="form-label" for="stifle_length">Stifle length</label>
+							<div class="input-group">
+								<input type="number" class="form-control" id="stifle_length" name="stifle_length" max="300" value="{{.GetStifleLength}}">
+								<span class="input-group-text">sec</span>
+							</div>
+						</div>
+					</div>
+					<div class="mb-3">
+						<label class="form-label" for="description">Description</label>
+						<input type="text" class="form-control" id="description" name="description" value="{{join .GetDescription " "}}" placeholder="Why this rule exists, only admins see it">
+					</div>
+					<div class="mb-3">
+						<label class="form-label" for="messages">Message to the player</label>
+						<textarea class="form-control" id="messages" name="messages" rows="2" placeholder="One line per message">{{lines .GetMessage}}</textarea>
+					</div>
+					<div class="row g-3">
+						<div class="col-12 col-sm-6">
+							<label class="form-label" for="expires">Expires</label>
+							<select class="form-select" id="expires" name="expires">
+								{{with .GetExpirationTime}}<option value="keep" selected>{{datetime .}}</option>{{end}}
+								<option value="never" {{if not .GetExpirationTime}}selected{{end}}>Never</option>
+								<option value="3600">In 1 hour</option>
+								<option value="86400">In 1 day</option>
+								<option value="604800">In 1 week</option>
+								<option value="2592000">In 30 days</option>
+							</select>
+						</div>
+						<div class="col-12 col-sm-6 d-flex align-items-end">
+							<div class="form-check form-switch mb-2">
+								<input class="form-check-input" type="checkbox" role="switch" id="disabled" name="disabled" {{if .GetDisabled}}checked{{end}}>
+								<label class="form-check-label" for="disabled">Disabled</label>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
-
-{{ template "footer" . }}
-{{ end }}
+		<div class="col-12 col-xl-6">
+			<div class="q2a-panel h-100">
+				<div class="q2a-panel-head">Who it matches</div>
+				<div class="q2a-panel-body">
+					<p class="small text-body-secondary">A player matches when every section you fill in matches. One entry per line.</p>
+					<div class="mb-3">
+						<label class="form-label" for="addresses">IP addresses or networks</label>
+						<textarea class="form-control q2a-mono" id="addresses" name="addresses" rows="2" placeholder="192.0.2.15&#10;10.0.0.0/8">{{lines .GetAddress}}</textarea>
+					</div>
+					<div class="mb-3">
+						<label class="form-label" for="names">Player names <span class="small text-body-secondary">(regex, any case)</span></label>
+						<textarea class="form-control q2a-mono" id="names" name="names" rows="2" placeholder="^spammer">{{lines .GetName}}</textarea>
+					</div>
+					<div class="mb-3">
+						<label class="form-label" for="hostnames">Hostnames <span class="small text-body-secondary">(regex, any case)</span></label>
+						<textarea class="form-control q2a-mono" id="hostnames" name="hostnames" rows="2" placeholder="\.badisp\.net$">{{lines .GetHostname}}</textarea>
+					</div>
+					<div class="mb-3">
+						<label class="form-label" for="clients">Client versions <span class="small text-body-secondary">(regex)</span></label>
+						<textarea class="form-control q2a-mono" id="clients" name="clients" rows="1" placeholder="r1q2-v1\.01">{{lines .GetClient}}</textarea>
+					</div>
+					<div class="mb-3">
+						<label class="form-label" for="userinfo">Userinfo <span class="small text-body-secondary">(property=regex)</span></label>
+						<textarea class="form-control q2a-mono" id="userinfo" name="userinfo" rows="1" placeholder="skin=^cyborg/">{{uilines .GetUserInfo}}</textarea>
+					</div>
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" role="switch" id="vpn" name="vpn" {{if .GetVpn}}checked{{end}}>
+						<label class="form-check-label" for="vpn">Connecting through a VPN</label>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="d-flex gap-2 justify-content-end mt-3">
+		<a class="btn btn-outline-secondary" href="{{if $editing}}/rules/{{.GetUuid}}/view{{else}}{{$base}}/rules{{end}}">Cancel</a>
+		<button class="btn btn-primary" type="submit">{{if $editing}}Save rule{{else}}Create rule{{end}}</button>
+	</div>
+</form>
+{{end}}
+{{template "footer" .}}
+{{end}}

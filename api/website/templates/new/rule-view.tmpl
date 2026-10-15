@@ -1,177 +1,61 @@
-{{ define "rule" }}
-{{ template "header" .}}
-
-<h1 class="h3 mb-3">Rule View</h1>
-<p>ID: {{ .Rule.GetUuid }}</p>
-<div>Type: {{ .Rule.GetType }}</div>
-
-<div class="card">
-  <div class="card-header">
-    Match Criteria
-  </div>
-  <div class="card-body">
-    {{ if .Rule.GetAddress}}
-    <h5 class="card-title">Addresses</h5>
-    <p class="card-text">
-        {{ range .Rule.GetAddress }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetHostname}}
-    <h5 class="card-title">DNS Names</h5>
-    <p class="card-text">
-        {{ range .Rule.GetHostname }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetName}}
-    <h5 class="card-title">Player Names</h5>
-    <p class="card-text">
-        {{ range .Rule.GetName }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetClient}}
-    <h5 class="card-title">Quake 2 Clients</h5>
-    <p class="card-text">
-        {{ range .Rule.GetClient }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetClient}}
-    <h5 class="card-title">Userinfo Pairs</h5>
-    <p class="card-text">
-        {{ range .Rule.GetUserinfo }}
-        <div>{{ .GetProperty }}: {{ .GetValue }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetClient}}
-    <h5 class="card-title">Quake 2 Clients</h5>
-    <p class="card-text">
-        {{ range .Rule.GetClient }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetMessage}}
-    <h5 class="card-title">Messages to Player</h5>
-    <p class="card-text">
-        {{ range .Rule.GetMessage }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetExpirationTime}}
-    <h5 class="card-title">Expiration</h5>
-    <p class="card-text">
-        <div>{{ .Rule.GetExpirationTime }}</div>
-    </p>
-    {{ end }}
-    {{ if .Rule.Vpn}}
-    <h5 class="card-title">Via VPN</h5>
-    <p class="card-text">
-        {{ range .Rule.GetVpn }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetUserInfo }}
-    <h5 class="card-title">Userinfo Pairs</h5>
-    <p class="card-text">
-        {{ range .Rule.GetUserInfo }}
-        <div>{{ .GetProperty }}: {{ .GetValue }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetTimespec }}
-    <h5 class="card-title">TimeSpec</h5>
-    <p class="card-text">
-        {{ if .Rule.GetTimespec.GetBefore }}<div>Before: {{ .Rule.GetTimespec.GetBefore }}</div>{{ end }}
-        {{ if .Rule.GetTimespec.GetAfter }}<div>After: {{ .Rule.GetTimespec.GetAfter }}</div>{{ end }}
-        {{ if .Rule.GetTimespec.GetEvery }}<div>Every: {{ .Rule.GetTimespec.GetEvery }}</div>{{ end }}
-        {{ if .Rule.GetTimespec.GetPlayTime }}<div>Play time: {{ .Rule.GetTimespec.GetPlayTime }}</div>{{ end }}
-    </p>
-    {{ end }}
-  </div>
+{{define "rule"}}
+{{template "header" .}}
+{{$fe := .Frontend}}
+{{$base := printf "/sv/%s/%s" $fe.UUID $fe.Name}}
+{{with .Rule}}
+<div class="q2a-page-head">
+	<div class="min-w-0">
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item"><a href="{{$base}}">{{$fe.Name}}</a></li><li class="breadcrumb-item"><a href="{{$base}}/rules">Rules</a></li><li class="breadcrumb-item active q2a-mono" aria-current="page">{{printf "%.8s" .GetUuid}}</li></ol></nav>
+		<h1 class="text-truncate">
+			<span class="badge text-bg-secondary align-middle fs-6">{{.GetType}}</span>
+			{{with .GetDescription}}{{join . " "}}{{else}}Rule{{end}}
+			{{if .GetDisabled}}<span class="badge text-bg-warning align-middle fs-6">disabled</span>{{end}}
+		</h1>
+	</div>
+	<div class="d-flex gap-2">
+		<a class="btn btn-sm btn-primary" href="/rules/{{.GetUuid}}/edit"><i class="bi bi-pencil me-1"></i>Edit</a>
+		<form method="post" action="/rules/{{.GetUuid}}/delete" data-q2a-confirm="Delete this rule?">
+			<button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash me-1"></i>Delete</button>
+		</form>
+	</div>
 </div>
 
-{{ if .Rule.Exception }}
-<div class="card">
-  <div class="card-header">
-    Exceptions
-  </div>
-  <div class="card-body">
-    {{ if .Rule.GetException.GetDescription }}
-    <h5 class="card-title">Addresses</h5>
-    <p class="card-text">
-        {{ range .Rule.GetException.GetDescription }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetException.GetAddress }}
-    <h5 class="card-title">Addresses</h5>
-    <p class="card-text">
-        {{ range .Rule.GetAddress }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetException.GetHostname }}
-    <h5 class="card-title">Hostnames</h5>
-    <p class="card-text">
-        {{ range .Rule.GetException.GetHostnames }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetException.GetName }}
-    <h5 class="card-title">Name</h5>
-    <p class="card-text">
-        {{ range .Rule.GetException.GetName }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetException.GetClient }}
-    <h5 class="card-title">Quake 2 Client</h5>
-    <p class="card-text">
-        {{ range .Rule.GetException.GetClient }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetException.GetUserInfo }}
-    <h5 class="card-title">Userinfo Pairs</h5>
-    <p class="card-text">
-        {{ range .Rule.GetException.GetUserInfo }}
-        <div>{{ . }}</div>
-        {{ end }}
-    </p>
-    {{ end }}
-    {{ if .Rule.GetException.GetExpiration }}
-    <h5 class="card-title">Expiration</h5>
-    <p class="card-text">
-        <div>{{ .Rule.GetException.GetExpiration }}</div>
-    </p>
-    {{ end }}
-    {{ if .Rule.GetException.GetTimespec }}
-    <h5 class="card-title">TimeSpec</h5>
-    <p class="card-text">
-        {{ if .Rule.GetException.GetTimespec.GetBefore }}<div class="row"><div class="col">Before:</div><div class="col">{{ .Rule.GetException.GetTimespec.GetBefore }}</div></div>{{ end }}
-        {{ if .Rule.GetException.GetTimespec.GetAfter }}<div class="row"><div class="col">After:</div><div class="col">{{ .Rule.GetException.GetTimespec.GetAfter }}</div></div>{{ end }}
-        {{ if .Rule.GetException.GetTimespec.GetEvery }}<div class="row"><div class="col">Every:</div><div class="col">{{ .Rule.GetException.GetTimespec.GetEvery }}</div></div>{{ end }}
-        {{ if .Rule.GetException.GetTimespec.GetPlayTime }}<div class="row"><div class="col">Play time:</div><div class="col">{{ .Rule.GetException.GetTimespec.GetPlayTime }}</div></div>{{ end }}
-    </p>
-    {{ end }}
-  </div>
-</div>
-{{ end }}
+{{with $.Notice}}<div class="alert alert-{{.Class}} alert-dismissible fade show" role="status">{{.Text}}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{{end}}
 
-{{ template "footer" . }}
-{{ end }}
+<div class="row g-3">
+	<div class="col-12 col-xl-6">
+		<div class="q2a-panel h-100">
+			<div class="q2a-panel-head">Matches players when all of these match</div>
+			<div class="q2a-panel-body">
+				<dl class="q2a-kv">
+					{{with .GetAddress}}<dt>Addresses</dt><dd class="q2a-mono">{{range .}}<div>{{.}}</div>{{end}}</dd>{{end}}
+					{{with .GetName}}<dt>Names</dt><dd class="q2a-mono">{{range .}}<div>{{.}}</div>{{end}}</dd>{{end}}
+					{{with .GetHostname}}<dt>Hostnames</dt><dd class="q2a-mono">{{range .}}<div>{{.}}</div>{{end}}</dd>{{end}}
+					{{with .GetClient}}<dt>Clients</dt><dd class="q2a-mono">{{range .}}<div>{{.}}</div>{{end}}</dd>{{end}}
+					{{with .GetUserInfo}}<dt>Userinfo</dt><dd class="q2a-mono">{{range .}}<div>{{.GetProperty}} = {{.GetValue}}</div>{{end}}</dd>{{end}}
+					{{if .GetVpn}}<dt>VPN</dt><dd>connecting through a VPN</dd>{{end}}
+				</dl>
+				<p class="small text-body-secondary mt-3 mb-0">Names and hostnames are case-insensitive regular expressions.</p>
+			</div>
+		</div>
+	</div>
+	<div class="col-12 col-xl-6">
+		<div class="q2a-panel h-100">
+			<div class="q2a-panel-head">Details</div>
+			<div class="q2a-panel-body">
+				<dl class="q2a-kv">
+					<dt>Server</dt><dd><a href="{{$base}}">{{$fe.Name}}</a></dd>
+					<dt>Created</dt><dd>{{with .GetCreationTime}}{{datetime .}}{{else}}-{{end}}</dd>
+					<dt>Expires</dt><dd>{{with .GetExpirationTime}}{{datetime .}}{{else}}never{{end}}</dd>
+					{{if eq .GetType.String "STIFLE"}}<dt>Stifle length</dt><dd>{{.GetStifleLength}} seconds</dd>{{end}}
+					{{with .GetMessage}}<dt>Message</dt><dd>{{range .}}<div>{{.}}</div>{{end}}</dd>{{end}}
+					{{with .GetTimespec}}{{if or .GetBefore .GetAfter .GetEvery .GetPlayTime}}<dt>Timing</dt><dd class="q2a-mono small">{{with .GetBefore}}before {{.}} {{end}}{{with .GetAfter}}after {{.}} {{end}}{{with .GetEvery}}every {{.}} {{end}}{{with .GetPlayTime}}playtime {{.}}{{end}}</dd>{{end}}{{end}}
+					<dt>ID</dt><dd class="q2a-mono">{{.GetUuid}}</dd>
+				</dl>
+			</div>
+		</div>
+	</div>
+</div>
+{{end}}
+{{template "footer" .}}
+{{end}}
