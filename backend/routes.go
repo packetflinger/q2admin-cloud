@@ -28,6 +28,8 @@ type WebRoutes struct {
 	Terms            string
 	PlayerView       string
 	ServerConsole    string
+	ConsoleStream    string
+	ConsoleCommand   string
 	Search           string
 	SearchServer     string
 	PlayerSearchView string
@@ -59,6 +61,8 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.ServerKeys = "/sv/{ServerUUID}/{ServerName}/manage-keys"
 	Routes.ServerEdit = "/sv/{ServerUUID}/{ServerName}/edit"
 	Routes.ServerConsole = "/sv/{ServerUUID}/{ServerName}/console"
+	Routes.ConsoleStream = "/sv/{ServerUUID}/{ServerName}/console/stream"
+	Routes.ConsoleCommand = "/sv/{ServerUUID}/{ServerName}/console/command"
 	Routes.ServerChangeUUID = "/sv/{ServerUUID}/{ServerName}/change-uuid"
 	Routes.ServerView = "/sv/{ServerUUID}/{ServerName}"
 	Routes.ServerRemove = "/sv/{ServerUUID}/{ServerName}/delete"
@@ -106,6 +110,8 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.ServerMap, ChangeMapHandler).Methods("POST")
 	r.HandleFunc(Routes.PlayerView, PlayerViewHandler)
 	r.HandleFunc(Routes.ServerConsole, ServerConsoleHandler)
+	r.HandleFunc(Routes.ConsoleStream, ConsoleStreamHandler)
+	r.HandleFunc(Routes.ConsoleCommand, ConsoleCommandHandler).Methods("POST")
 	r.HandleFunc(Routes.Search, SearchHandler)
 	r.HandleFunc(Routes.SearchServer, SearchHandler)
 	r.HandleFunc(Routes.PlayerSearchView, PlayerSearchViewHandler)

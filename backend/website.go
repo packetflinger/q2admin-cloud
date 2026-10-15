@@ -499,18 +499,13 @@ func ChangeMapHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
-	if err != nil {
-		http.NotFound(w, r)
+	fe := ownedFrontend(w, r, user)
+	if fe == nil {
 		return
 	}
 	mapname := strings.TrimSpace(r.PostFormValue("map"))
 	fe.Mu.Lock()
 	defer fe.Mu.Unlock()
-	if fe.Owner != user.Email {
-		http.Error(w, "403 - permission denied", http.StatusForbidden)
-		return
-	}
 	notice := "map"
 	switch {
 	case !mapNameRE.MatchString(mapname): // it's sent as a console command
@@ -937,27 +932,120 @@ func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ServerConsoleHandler shows the live console page for a frontend.
 func ServerConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
 		return
 	}
-	data := PageResponse{}
-	data.Head.Title = "Server Console | Q2Admin CloudAdmin"
-	data.Head.Keywords = "console"
-	data.Title = "Server Console"
-	data.SessionUser = user
+	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	data := PageResponse{SessionUser: user, Frontend: fe}
+	fe.Mu.Lock()
+	data.Head.Title = "Console: " + fe.Name + " | CloudAdmin"
+	fe.Mu.Unlock()
+	data.NavHighlight.Servers = "active"
+	tmpl, err := parsePage("terminal.tmpl")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := executeLocked(w, tmpl, "terminal", data, fe); err != nil {
+		log.Println(err)
+	}
+}
 
-	tmpl, e := parsePage("terminal.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = tmpl.ExecuteTemplate(w, "terminal", data)
-		if err != nil {
-			log.Println(err)
+// ownedFrontend finds the frontend named in the URL and checks user owns it,
+// writing the error response and returning nil if not.
+func ownedFrontend(w http.ResponseWriter, r *http.Request, user *pb.User) *frontend.Frontend {
+	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
+	if err != nil {
+		http.NotFound(w, r)
+		return nil
+	}
+	fe.Mu.Lock()
+	owner := fe.Owner
+	fe.Mu.Unlock()
+	if owner != user.Email {
+		http.Error(w, "403 - permission denied", http.StatusForbidden)
+		return nil
+	}
+	return fe
+}
+
+// ConsoleStreamHandler streams a frontend's console output to the browser as
+// server-sent events: the same feed SSH sessions watch.
+func ConsoleStreamHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		http.Error(w, "401 - signed out", http.StatusUnauthorized)
+		return
+	}
+	fe := ownedFrontend(w, r, user)
+	if fe == nil {
+		return
+	}
+	rc := http.NewResponseController(w)
+	_ = rc.SetWriteDeadline(time.Time{}) // the server's WriteTimeout would cut the stream off
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+
+	stream := make(chan string, 64) // SSHPrintln drops messages when this is full
+	fe.AddTerminal(&stream)
+	defer fe.TerminalDisconnected(&stream)
+	keepalive := time.NewTicker(25 * time.Second)
+	defer keepalive.Stop()
+
+	fmt.Fprint(w, ": connected\n\n")
+	for {
+		if err := rc.Flush(); err != nil {
+			return
+		}
+		select {
+		case <-r.Context().Done():
+			return
+		case <-keepalive.C:
+			fmt.Fprint(w, ": keepalive\n\n")
+		case msg := <-stream:
+			data, _ := json.Marshal(msg) // one line, whatever msg contains
+			fmt.Fprintf(w, "data: %s\n\n", data)
 		}
 	}
+}
+
+// ConsoleCommandHandler runs one console command on a frontend, as if typed
+// at its server console. Output arrives through ConsoleStreamHandler.
+func ConsoleCommandHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		http.Error(w, "401 - signed out", http.StatusUnauthorized)
+		return
+	}
+	fe := ownedFrontend(w, r, user)
+	if fe == nil {
+		return
+	}
+	cmd := strings.TrimSpace(r.PostFormValue("cmd"))
+	// a newline would smuggle in extra commands
+	if cmd == "" || len(cmd) > 256 || strings.ContainsAny(cmd, "\r\n") {
+		http.Error(w, "send one command of up to 256 characters", http.StatusBadRequest)
+		return
+	}
+	fe.Mu.Lock()
+	defer fe.Mu.Unlock()
+	if !(fe.Connected && fe.Trusted) {
+		http.Error(w, "the server is offline", http.StatusConflict)
+		return
+	}
+	ConsoleCommand(fe, cmd)
+	SendMessages(fe)
+	fe.Log.Printf("web console [%s]: %s\n", user.GetEmail(), cmd)
+	fe.SSHPrintln(fmt.Sprintf("[%s] > %s", user.GetEmail(), cmd)) // other watchers see it too
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {

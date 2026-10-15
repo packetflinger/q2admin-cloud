@@ -1,9 +1,17 @@
 package backend
 
 import (
+	"bufio"
 	"bytes"
+	"context"
+	"encoding/json"
 	"html/template"
+	"io"
+	"log"
 	"net"
+	"net/http"
+	"net/http/cookiejar"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -273,5 +281,101 @@ func TestServerViewStates(t *testing.T) {
 	}
 	if strings.Contains(out, "Change map") {
 		t.Error("offline server page shouldn't offer a map change")
+	}
+}
+
+// signedInClient returns an HTTP client for srv whose requests carry a valid
+// session cookie for user.
+func signedInClient(t *testing.T, srv *httptest.Server, user *pb.User) *http.Client {
+	t.Helper()
+	savedUsers := be.users
+	be.users = append(be.users, user) // sessions resolve to known users
+	t.Cleanup(func() { be.users = savedUsers })
+	Website.Secret = []byte("test-secret")
+	token, err := CreateSessionToken(user, "test-session", 3600, Website.Secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jar, _ := cookiejar.New(nil)
+	u, _ := url.Parse(srv.URL)
+	jar.SetCookies(u, []*http.Cookie{{Name: CookieName, Value: token}})
+	return &http.Client{Jar: jar}
+}
+
+// connectedFrontend is a trusted frontend owned by owner whose outgoing
+// messages are drained so SendMessages doesn't block.
+func connectedFrontend(t *testing.T, owner string) *frontend.Frontend {
+	ours, theirs := net.Pipe()
+	t.Cleanup(func() { ours.Close(); theirs.Close() })
+	go io.Copy(io.Discard, theirs)
+	return &frontend.Frontend{
+		Name: "fe1", UUID: "fe1-uuid", Owner: owner,
+		Connected: true, Trusted: true, Connection: &ours,
+		Log: log.New(io.Discard, "", 0), Server: &be,
+	}
+}
+
+func TestConsoleStreamAndCommand(t *testing.T) {
+	user := &pb.User{Email: "admin@example.com"}
+	fe := connectedFrontend(t, user.Email)
+	saved := be.frontends
+	be.frontends = []*frontend.Frontend{fe}
+	defer func() { be.frontends = saved }()
+	srv := httptest.NewServer(LoadWebsiteRoutes())
+	defer srv.Close()
+	client := signedInClient(t, srv, user)
+	base := srv.URL + "/sv/fe1-uuid/fe1/console"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	req, _ := http.NewRequestWithContext(ctx, "GET", base+"/stream", nil)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := bufio.NewScanner(res.Body)
+	lines.Scan() // ": connected", so the subscription exists
+
+	post := func(cmd string) int {
+		r, err := client.PostForm(base+"/command", url.Values{"cmd": {cmd}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.Body.Close()
+		return r.StatusCode
+	}
+	if code := post("status"); code != http.StatusNoContent {
+		t.Fatalf("command status = %d, want 204", code)
+	}
+	if code := post("status\nquit"); code != http.StatusBadRequest {
+		t.Errorf("multi-line command status = %d, want 400", code)
+	}
+	for lines.Scan() {
+		if data, ok := strings.CutPrefix(lines.Text(), "data: "); ok {
+			var msg string
+			if err := json.Unmarshal([]byte(data), &msg); err != nil || !strings.Contains(msg, "> status") {
+				t.Errorf("stream got %q (%v), want the echoed command", data, err)
+			}
+			break
+		}
+	}
+	cancel()
+	res.Body.Close()
+}
+
+func TestConsoleRejectsOtherOwners(t *testing.T) {
+	fe := connectedFrontend(t, "owner@example.com")
+	saved := be.frontends
+	be.frontends = []*frontend.Frontend{fe}
+	defer func() { be.frontends = saved }()
+	srv := httptest.NewServer(LoadWebsiteRoutes())
+	defer srv.Close()
+	client := signedInClient(t, srv, &pb.User{Email: "someone@example.com"})
+	r, err := client.PostForm(srv.URL+"/sv/fe1-uuid/fe1/console/command", url.Values{"cmd": {"quit"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Body.Close()
+	if r.StatusCode != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", r.StatusCode)
 	}
 }

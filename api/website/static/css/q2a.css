@@ -214,3 +214,11 @@ a:hover { color: var(--q2a-accent-hover); }
 /* Danger zone */
 .q2a-panel.q2a-danger { border-color: rgba(220, 53, 69, .5); }
 .q2a-danger > .q2a-panel-head { color: var(--bs-danger); }
+
+/* Console: always dark, it shows the server's colored output */
+.q2a-console {
+	height: 60vh;
+	min-height: 260px;
+	background: #0b0d12;
+	padding: .5rem;
+}
