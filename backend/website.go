@@ -95,7 +95,6 @@ type PageResponse struct {
 	NavHighlight  struct {
 		Dashboard string
 		Servers   string
-		Groups    string
 	}
 	AuthProviders []AuthProvider
 	SearchResults []frontend.SearchResult
@@ -109,40 +108,6 @@ type PageResponse struct {
 	Rule          *pb.Rule          // the rule to view/edit
 	Rules         []*pb.Rule        // a list of rules (srv level)
 	Player        *frontend.Player
-}
-
-type SessionUser struct {
-}
-
-type WebpageMessage struct {
-	Quantity int
-	Icon     string
-	Name     string
-	Content  string
-	Timing   string
-}
-type WebpageNotification struct {
-	Icon    string
-	Title   string
-	Content string
-	Timing  string
-}
-type WebpageData struct {
-	Title             string
-	HeaderTitle       string
-	Notification      []WebpageNotification
-	NotificationCount int
-	Message           []WebpageMessage
-	MessageCount      int
-	SessionUser       *pb.User
-	Gameservers       []frontend.Frontend
-	GameserverCount   int
-	Frontend          *frontend.Frontend
-	NavHighlight      struct {
-		Dashboard string
-		Servers   string
-		Groups    string
-	}
 }
 
 type ActiveServer struct {
@@ -706,35 +671,6 @@ func AuthLogout(w http.ResponseWriter, r *http.Request) {
 func WebSignout(w http.ResponseWriter, r *http.Request) {
 	AuthLogout(w, r)
 	http.Redirect(w, r, Routes.Index, http.StatusFound)
-}
-
-func GroupsHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := GetSessionUser(r)
-	if err != nil {
-		RedirectToSignon(w, r)
-		return
-	}
-
-	data := WebpageData{
-		Title:       "My Groups | Q2Admin CloudAdmin",
-		HeaderTitle: "My Groups",
-		SessionUser: user,
-	}
-	data.NavHighlight.Groups = "active"
-
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "my-groups.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "footer.tmpl"),
-	)
-	if e != nil {
-		log.Println(e)
-	} else {
-		err := tmpl.ExecuteTemplate(w, "my-groups", data)
-		if err != nil {
-			log.Println(err)
-		}
-	}
 }
 
 // Handler for the /my-servers page

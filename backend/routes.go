@@ -8,7 +8,6 @@ import (
 
 type WebRoutes struct {
 	Static           string
-	Static2          string
 	AuthLogin        string
 	AuthLogout       string
 	AuthGoogle       string
@@ -16,7 +15,6 @@ type WebRoutes struct {
 	ConnectedServers string
 	Dashboard        string
 	Index            string
-	Groups           string
 	Privacy          string
 	ServerAdd        string
 	ServerRemove     string
@@ -78,7 +76,6 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.AuthDiscord = "/auth/discord"
 	Routes.AuthGoogle = "/auth/google"
 	Routes.Dashboard = "/dashboard"
-	Routes.Groups = "/my-groups"
 	Routes.Servers = "/my-servers"
 	Routes.PlayerSearchView = "/player/{lookup}"
 	Routes.Privacy = "/privacy-policy"
@@ -90,7 +87,6 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.AuthLogin = "/sign-in"
 	Routes.AuthLogout = "/sign-out"
 	Routes.Static = "/static/"
-	Routes.Static2 = "/static2/"
 
 	Routes.Terms = "/terms-of-use"
 	Routes.Profile = "/me"
@@ -107,7 +103,6 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.ServerRemove, WebDelServer).Methods("POST")
 	r.HandleFunc(Routes.ServerView, WebsiteHandlerServerView)
 	r.HandleFunc(Routes.ConnectedServers, WebsiteAPIGetConnectedServers)
-	r.HandleFunc(Routes.Groups, GroupsHandler)
 	r.HandleFunc(Routes.Privacy, PrivacyHandler)
 	r.HandleFunc(Routes.Servers, ServersHandler)
 	r.HandleFunc(Routes.Terms, TermsHandler)
@@ -131,7 +126,6 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.ServerKeys, ServerKeysHandler)
 
 	r.PathPrefix(Routes.Static).Handler(http.FileServer(http.Dir("./api/website")))
-	r.PathPrefix(Routes.Static2).Handler(http.FileServer(http.Dir("./api/website")))
 
 	r.HandleFunc(apiRoute.ServerList, APIServerList)
 	r.HandleFunc(apiRoute.APIKeyList, APIKeyList)
