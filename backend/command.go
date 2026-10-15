@@ -48,7 +48,7 @@ func MutePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 	cl.Log.Printf("%s", logMsg)
-	cl.SSHPrintln(logMsg)
+	cl.ConsoleBroadcast(logMsg)
 }
 
 // Throttle the player's talking.
@@ -80,7 +80,7 @@ func StiflePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 
 	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", seconds, p.Name, p.ClientID)
 	cl.Log.Printf("%s", logMsg)
-	cl.SSHPrintln(logMsg)
+	cl.ConsoleBroadcast(logMsg)
 }
 
 // Instruct a client to kick a player. The target player will receive a direct
@@ -103,7 +103,7 @@ func KickPlayer(cl *frontend.Frontend, p *frontend.Player, msg string) {
 
 	logMsg := fmt.Sprintf("KICK %-20s [%d] %q\n", p.Name, p.ClientID, msg)
 	cl.Log.Println(logMsg)
-	cl.SSHPrintln(logMsg)
+	cl.ConsoleBroadcast(logMsg)
 }
 
 // Issue a command as if you were typing it into the console.

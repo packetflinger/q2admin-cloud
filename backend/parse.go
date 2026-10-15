@@ -134,7 +134,7 @@ func ParseFrag(fe *frontend.Frontend) {
 	if err != nil {
 		fmt.Println("ParseFrag():", err)
 		fe.Log.Println("error in ParseFrag():", err)
-		fe.SSHPrintln("error in ParseFrag(): " + err.Error())
+		fe.ConsoleBroadcast("error in ParseFrag(): " + err.Error())
 		return
 	}
 	attacker, err := fe.FindPlayer(int(a))
@@ -152,7 +152,7 @@ func ParseFrag(fe *frontend.Frontend) {
 	}
 	victim.Deaths++
 	fe.Log.Println("FRAG", aName, ">", victim.Name)
-	fe.SSHPrintln("FRAG " + aName + " > " + victim.Name)
+	fe.ConsoleBroadcast("FRAG " + aName + " > " + victim.Name)
 }
 
 // Received a ping from a client, send a pong to show we're alive
@@ -190,10 +190,10 @@ func ParsePrint(fe *frontend.Frontend) {
 	switch level {
 	case PRINT_CHAT:
 		fe.Log.Println("CHAT", stripped)
-		fe.SSHPrintln(Font([]int{ColorGreen, WeightBold}, stripped))
+		fe.ConsoleBroadcast(Font([]int{ColorGreen, WeightBold}, stripped))
 	case PRINT_HIGH:
 		fe.Log.Println("PRINT", stripped)
-		fe.SSHPrintln(Font([]int{ColorBlack, bgcolor(ColorLightGray)}, stripped))
+		fe.ConsoleBroadcast(Font([]int{ColorBlack, bgcolor(ColorLightGray)}, stripped))
 
 		// change the map
 		fmt.Println(stripped)
@@ -213,7 +213,7 @@ func ParsePrint(fe *frontend.Frontend) {
 		ParseObituary(fe, stripped)
 		//cl.Log.Println("PRINT", stripped)
 		//msgColor := ansiCode{foreground: ColorDarkGray, background: ColorWhite}.Render()
-		//cl.SSHPrintln(msgColor + stripped + AnsiReset)
+		//cl.ConsoleBroadcast(msgColor + stripped + AnsiReset)
 	}
 
 	// re-stifle if needed
@@ -260,7 +260,7 @@ func ParseConnect(fe *frontend.Frontend) {
 
 		msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.ClientID, p.Name, p.IP)
 		fe.Log.Printf("%s", msg)
-		fe.SSHPrintln(msg)
+		fe.ConsoleBroadcast(msg)
 
 		// add a slight delay when processing rules
 		time.Sleep(1 * time.Second)
@@ -294,7 +294,7 @@ func ParseDisconnect(fe *frontend.Frontend) {
 
 	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "DISCONNECT:", pl.ClientID, pl.Name, pl.IP)
 	fe.Log.Printf("%s", msg)
-	fe.SSHPrintln(msg)
+	fe.ConsoleBroadcast(msg)
 	fe.RemovePlayer(clientnum)
 }
 
@@ -309,7 +309,7 @@ func ParseMap(fe *frontend.Frontend) {
 	fe.CurrentMap = mapname
 	msg := fmt.Sprintf("%-20s %q (was %q)", "MAP_CHANGE:", fe.CurrentMap, fe.PreviousMap)
 	fe.Log.Println(msg)
-	fe.SSHPrintln(msg)
+	fe.ConsoleBroadcast(msg)
 }
 
 // An obit for every frag is sent from a client.
@@ -355,7 +355,7 @@ func ParseObituary(fe *frontend.Frontend, obit string) {
 		fe.Players[cidM].KDR = fe.CalculateKDR(cidM)
 	}
 	fe.Log.Printf("%s", logObit)
-	fe.SSHPrintln(logObit)
+	fe.ConsoleBroadcast(logObit)
 }
 
 // Client sent a playerlist message.

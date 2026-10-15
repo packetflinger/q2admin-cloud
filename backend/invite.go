@@ -20,7 +20,7 @@ func Invite(fe *frontend.Frontend) {
 	p, err := fe.FindPlayer(int(client))
 	if err != nil {
 		fe.Log.Println("invite problem:", err)
-		fe.SSHPrintln("invite problem: " + err.Error())
+		fe.ConsoleBroadcast("invite problem: " + err.Error())
 	}
 	if !fe.AllowInvite {
 		SayPlayer(fe, p, PRINT_CHAT, "This server doesn't allow invites.")

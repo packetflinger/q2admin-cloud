@@ -340,7 +340,7 @@ func sessionHandler(s ssh.Session) {
 				ctx, stop := context.WithCancel(s.Context())
 				cancel = stop
 
-				// buffered: SSHPrintln drops messages when this is full
+				// buffered: ConsoleBroadcast drops messages when this is full
 				newterm := make(chan string, 64)
 				fe.AddTerminal(&newterm)
 

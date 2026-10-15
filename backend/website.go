@@ -1024,7 +1024,7 @@ func ConsoleStreamHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 
-	stream := make(chan string, 64) // SSHPrintln drops messages when this is full
+	stream := make(chan string, 64) // ConsoleBroadcast drops messages when this is full
 	fe.AddTerminal(&stream)
 	defer fe.TerminalDisconnected(&stream)
 	keepalive := time.NewTicker(25 * time.Second)
@@ -1074,7 +1074,7 @@ func ConsoleCommandHandler(w http.ResponseWriter, r *http.Request) {
 	ConsoleCommand(fe, cmd)
 	SendMessages(fe)
 	fe.Log.Printf("web console [%s]: %s\n", user.GetEmail(), cmd)
-	fe.SSHPrintln(fmt.Sprintf("[%s] > %s", user.GetEmail(), cmd)) // other watchers see it too
+	fe.ConsoleBroadcast(fmt.Sprintf("[%s] > %s", user.GetEmail(), cmd)) // other watchers see it too
 	w.WriteHeader(http.StatusNoContent)
 }
 

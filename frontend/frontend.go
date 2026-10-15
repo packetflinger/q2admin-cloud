@@ -426,8 +426,9 @@ func (fe *Frontend) PlayersByName(name string) ([]*Player, error) {
 	return players, nil
 }
 
-// SSHPrintln will send the value of text to all the SSH-connected clients.
-func (fe *Frontend) SSHPrintln(text string) {
+// ConsoleBroadcast sends text to everything watching this frontend's console:
+// SSH sessions and web console streams.
+func (fe *Frontend) ConsoleBroadcast(text string) {
 	if fe == nil || text == "" {
 		return
 	}
