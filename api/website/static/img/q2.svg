@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Quake II">
+	<defs>
+		<!-- metallic green, lit from the upper left -->
+		<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+			<stop offset="0" stop-color="#b9e57d"/>
+			<stop offset=".45" stop-color="#5fa632"/>
+			<stop offset="1" stop-color="#2a5a14"/>
+		</linearGradient>
+		<!-- the ring: a circle minus a slightly higher, smaller one, so it's
+		     thickest at the bottom and tapers to points where they cross -->
+		<mask id="ring">
+			<circle cx="50" cy="40" r="38" fill="#fff"/>
+			<circle cx="50" cy="35" r="34" fill="#000"/>
+		</mask>
+	</defs>
+	<rect width="100" height="100" fill="url(#metal)" mask="url(#ring)"/>
+	<!-- the "II": an arched top bar on two legs tapering to nail points, in front of the ring -->
+	<path fill="url(#metal)" stroke="#173006" stroke-width="1.4" stroke-linejoin="round"
+		d="M35 45 Q50 41 65 45 L62 49.5 H60.5 L58.5 80 L56.5 97 L54.5 80 L53 49.5 H47 L45.5 80 L43.5 97 L41.5 80 L39.5 49.5 H38 Z"/>
+</svg>
