@@ -24,3 +24,10 @@ document.querySelectorAll("[data-q2a-remember]").forEach((tabs) => {
 		history.replaceState(null, "", e.target.dataset.bsTarget);
 	});
 });
+
+// Forms marked data-q2a-confirm ask before submitting.
+document.querySelectorAll("form[data-q2a-confirm]").forEach((form) => {
+	form.addEventListener("submit", (e) => {
+		if (!confirm(form.dataset.q2aConfirm)) e.preventDefault();
+	});
+});

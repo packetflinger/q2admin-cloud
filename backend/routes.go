@@ -27,6 +27,7 @@ type WebRoutes struct {
 	ServerMap        string
 	Terms            string
 	PlayerView       string
+	PlayerAction     string
 	ServerConsole    string
 	ConsoleStream    string
 	ConsoleCommand   string
@@ -57,6 +58,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	apiRoute.APIKeyList = "/api/v1/ListAPIKeys/{UUID}/key/{APIKEY}"
 
 	Routes.PlayerView = "/sv/{ServerUUID}/{ServerName}/player/{ClientNum}"
+	Routes.PlayerAction = "/sv/{ServerUUID}/{ServerName}/player/{ClientNum}/action"
 	Routes.RuleList = "/sv/{ServerUUID}/{ServerName}/rules"
 	Routes.ServerKeys = "/sv/{ServerUUID}/{ServerName}/manage-keys"
 	Routes.ServerEdit = "/sv/{ServerUUID}/{ServerName}/edit"
@@ -109,6 +111,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.ServerChangeUUID, ChangeUUIDHandler).Methods("POST")
 	r.HandleFunc(Routes.ServerMap, ChangeMapHandler).Methods("POST")
 	r.HandleFunc(Routes.PlayerView, PlayerViewHandler)
+	r.HandleFunc(Routes.PlayerAction, PlayerActionHandler).Methods("POST")
 	r.HandleFunc(Routes.ServerConsole, ServerConsoleHandler)
 	r.HandleFunc(Routes.ConsoleStream, ConsoleStreamHandler)
 	r.HandleFunc(Routes.ConsoleCommand, ConsoleCommandHandler).Methods("POST")

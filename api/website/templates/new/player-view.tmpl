@@ -1,51 +1,103 @@
 {{define "player-view"}}
 {{template "header" .}}
-
-{{ if .Player.Name }}
-<h1 class="h3 mb-3">{{ .Frontend.Name }} &gt; {{ .Player.Name }} </h1>
-<div class="row">
-  <div class="col">
-    <div class="card">
-        <div class="card-header">
-            <h4>Player Info</h4>
-        </div>
-        <div class="card-body">
-            <div>Name: <span class="font-monospace">"{{.Player.Name}}"</span></div>
-            <div>Address: <span class="font-monospace">{{ .Player.IP }}</span></div>
-            <div>Port: <span class="font-monospace">{{ .Player.Port }}</span></div>
-            <div>DNS: {{.Player.Hostname}}</div>
-            <div>VPN Connected: {{.Player.VPN }}</div>
-            <div>Connected: {{.Player.ConnectTime}}</div>
-            <div>Client: {{ .Player.Version }}</div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header">
-            <h4>Basic Stats</h4>
-        </div>
-        <div class="card-body">
-            <div>Frags: {{ .Player.Frags }}</div>
-            <div>Deaths: {{ .Player.Deaths }}</div>
-            <div>Suicides: {{.Player.Suicides }}</div>
-            <div>Kill:Death Ratio: {{.Player.KDR }}</div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header">
-            <h4>Controls</h4>
-        </div>
-        <div class="card-body">
-            <div><button class="btn btn-default">Send Private Message</button></div>
-            <div><button class="btn btn-default">Kick/Ban</button></div>
-            <div><button class="btn btn-default">Mute/Stifle</button></div>
-            <div><button class="btn btn-default">Blackhole</div>
-        </div>
-    </div>
-  </div>
+{{$fe := .Frontend}}
+{{$base := printf "/sv/%s/%s" $fe.UUID $fe.Name}}
+<div class="q2a-page-head">
+	<div class="min-w-0">
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item"><a href="{{$base}}#players">{{$fe.Name}}</a></li><li class="breadcrumb-item active" aria-current="page">Player</li></ol></nav>
+		<h1 class="text-truncate">{{with .Player}}{{.Name}} <span class="text-body-secondary fs-6">#{{.ClientID}}</span>{{else}}Player{{end}}</h1>
+	</div>
 </div>
-{{ else }}
-<p>No player found in slot</p>
-{{ end }}
 
+{{with .Notice}}<div class="alert alert-{{.Class}} alert-dismissible fade show" role="status">{{.Text}}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{{end}}
+
+{{with .Player}}
+{{$action := printf "%s/player/%d/action" $base .ClientID}}
+<div class="row g-3">
+	<div class="col-12 col-xl-6">
+		<div class="q2a-panel mb-3">
+			<div class="q2a-panel-head">
+				<span>Connection</span>
+				<span>{{if .VPN}}<span class="badge text-bg-warning">VPN</span>{{end}} {{if .Muted}}<span class="badge text-bg-secondary">muted</span>{{end}} {{if .Stifled}}<span class="badge text-bg-secondary">stifled</span>{{end}}</span>
+			</div>
+			<div class="q2a-panel-body">
+				<dl class="q2a-kv">
+					<dt>Name</dt><dd class="q2a-mono">"{{.Name}}"</dd>
+					<dt>Address</dt><dd class="q2a-mono">{{.IP}}:{{.Port}}</dd>
+					<dt>Hostname</dt><dd class="q2a-mono">{{or .Hostname "-"}}</dd>
+					<dt>Client</dt><dd class="q2a-mono">{{or .Version "-"}}</dd>
+					<dt>Joined</dt><dd>{{ago .ConnectTime}}</dd>
+				</dl>
+			</div>
+		</div>
+		<div class="row g-3 mb-3">
+			<div class="col-6 col-sm-3"><div class="q2a-panel q2a-stat"><div class="q2a-stat-label">Frags</div><div class="q2a-stat-value">{{.Frags}}</div></div></div>
+			<div class="col-6 col-sm-3"><div class="q2a-panel q2a-stat"><div class="q2a-stat-label">Deaths</div><div class="q2a-stat-value">{{.Deaths}}</div></div></div>
+			<div class="col-6 col-sm-3"><div class="q2a-panel q2a-stat"><div class="q2a-stat-label">Suicides</div><div class="q2a-stat-value">{{.Suicides}}</div></div></div>
+			<div class="col-6 col-sm-3"><div class="q2a-panel q2a-stat"><div class="q2a-stat-label">K:D</div><div class="q2a-stat-value">{{printf "%.2f" .KDR}}</div></div></div>
+		</div>
+		{{if .Rules}}
+		<div class="q2a-panel mb-3">
+			<div class="q2a-panel-head">Matching rules</div>
+			<ul class="list-group list-group-flush">
+			{{range .Rules}}<li class="list-group-item bg-transparent"><a href="/rules/{{.GetUuid}}/view" class="q2a-mono">{{printf "%.8s" .GetUuid}}</a> <span class="badge text-bg-secondary">{{.GetType}}</span> {{join .GetDescription " "}}</li>{{end}}
+			</ul>
+		</div>
+		{{end}}
+		{{if .UserinfoMap}}
+		<div class="q2a-panel">
+			<div class="q2a-panel-head">Userinfo</div>
+			<div class="table-responsive">
+				<table class="table table-sm">
+					<tbody>{{range $k, $v := .UserinfoMap}}<tr><th class="fw-normal text-body-secondary">{{$k}}</th><td class="q2a-mono text-break">{{$v}}</td></tr>{{end}}</tbody>
+				</table>
+			</div>
+		</div>
+		{{end}}
+	</div>
+
+	<div class="col-12 col-xl-6">
+		<div class="q2a-panel">
+			<div class="q2a-panel-head">Controls</div>
+			<div class="q2a-panel-body d-grid gap-4">
+				<form method="post" action="{{$action}}">
+					<label class="form-label" for="pm">Private message</label>
+					<div class="input-group">
+						<input type="text" class="form-control" id="pm" name="msg" maxlength="150" required placeholder="Only this player sees it">
+						<button class="btn btn-primary" type="submit" name="action" value="message"><i class="bi bi-send"></i><span class="d-none d-sm-inline ms-1">Send</span></button>
+					</div>
+				</form>
+				<form method="post" action="{{$action}}">
+					<label class="form-label" for="mute">Mute</label>
+					<div class="input-group">
+						<input type="number" class="form-control" id="mute" name="seconds" min="0" max="86400" value="300" required aria-describedby="mute-help">
+						<span class="input-group-text">seconds</span>
+						<button class="btn btn-outline-secondary" type="submit" name="action" value="mute">Mute</button>
+					</div>
+					<div class="form-text" id="mute-help">0 mutes them permanently.</div>
+				</form>
+				<form method="post" action="{{$action}}">
+					<label class="form-label" for="stifle">Stifle</label>
+					<div class="input-group">
+						<input type="number" class="form-control" id="stifle" name="seconds" min="1" max="300" value="60" required aria-describedby="stifle-help">
+						<span class="input-group-text">seconds</span>
+						<button class="btn btn-outline-secondary" type="submit" name="action" value="stifle">Stifle</button>
+					</div>
+					<div class="form-text" id="stifle-help">They can say one thing, then are muted for this long, repeatedly. Up to 300.</div>
+				</form>
+				<form method="post" action="{{$action}}" data-q2a-confirm="Kick {{.Name}}?">
+					<label class="form-label" for="kick">Kick</label>
+					<div class="input-group">
+						<input type="text" class="form-control" id="kick" name="msg" maxlength="150" placeholder="Reason shown to the player (optional)">
+						<button class="btn btn-danger" type="submit" name="action" value="kick">Kick</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+{{else}}
+<div class="q2a-panel q2a-empty">That player isn't connected. <a href="{{$base}}#players">Back to the player list</a></div>
+{{end}}
 {{template "footer" .}}
 {{end}}

@@ -481,13 +481,19 @@ type Notice struct {
 // notices are looked up by the "notice" query parameter, so pages only ever
 // show these fixed messages.
 var notices = map[string]*Notice{
-	"map":     {"success", "Map change sent. The current map updates once the server reports it."},
-	"badmap":  {"danger", "Map names can only contain letters, numbers, dashes, underscores and slashes."},
-	"offline": {"warning", "That needs the server to be connected."},
-	"saved":   {"success", "Settings saved."},
-	"uuid":    {"success", "New UUID generated. Update the server's q2admin config to use it."},
-	"key":     {"success", "Public key saved."},
-	"badkey":  {"danger", "That isn't a valid PEM-encoded RSA public key."},
+	"map":      {"success", "Map change sent. The current map updates once the server reports it."},
+	"badmap":   {"danger", "Map names can only contain letters, numbers, dashes, underscores and slashes."},
+	"offline":  {"warning", "That needs the server to be connected."},
+	"saved":    {"success", "Settings saved."},
+	"uuid":     {"success", "New UUID generated. Update the server's q2admin config to use it."},
+	"key":      {"success", "Public key saved."},
+	"badkey":   {"danger", "That isn't a valid PEM-encoded RSA public key."},
+	"noplayer": {"warning", "That player isn't connected any more."},
+	"badinput": {"danger", "Check the message or number of seconds and try again."},
+	"sent":     {"success", "Message sent."},
+	"kicked":   {"success", "Player kicked."},
+	"muted":    {"success", "Player muted."},
+	"stifled":  {"success", "Player stifled."},
 }
 
 var mapNameRE = regexp.MustCompile(`^[A-Za-z0-9_/-]{1,64}$`)
@@ -885,51 +891,97 @@ func WebEditServer(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, path.Join("/sv", f.UUID, name)+"?notice=saved#settings", http.StatusSeeOther)
 }
 
+// PlayerViewHandler shows a connected player and the controls for them.
 func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["ServerUUID"]
-	playerId := vars["ClientNum"]
-	fe, err := be.FindFrontend(uuid)
-	if err != nil {
-		log.Println("invalid server id:", uuid)
-		return
-	}
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
 		return
 	}
-	pid, err := strconv.Atoi(playerId)
+	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
 	if err != nil {
-		be.Logf(LogLevelInfo, "invalid player id %q: %v", playerId, err)
-		fmt.Fprintf(w, "invalid player id %q", playerId)
+		http.NotFound(w, r)
 		return
 	}
-	fe.Mu.Lock()
-	if pid < 0 || pid >= len(fe.Players) {
+	data := PageResponse{SessionUser: user, Frontend: fe, Notice: notices[r.URL.Query().Get("notice")]}
+	data.NavHighlight.Servers = "active"
+	if id, err := strconv.Atoi(mux.Vars(r)["ClientNum"]); err == nil {
+		fe.Mu.Lock()
+		data.Player, _ = fe.FindPlayer(id) // nil renders "not connected"
 		fe.Mu.Unlock()
-		be.Logf(LogLevelInfo, "invalid player id %q - not a valid client slot", playerId)
-		fmt.Fprintf(w, "invalid player id %q", playerId)
+	}
+	data.Head.Title = "Player | CloudAdmin"
+	tmpl, err := parsePage("player-view.tmpl")
+	if err != nil {
+		log.Println(err)
 		return
 	}
-	data := PageResponse{}
-	data.Player = &(fe.Players[pid])
-	fe.Mu.Unlock()
-	data.Head.Title = "Player View | Q2Admin CloudAdmin"
-	data.Head.Keywords = "Player"
-	data.Title = "Player View"
-	data.SessionUser = user
-	data.Frontend = fe
-
-	tmpl, e := parsePage("player-view.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = executeLocked(w, tmpl, "player-view", data, fe)
-		if err != nil {
-			log.Println(err)
-		}
+	if err := executeLocked(w, tmpl, "player-view", data, fe); err != nil {
+		log.Println(err)
 	}
+}
+
+// PlayerActionHandler messages, kicks, mutes or stifles a connected player.
+func PlayerActionHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	fe := ownedFrontend(w, r, user)
+	if fe == nil {
+		return
+	}
+	id, _ := strconv.Atoi(mux.Vars(r)["ClientNum"])
+	// newlines would break the in-game text, and it's a short chat line
+	msg := strings.Join(strings.Fields(r.PostFormValue("msg")), " ")
+	if len(msg) > 150 {
+		msg = msg[:150]
+	}
+	secs, secsErr := strconv.Atoi(r.PostFormValue("seconds"))
+
+	fe.Mu.Lock()
+	defer fe.Mu.Unlock()
+	back := path.Join("/sv", fe.UUID, fe.Name, "player", strconv.Itoa(id))
+	p, err := fe.FindPlayer(id)
+	if err != nil || !(fe.Connected && fe.Trusted) {
+		http.Redirect(w, r, back+"?notice=noplayer", http.StatusSeeOther)
+		return
+	}
+	notice := ""
+	switch r.PostFormValue("action") {
+	case "message":
+		if msg == "" {
+			notice = "badinput"
+			break
+		}
+		SayPlayer(fe, p, PRINT_CHAT, msg)
+		notice = "sent"
+	case "kick":
+		KickPlayer(fe, p, msg)
+		SendMessages(fe)
+		http.Redirect(w, r, path.Join("/sv", fe.UUID, fe.Name)+"?notice=kicked#players", http.StatusSeeOther)
+		return
+	case "mute":
+		if secsErr != nil || secs < 0 || secs > 86400 {
+			notice = "badinput"
+			break
+		}
+		MutePlayer(fe, p, secs) // 0 is permanent
+		notice = "muted"
+	case "stifle":
+		if secsErr != nil || secs < 1 || secs > StifleMax {
+			notice = "badinput"
+			break
+		}
+		StiflePlayer(fe, p, secs)
+		notice = "stifled"
+	default:
+		http.Error(w, "unknown action", http.StatusBadRequest)
+		return
+	}
+	SendMessages(fe)
+	http.Redirect(w, r, back+"?notice="+notice, http.StatusSeeOther)
 }
 
 // ServerConsoleHandler shows the live console page for a frontend.

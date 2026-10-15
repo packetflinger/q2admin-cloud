@@ -70,7 +70,7 @@ func StiflePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 		seconds = StifleMax
 	}
 	msg := "You've been stifled"
-	cmd = fmt.Sprintf("sv !stifle CL %d %d", p.ClientID, seconds)
+	cmd = fmt.Sprintf("sv !stifle CL %d %d\n", p.ClientID, seconds)
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 	(&cl.MessageOut).WriteByte(SCMDSayClient)
@@ -78,7 +78,7 @@ func StiflePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 	(&cl.MessageOut).WriteByte(PRINT_HIGH)
 	(&cl.MessageOut).WriteString(msg)
 
-	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", p.StifleLength, p.Name, p.ClientID)
+	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", seconds, p.Name, p.ClientID)
 	cl.Log.Printf("%s", logMsg)
 	cl.SSHPrintln(logMsg)
 }
