@@ -1,86 +1,73 @@
 {{define "terms-of-use"}}
 {{template "header" .}}
-<div class="q2a-page-head"><h1>Terms of use</h1></div>
+{{$contact := "privacy@q2admin.com"}}
+<div class="q2a-page-head">
+	<div>
+		<h1>Terms of use</h1>
+		<div class="text-body-secondary small">Effective October 15, 2026</div>
+	</div>
+</div>
+
 <div class="q2a-panel">
 <div class="q2a-panel-body q2a-prose">
-<p>
-Please read these terms of use ("terms of use", "agreement") carefully before using CloudAdmin
-website (“website”, "service") operated by Packetflinger Industries ("us", 'we", "our").
-</p>
-<h3>Conditions of use</h3>
-<p>
-By using this website, you certify that you have read and reviewed this Agreement and that you
-agree to comply with its terms. If you do not want to be bound by the terms of this Agreement,
-you are advised to leave the website accordingly. Packetflinger Industries only grants use and access of this
-website, its products, and its services to those who have accepted its terms.
-</p>
-<h3>Privacy policy</h3>
-<p>
-Before you continue using our website, we advise you to read our <a href="/privacy-policy">privacy policy</a> regarding our user data collection. It will help you better understand our practices.
-</p>
-<h3>Age restriction</h3>
-<p>
-You must be at least 18 (eighteen) years of age before you can use this website. By using this
-website, you warrant that you are at least 18 years of age and you may legally adhere to this
-Agreement. Packetflinger Industries assumes no responsibility for liabilities related to age misrepresentation.
-</p>
-<h3>Intellectual property</h3>
-<p>
-You agree that all materials, products, and services provided on this website are the property of
-Packetflinger Industries, its affiliates, directors, officers, employees, agents, suppliers, or licensors including all
-copyrights, trade secrets, trademarks, patents, and other intellectual property. You also agree
-that you will not reproduce or redistribute the Packetflinger’s intellectual property in any way,
-including electronic, digital, or new trademark registrations.
-</p>
-<p>
-You grant Packetflinger Industries a royalty-free and non-exclusive license to display, use, copy, transmit, and
-broadcast the content you upload and publish. For issues regarding intellectual property claims,
-you should contact the company in order to come to an agreement.
-</p>
-<p>
-<h3>User accounts</h3>
-<p>
-As a user of this website, you may be asked to register with us and provide private information.
-You are responsible for ensuring the accuracy of this information, and you are responsible for
-maintaining the safety and security of your identifying information. You are also responsible for
-all activities that occur under your account.
-</p>
-<p>
-If you think there are any possible issues regarding the security of your account on the website,
-inform us immediately so we may address it accordingly.
-</p>
-<p>
-We reserve all rights to terminate accounts, edit or remove content in their
-sole discretion.
-</p>
-<h3>Applicable law</h3>
-<p>
-By visiting this website, you agree that the laws of New York State, without regard to principles of
-conflict laws, will govern these terms and conditions, or any dispute of any sort that might come
-between Packetflinger Industries and you, or its business partners and associates.
-</p>
-<h3>Disputes</h3>
-<p>
-Any dispute related in any way to your visit to this website or to products you purchase from us
-shall be arbitrated by state or federal court and you consent to exclusive jurisdiction
-and venue of such courts.
-</p>
-<h3>Indemnification</h3>
-<p>
-You agree to indemnify Packetflinger Industries and its affiliates and hold Packetflinger Industries harmless against legal claims
-and demands that may arise from your use or misuse of our services. We reserve the right to
-select our own legal counsel.
-</p>
-<h3>Limitation on liability</h3>
-<p>
-Packetflinger Industrires is not liable for any damages that may occur to you as a result of your misuse of our
-website.
-</p>
-<p>
-Packetflinger Industries reserves the right to edit, modify, and change this Agreement any time. This Agreement is an understanding
-between Packetflinger Industries and the user, and this supersedes and replaces all prior agreements regarding
-the use of this website.
-</p>
+
+<div class="alert alert-secondary">
+	<strong>The short version.</strong> CloudAdmin is a free hobby project, provided as is. Only add servers you're allowed to manage, use what you learn about players only to run your servers, and don't abuse the service or the people on your servers. We can remove accounts or servers that break these terms. Using the site means you agree to these terms and the <a href="/privacy-policy">privacy policy</a>.
+</div>
+
+<h2 class="h5 mt-4">1. The service</h2>
+<p>CloudAdmin (<a href="https://cloud.q2admin.com">cloud.q2admin.com</a>) is run by Packetflinger Industries ("we", "us") as a free, non-commercial hobby project. It lets Quake 2 server owners see who's playing, set rules, view stats and use their servers' consoles, on the website and over SSH. We may change, pause or shut down any part of it at any time, including without notice.</p>
+
+<h2 class="h5 mt-4">2. Your account</h2>
+<ul>
+	<li>You must be at least 13 to use CloudAdmin. If you're under 18, you need a parent's or guardian's permission.</li>
+	<li>You sign in with Google or Discord. Keep that account secure: you're responsible for what happens under your CloudAdmin account.</li>
+	<li>If you think someone else is using your account, tell us at <a href="mailto:{{$contact}}">{{$contact}}</a>.</li>
+</ul>
+
+<h2 class="h5 mt-4">3. Your servers</h2>
+<ul>
+	<li>Only add Quake 2 servers that you run or have permission to manage.</li>
+	<li>You're responsible for what's done to your servers and their players through CloudAdmin, such as bans, kicks, mutes and console commands. That includes actions by anyone you share a server with, so only share with people you trust.</li>
+	<li>Keep your servers' private keys private. Anyone who has one can connect to CloudAdmin as that server.</li>
+</ul>
+
+<h2 class="h5 mt-4">4. Players' information</h2>
+<p>CloudAdmin shows you information about players on your servers, including their IP addresses, names, game clients and chat. Use it only to run and moderate your servers. Don't publish it, sell it, share it outside the people you manage the server with, or use it to track, harass or harm anyone. If a player asks you about their information, point them to the <a href="/privacy-policy">privacy policy</a>.</p>
+
+<h2 class="h5 mt-4">5. Acceptable use</h2>
+<p>Don't use CloudAdmin to:</p>
+<ul>
+	<li>break the law, or harass, threaten or harm anyone</li>
+	<li>run commands or apply rules meant to damage players' computers or game setups</li>
+	<li>try to get into accounts, servers or data that aren't yours, or get around any limits on the service</li>
+	<li>attack, overload, scrape or disrupt CloudAdmin or the game servers connected to it</li>
+</ul>
+
+<h2 class="h5 mt-4">6. Your content and ours</h2>
+<p>You keep ownership of what you add, such as your server settings, rules and groups. You allow us to store and process it as needed to run CloudAdmin.</p>
+<p>The CloudAdmin software, website and name belong to us. Quake and Quake II are trademarks of id Software, LLC. CloudAdmin isn't affiliated with or endorsed by id Software.</p>
+
+<h2 class="h5 mt-4">7. Suspension and ending</h2>
+<p>We may suspend or remove accounts, servers or content that break these terms or put other people or the service at risk. You can stop using CloudAdmin at any time, and ask us to delete your information as described in the <a href="/privacy-policy">privacy policy</a>.</p>
+
+<h2 class="h5 mt-4">8. No warranty</h2>
+<p>CloudAdmin is provided "as is" and "as available", without warranties of any kind, to the fullest extent the law allows. It may have bugs or downtime, may lose data, and may not catch every player a rule should match. Don't rely on it as your only copy of anything important.</p>
+
+<h2 class="h5 mt-4">9. Limitation of liability</h2>
+<p>To the fullest extent the law allows, we aren't liable for any indirect, incidental, special or consequential damages, or for lost data, profits or goodwill, arising from your use of CloudAdmin. Our total liability for any claim relating to CloudAdmin is limited to US$50. Some places don't allow these limits, so they may not all apply to you.</p>
+
+<h2 class="h5 mt-4">10. Responsibility for misuse</h2>
+<p>If someone makes a claim against us because of how you or the people you share servers with used CloudAdmin, or because of your servers, you agree to cover our reasonable costs of dealing with it.</p>
+
+<h2 class="h5 mt-4">11. Governing law</h2>
+<p>These terms are governed by the laws of the State of New York, USA, without regard to conflict-of-law rules. Any dispute will be handled by the state or federal courts located in New York, and you agree to their jurisdiction.</p>
+
+<h2 class="h5 mt-4">12. Changes to these terms</h2>
+<p>We may update these terms. When we do, we'll change the date at the top, and for significant changes we'll post a notice on the website. If you keep using CloudAdmin after a change, you accept the updated terms.</p>
+
+<h2 class="h5 mt-4">13. Contact</h2>
+<p class="mb-0">Questions about these terms: <a href="mailto:{{$contact}}">{{$contact}}</a>.</p>
 
 </div>
 </div>
