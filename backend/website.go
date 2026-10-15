@@ -43,7 +43,7 @@ import (
 
 const (
 	CookieName = "q2asess"
-	AuthBypass = "joe@joereid.com" // for testing, skips auth
+	AuthBypass = "" // for testing, skips auth
 )
 
 var (
