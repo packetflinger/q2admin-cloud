@@ -35,8 +35,14 @@
 	--bs-border-color: #2a3140;
 }
 
+/* A faint grid behind every page */
+:root {
+	--q2a-grid:
+		linear-gradient(rgba(127, 127, 127, .07) 1px, transparent 1px) 0 0 / 32px 32px,
+		linear-gradient(90deg, rgba(127, 127, 127, .07) 1px, transparent 1px) 0 0 / 32px 32px;
+}
 body {
-	background: var(--q2a-body-bg);
+	background: var(--q2a-grid), var(--q2a-body-bg);
 	min-height: 100vh;
 }
 
@@ -243,7 +249,7 @@ a:hover { color: var(--q2a-accent-hover); }
 .q2a-s4 { background: var(--q2a-series-5); } .q2a-s5 { background: var(--q2a-series-6); }
 .q2a-s6 { background: var(--q2a-series-7); } .q2a-s7 { background: var(--q2a-series-8); }
 
-/* Sign-in: a glowing card over a faint grid */
+/* Sign-in: a glowing card over the grid */
 .q2a-signin {
 	display: flex;
 	flex-direction: column;
@@ -251,11 +257,7 @@ a:hover { color: var(--q2a-accent-hover); }
 	justify-content: center;
 	min-height: 100vh;
 	padding: 1.5rem 1rem;
-	background:
-		radial-gradient(ellipse at 50% 0%, rgba(var(--q2a-accent-rgb), .22), transparent 60%),
-		linear-gradient(rgba(127, 127, 127, .07) 1px, transparent 1px) 0 0 / 32px 32px,
-		linear-gradient(90deg, rgba(127, 127, 127, .07) 1px, transparent 1px) 0 0 / 32px 32px,
-		var(--q2a-body-bg);
+	background: radial-gradient(ellipse at 50% 0%, rgba(var(--q2a-accent-rgb), .22), transparent 60%), var(--q2a-grid), var(--q2a-body-bg);
 }
 .q2a-signin-card {
 	width: 100%;
