@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -134,5 +135,51 @@ func TestLoadFrontendsReadsDelegates(t *testing.T) {
 	}
 	if len(fes) != 2 || strings.Join(fes[0].Delegates, ",") != "a@example.com,b@example.com" || len(fes[1].Delegates) != 0 {
 		t.Errorf("delegates loaded as %v / %v", fes[0].Delegates, fes[1].Delegates)
+	}
+}
+
+func TestShareGroup(t *testing.T) {
+	owner := &pb.User{Email: "owner@example.com"}
+	friend := &pb.User{Email: "friend@example.com"}
+	up, down, theirs := groupTestSetup(t, owner.Email)
+	theirs.Delegates = []string{owner.Email} // in owner's group, but not owner's to share
+	down.Delegates = []string{friend.Email}  // already shared
+	srv := httptest.NewServer(LoadWebsiteRoutes())
+	defer srv.Close()
+	client := signedInClient(t, srv, owner)
+	signedInClient(t, srv, friend) // registers friend
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+	CreateGroup(owner.Email, "all")
+	for _, fe := range []*frontend.Frontend{up, down, theirs} {
+		if err := SetGroupMember(owner.Email, "all", fe, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	share := func(email string) string {
+		t.Helper()
+		res, err := client.PostForm(srv.URL+"/groups/all/action", url.Values{"action": {"share"}, "email": {email}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.Header.Get("Location")
+	}
+	if loc := share("nobody@example.com"); !strings.Contains(loc, "notice=nouser") {
+		t.Errorf("unregistered email: %s", loc)
+	}
+	if loc := share("FRIEND@example.com"); !strings.Contains(loc, "shared=1&skipped=2") {
+		t.Errorf("first share redirected to %s", loc)
+	}
+	if !slices.Contains(up.Delegates, friend.Email) || slices.Contains(theirs.Delegates, friend.Email) {
+		t.Errorf("delegates: up %v, theirs %v", up.Delegates, theirs.Delegates)
+	}
+	if loc := share(friend.Email); !strings.Contains(loc, "shared=0&skipped=3") {
+		t.Errorf("repeat share redirected to %s", loc)
+	}
+	var n int
+	db.Handle.QueryRow("SELECT COUNT(*) FROM frontend_delegate WHERE email = ?", friend.Email).Scan(&n)
+	if n != 1 { // down's existing share was only in memory in this test
+		t.Errorf("%d delegate rows saved, want 1", n)
 	}
 }

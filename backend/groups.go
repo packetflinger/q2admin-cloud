@@ -136,6 +136,30 @@ func SetGroupMember(owner, name string, fe *frontend.Frontend, member bool) erro
 	return nil
 }
 
+// ShareGroup delegates every server owner owns in one of their groups to the
+// registered user with this email. Servers that are only delegated to owner,
+// or that the user can already access, are skipped. It's a one-off: servers
+// added to the group later aren't shared.
+func ShareGroup(owner, name, email string) (shared, skipped int, err error) {
+	g, err := MyGroup(owner, name)
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, fe := range g.Members { // one lock at a time, never nested
+		fe.Mu.Lock()
+		if !strings.EqualFold(fe.Owner, owner) || fe.CanAccess(email) {
+			skipped++
+		} else if err = addDelegate(fe, email); err == nil {
+			shared++
+		}
+		fe.Mu.Unlock()
+		if err != nil {
+			return shared, skipped, err
+		}
+	}
+	return shared, skipped, nil
+}
+
 // SendGroupCommand runs cmd on the console of every connected server in one
 // of owner's groups, as the web console does for one server. who is recorded
 // in each server's log and shown to its console watchers.
@@ -282,6 +306,11 @@ func GroupViewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	data := PageResponse{SessionUser: user, Group: g, Notice: notices[q.Get("notice")]}
+	if q.Has("shared") { // counts only, so nothing user-supplied is shown
+		shared, _ := strconv.Atoi(q.Get("shared"))
+		skipped, _ := strconv.Atoi(q.Get("skipped"))
+		data.Notice = &Notice{"success", fmt.Sprintf("Shared %d server(s). %d skipped: already shared with them, or not yours to share.", shared, skipped)}
+	}
 	if q.Has("sent") { // counts only, so nothing user-supplied is shown
 		sent, _ := strconv.Atoi(q.Get("sent"))
 		offline, _ := strconv.Atoi(q.Get("offline"))
@@ -315,6 +344,15 @@ func GroupActionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		err = SetGroupMember(owner, name, fe, r.PostFormValue("action") == "add")
 		back += "?notice=group" + r.PostFormValue("action")
+	case "share":
+		u, _ := be.GetUserByEmail(strings.TrimSpace(r.PostFormValue("email")))
+		if u == nil {
+			back += "?notice=nouser"
+			break
+		}
+		shared, skipped, shareErr := ShareGroup(owner, name, u.GetEmail())
+		err = shareErr
+		back += fmt.Sprintf("?shared=%d&skipped=%d", shared, skipped)
 	case "command":
 		sent, offline, cmdErr := SendGroupCommand(owner, name, strings.TrimSpace(r.PostFormValue("cmd")), owner)
 		err = cmdErr

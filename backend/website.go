@@ -567,12 +567,11 @@ func DelegateHandler(w http.ResponseWriter, r *http.Request) {
 		case fe.CanAccess(u.GetEmail()):
 			notice = "delegated" // already has it
 		default:
-			if _, err := db.Handle.Exec("INSERT INTO frontend_delegate (frontend_id, email) VALUES (?, ?)", fe.ID, u.GetEmail()); err != nil {
-				log.Printf("error delegating %q to %q: %v\n", fe.Name, u.GetEmail(), err)
+			if err := addDelegate(fe, u.GetEmail()); err != nil {
+				log.Println(err)
 				http.Error(w, "500 - unable to save", http.StatusInternalServerError)
 				return
 			}
-			fe.Delegates = append(slices.Clone(fe.Delegates), u.GetEmail())
 			notice = "delegated"
 		}
 	case "remove":
@@ -593,6 +592,16 @@ func DelegateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, path.Join("/sv", fe.UUID, fe.Name)+"?notice="+notice+"#settings", http.StatusSeeOther)
+}
+
+// addDelegate shares fe with a registered user who doesn't already have
+// access. Call it holding fe.Mu.
+func addDelegate(fe *frontend.Frontend, email string) error {
+	if _, err := db.Handle.Exec("INSERT INTO frontend_delegate (frontend_id, email) VALUES (?, ?)", fe.ID, email); err != nil {
+		return fmt.Errorf("error delegating %q to %q: %v", fe.Name, email, err)
+	}
+	fe.Delegates = append(slices.Clone(fe.Delegates), email)
+	return nil
 }
 
 // ChangeMapHandler tells a connected frontend to switch maps.
