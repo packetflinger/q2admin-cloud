@@ -34,6 +34,7 @@
 	<li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">Overview</button></li>
 	<li class="nav-item" role="presentation"><button class="nav-link text-nowrap" data-bs-toggle="tab" data-bs-target="#players" type="button" role="tab" aria-controls="players" aria-selected="false">Players {{if $up}}<span class="badge text-bg-secondary">{{online $fe}}</span>{{end}}</button></li>
 	<li class="nav-item" role="presentation"><button class="nav-link text-nowrap" data-bs-toggle="tab" data-bs-target="#rules" type="button" role="tab" aria-controls="rules" aria-selected="false">Rules <span class="badge text-bg-secondary">{{len $fe.Rules}}</span></button></li>
+	<li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#stats" type="button" role="tab" aria-controls="stats" aria-selected="false">Stats</button></li>
 	<li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false">Settings</button></li>
 </ul>
 
@@ -144,6 +145,11 @@
 			</div>
 			{{else}}<div class="q2a-empty">No rules apply to this server.</div>{{end}}
 		</div>
+	</div>
+
+	<!-- Stats -->
+	<div class="tab-pane fade" id="stats" role="tabpanel" tabindex="0">
+		{{template "stats" .Stats}}
 	</div>
 
 	<!-- Settings -->

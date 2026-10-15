@@ -61,7 +61,16 @@ var (
 		"userinfo":   frontend.UserinfoMap,
 		"lines":      func(l []string) string { return strings.Join(l, "\n") },
 		"uilines":    userinfoLines,
-		"inGroup":    func(g *ServerGroup, fe *frontend.Frontend) bool { return slices.Contains(g.Members, fe) },
+		"spans":      func() any { return StatSpans },
+		"duration":   playDuration,
+		"pct":        slicePercent,
+		"pieArgs": func(title, id, unit string, slices []Slice) any {
+			return struct {
+				Title, ID, Unit string
+				Slices          []Slice
+			}{title, id, unit, slices}
+		},
+		"inGroup": func(g *ServerGroup, fe *frontend.Frontend) bool { return slices.Contains(g.Members, fe) },
 	}
 )
 
@@ -109,6 +118,7 @@ type PageResponse struct {
 	KeyPair       *KeyPair          // just generated, for the keys page
 	Groups        []*ServerGroup
 	Group         *ServerGroup
+	Stats         *Stats
 	Rule          *pb.Rule   // the rule to view/edit
 	Rules         []*pb.Rule // a list of rules (srv level)
 	Player        *frontend.Player
@@ -315,6 +325,29 @@ func userinfoLines(uis []*pb.UserInfo) string {
 	return strings.Join(l, "\n")
 }
 
+// slicePercent is v's share of all the slices, like "42%".
+func slicePercent(v int, slices []Slice) string {
+	total := 0
+	for _, s := range slices {
+		total += s.Value
+	}
+	if total == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d%%", (v*100+total/2)/total)
+}
+
+// playDuration formats seconds of play like "2h 05m" or "12m".
+func playDuration(secs int64) string {
+	if secs < 60 {
+		return "<1m"
+	}
+	if secs < 3600 {
+		return fmt.Sprintf("%dm", secs/60)
+	}
+	return fmt.Sprintf("%dh %02dm", secs/3600, secs%3600/60)
+}
+
 // playersOnline counts fe's occupied player slots. PlayerCount isn't used
 // because it isn't reset when a frontend reconnects.
 func playersOnline(fe *frontend.Frontend) int {
@@ -346,12 +379,13 @@ func summarize(fes []*frontend.Frontend) FrontendSummary {
 	return s
 }
 
-// parsePage loads a page template along with the shared header, footer and
-// template functions.
+// parsePage loads a page template along with the shared header, footer,
+// stats widgets and template functions.
 func parsePage(file string) (*template.Template, error) {
 	dir := path.Join(be.config.GetWebRoot(), "templates", "new")
 	return template.New(file).Funcs(funcMap).ParseFiles(
 		path.Join(dir, "common-header.tmpl"),
+		path.Join(dir, "common-stats.tmpl"),
 		path.Join(dir, file),
 		path.Join(dir, "common-footer.tmpl"),
 	)
@@ -391,7 +425,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := dashboardPage(u)
+	page, err := dashboardPage(u, r.URL.Query().Get("span"))
 	if err != nil {
 		log.Println(err)
 		fmt.Fprintln(w, "error 500")
@@ -410,7 +444,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func dashboardPage(user *pb.User) (PageResponse, error) {
+func dashboardPage(user *pb.User, span string) (PageResponse, error) {
 	var out PageResponse
 	if user == nil {
 		return out, fmt.Errorf("null user building dashboard page")
@@ -419,7 +453,9 @@ func dashboardPage(user *pb.User) (PageResponse, error) {
 	out.Head.Title = "Dashboard | CloudAdmin"
 	out.Frontends = FrontendsByIdentity(user.GetEmail())
 	out.NavHighlight.Dashboard = "active"
-	return out, nil
+	stats, err := loadStats(out.Frontends, span)
+	out.Stats = stats
+	return out, err
 }
 
 // Displays info page for a particular client
@@ -434,13 +470,19 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	renderServerView(w, user, fe, notices[r.URL.Query().Get("notice")], "")
+	renderServerView(w, user, fe, notices[r.URL.Query().Get("notice")], "", r.URL.Query().Get("span"))
 }
 
 // renderServerView shows fe's page, optionally with a notice from a previous
 // action or the reason a settings change was rejected.
-func renderServerView(w http.ResponseWriter, user *pb.User, fe *frontend.Frontend, notice *Notice, formError string) {
+func renderServerView(w http.ResponseWriter, user *pb.User, fe *frontend.Frontend, notice *Notice, formError, span string) {
 	data := PageResponse{SessionUser: user, Frontend: fe, Notice: notice, FormError: formError}
+	var err error
+	if data.Stats, err = loadStats([]*frontend.Frontend{fe}, span); err != nil {
+		log.Println(err)
+		http.Error(w, "500 - unable to load stats", http.StatusInternalServerError)
+		return
+	}
 	fe.Mu.Lock()
 	data.Head.Title = fe.Name + " | CloudAdmin"
 	fe.Mu.Unlock()
@@ -811,7 +853,7 @@ func WebEditServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		renderServerView(w, user, f, nil, err.Error())
+		renderServerView(w, user, f, nil, err.Error(), "")
 		return
 	}
 	addr := strings.TrimSpace(r.PostFormValue("serveraddr"))

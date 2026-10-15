@@ -347,6 +347,10 @@ func ParseObituary(fe *frontend.Frontend, obit string) {
 			death.Victim.ClientID,
 			death.MeansToString(),
 		)
+		if fe.Kills == nil {
+			fe.Kills = map[string]int{}
+		}
+		fe.Kills[death.MeansToString()]++ // saved by the next maintenance run
 		cidV := death.Victim.ClientID
 		cidM := death.Murderer.ClientID
 		fe.Players[cidV].Deaths++

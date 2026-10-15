@@ -18,6 +18,8 @@ func (s *Backend) startMaintenance() {
 		time.Sleep(time.Duration(be.config.MaintenanceTime) * time.Second)
 
 		s.Logf(LogLevelDeveloperPlus, "running maintenance")
+		now := time.Now().Unix()
+		var samples []statsSample
 		// check time-based player rules
 		for _, cl := range be.Frontends() {
 			// network call, done before taking the lock
@@ -57,7 +59,12 @@ func (s *Backend) startMaintenance() {
 				be.Logf(LogLevelInfo, "error fetching %q vars: %v", cl.Name, err)
 			}
 			cl.ServerVars = vars
+			samples = append(samples, statsSample{frontendID: cl.ID, players: playersOnline(cl), kills: cl.Kills})
+			cl.Kills = nil
 			cl.Mu.Unlock()
+		}
+		if err := saveSamples(now, samples); err != nil {
+			be.Logf(LogLevelNormal, "error saving stats samples: %v", err)
 		}
 		be.maintCount++
 	}

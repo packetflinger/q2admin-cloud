@@ -174,6 +174,13 @@ func samplePage() PageResponse {
 		},
 	}
 	data.Head.Title = "Test"
+	avg := 1.5
+	data.Stats = &Stats{
+		Span: "24h", Times: []int64{100, 200}, Players: []*float64{nil, &avg}, Kills: []int{0, 3},
+		Versions: []Slice{{"q2pro", 2}, {"r1q2", 1}}, Weapons: []Slice{{"railgun", 3}},
+		Recent:        []Session{{Name: "alpha", Server: "pf-tdm", Start: 100, Duration: 3700, Frags: 3, Deaths: 1, KDR: 3, Online: true}},
+		UniquePlayers: 2, PeakPlayers: 2, TotalKills: 3, AvgSession: 600,
+	}
 	return data
 }
 

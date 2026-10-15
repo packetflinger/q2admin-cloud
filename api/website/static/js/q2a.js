@@ -12,6 +12,7 @@
 		root.dataset.bsTheme = root.dataset.bsTheme === "dark" ? "light" : "dark";
 		try { localStorage.setItem("q2a-theme", root.dataset.bsTheme); } catch (e) {}
 		showIcon();
+		document.dispatchEvent(new Event("q2a-theme")); // charts redraw in the new colors
 	});
 })();
 

@@ -89,6 +89,9 @@ func Open(filename string) (Database, error) {
 	if _, err := db.Exec(groupSchema); err != nil {
 		return database, fmt.Errorf("error creating server group tables: %v", err)
 	}
+	if _, err := db.Exec(statsSchema); err != nil {
+		return database, fmt.Errorf("error creating stats tables: %v", err)
+	}
 	for _, c := range columnAdditions {
 		if err := addColumnIfMissing(db, c.table, c.column, c.decl); err != nil {
 			return database, err
@@ -112,6 +115,25 @@ CREATE TABLE IF NOT EXISTS "server_group_member" (
 	"frontend_id"	INTEGER NOT NULL,
 	PRIMARY KEY("group_id", "frontend_id")
 );`
+
+// statsSchema holds the samples the maintenance thread takes for the dashboard
+// graphs: connected players per server, and kills per weapon per server since
+// the previous sample.
+const statsSchema = `
+CREATE TABLE IF NOT EXISTS "server_sample" (
+	"time"	INTEGER NOT NULL,
+	"frontend_id"	INTEGER NOT NULL,
+	"players"	INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "server_sample_time" ON "server_sample" ("time");
+CREATE TABLE IF NOT EXISTS "frag_sample" (
+	"time"	INTEGER NOT NULL,
+	"frontend_id"	INTEGER NOT NULL,
+	"weapon"	TEXT NOT NULL,
+	"kills"	INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "frag_sample_time" ON "frag_sample" ("time");
+CREATE INDEX IF NOT EXISTS "player_time" ON "player" ("time");`
 
 // columnAdditions are small schema changes applied to existing databases when
 // they're opened.

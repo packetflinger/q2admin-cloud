@@ -1,0 +1,97 @@
+{{/* Activity widgets for a *Stats: shared by the dashboard (all servers) and
+     the server page (one server). Charts are drawn by static/js/stats.js. */}}
+{{define "stats"}}
+{{with .}}
+{{$st := .}}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+	<h2 class="h5 mb-0">Activity</h2>
+	<nav class="btn-group btn-group-sm" aria-label="Time span">
+		{{range spans}}<a class="btn btn-outline-secondary {{if eq .Key $st.Span}}active{{end}}" href="?span={{.Key}}#stats" title="{{.Label}}" {{if eq .Key $st.Span}}aria-current="true"{{end}}>{{.Key}}</a>{{end}}
+	</nav>
+</div>
+
+<div class="row g-3 mb-3">
+	<div class="col-6 col-lg-3"><div class="q2a-panel q2a-stat"><div class="q2a-stat-label">Unique players</div><div class="q2a-stat-value">{{.UniquePlayers}}</div></div></div>
+	<div class="col-6 col-lg-3"><div class="q2a-panel q2a-stat"><div class="q2a-stat-label">Peak players</div><div class="q2a-stat-value">{{.PeakPlayers}}</div></div></div>
+	<div class="col-6 col-lg-3"><div class="q2a-panel q2a-stat"><div class="q2a-stat-label">Kills</div><div class="q2a-stat-value">{{.TotalKills}}</div></div></div>
+	<div class="col-6 col-lg-3"><div class="q2a-panel q2a-stat"><div class="q2a-stat-label">Avg session</div><div class="q2a-stat-value">{{if .AvgSession}}{{duration .AvgSession}}{{else}}-{{end}}</div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+	<div class="col-12 col-xl-8">
+		<div class="q2a-panel h-100">
+			<div class="q2a-panel-head">Players connected</div>
+			<div class="q2a-panel-body">
+				<div class="q2a-chart"><canvas id="q2a-players-chart" role="img" aria-label="Line chart of players connected over the last {{.Span}}. Peak {{.PeakPlayers}}."></canvas></div>
+				<details class="small mt-2"><summary class="text-body-secondary">Show data</summary>
+					<table class="table table-sm mb-0"><thead><tr><th>From</th><th class="text-end">Avg players</th></tr></thead><tbody>
+					{{range $i, $t := .Times}}<tr><td>{{datetime $t}}</td><td class="text-end">{{with index $st.Players $i}}{{printf "%.1f" .}}{{else}}-{{end}}</td></tr>{{end}}
+					</tbody></table>
+				</details>
+			</div>
+		</div>
+	</div>
+	<div class="col-12 col-md-6 col-xl-4">
+		{{template "stats-pie" (pieArgs "Client versions" "q2a-versions-chart" "players" .Versions)}}
+	</div>
+	<div class="col-12 col-xl-8">
+		<div class="q2a-panel h-100">
+			<div class="q2a-panel-head">Kills</div>
+			<div class="q2a-panel-body">
+				<div class="q2a-chart"><canvas id="q2a-kills-chart" role="img" aria-label="Line chart of kills over the last {{.Span}}, {{.TotalKills}} in total."></canvas></div>
+				<details class="small mt-2"><summary class="text-body-secondary">Show data</summary>
+					<table class="table table-sm mb-0"><thead><tr><th>From</th><th class="text-end">Kills</th></tr></thead><tbody>
+					{{range $i, $t := .Times}}<tr><td>{{datetime $t}}</td><td class="text-end">{{index $st.Kills $i}}</td></tr>{{end}}
+					</tbody></table>
+				</details>
+			</div>
+		</div>
+	</div>
+	<div class="col-12 col-md-6 col-xl-4">
+		{{template "stats-pie" (pieArgs "Weapons" "q2a-weapons-chart" "kills" .Weapons)}}
+	</div>
+</div>
+
+<div class="q2a-panel">
+	<div class="q2a-panel-head">Recent players</div>
+	{{if .Recent}}
+	<div class="table-responsive">
+		<table class="table table-hover align-middle">
+			<thead><tr><th>Name</th><th class="d-none d-md-table-cell">Server</th><th class="d-none d-sm-table-cell">Joined</th><th class="text-end">Played</th><th class="text-end d-none d-sm-table-cell">Frags</th><th class="text-end">K:D</th></tr></thead>
+			<tbody>
+			{{range .Recent}}
+				<tr>
+					<td>{{.Name}}{{if .Online}} <span class="badge text-bg-success">playing</span>{{end}}</td>
+					<td class="d-none d-md-table-cell">{{.Server}}</td>
+					<td class="d-none d-sm-table-cell text-body-secondary text-nowrap">{{ago .Start}}</td>
+					<td class="text-end text-nowrap">{{duration .Duration}}</td>
+					<td class="text-end d-none d-sm-table-cell">{{.Frags}} / {{.Deaths}}</td>
+					<td class="text-end">{{printf "%.2f" .KDR}}</td>
+				</tr>
+			{{end}}
+			</tbody>
+		</table>
+	</div>
+	{{else}}<div class="q2a-empty">Nobody has played in this span.</div>{{end}}
+</div>
+<script type="application/json" id="q2a-stats-data">{{.}}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/static/js/stats.js" defer></script>
+{{end}}
+{{end}}
+
+{{define "stats-pie"}}
+<div class="q2a-panel h-100">
+	<div class="q2a-panel-head">{{.Title}}</div>
+	<div class="q2a-panel-body">
+		{{if .Slices}}
+		<div class="q2a-pie"><canvas id="{{.ID}}" role="img" aria-label="Pie chart of {{.Title}}, listed below."></canvas></div>
+		<ul class="list-unstyled small mb-0 mt-3">
+			{{range $i, $s := .Slices}}
+			<li class="d-flex align-items-center gap-2 py-1"><span class="q2a-swatch q2a-s{{$i}}"></span><span class="text-truncate">{{.Label}}</span><span class="ms-auto text-nowrap">{{.Value}} <span class="text-body-secondary">{{pct .Value $.Slices}}</span></span></li>
+			{{end}}
+		</ul>
+		{{else}}<div class="q2a-empty">No {{.Unit}} in this span.</div>{{end}}
+	</div>
+</div>
+{{end}}

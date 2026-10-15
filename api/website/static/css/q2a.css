@@ -224,3 +224,21 @@ a:hover { color: var(--q2a-accent-hover); }
 }
 
 .q2a-prose { max-width: 75ch; }
+
+/* Charts. Categorical slots from the dataviz reference palette, validated for
+   both modes; assigned in this order, never cycled. */
+:root, [data-bs-theme="light"] {
+	--q2a-series-1: #2a78d6; --q2a-series-2: #eb6834; --q2a-series-3: #1baf7a; --q2a-series-4: #eda100;
+	--q2a-series-5: #e87ba4; --q2a-series-6: #008300; --q2a-series-7: #6250d6; --q2a-series-8: #e34948;
+}
+[data-bs-theme="dark"] {
+	--q2a-series-1: #3987e5; --q2a-series-2: #d95926; --q2a-series-3: #199e70; --q2a-series-4: #c98500;
+	--q2a-series-5: #d55181; --q2a-series-6: #008300; --q2a-series-7: #9085e9; --q2a-series-8: #e66767;
+}
+.q2a-chart { position: relative; height: 240px; }
+.q2a-pie { position: relative; height: 180px; }
+.q2a-swatch { width: .75rem; height: .75rem; border-radius: 2px; flex-shrink: 0; }
+.q2a-s0 { background: var(--q2a-series-1); } .q2a-s1 { background: var(--q2a-series-2); }
+.q2a-s2 { background: var(--q2a-series-3); } .q2a-s3 { background: var(--q2a-series-4); }
+.q2a-s4 { background: var(--q2a-series-5); } .q2a-s5 { background: var(--q2a-series-6); }
+.q2a-s6 { background: var(--q2a-series-7); } .q2a-s7 { background: var(--q2a-series-8); }

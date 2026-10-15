@@ -51,6 +51,7 @@ type Frontend struct {
 	ID            int                     // this is the database index, remove later
 	InitVector    []byte                  // AES IV,
 	Invites       InviteBucket            // Invite throttling
+	Kills         map[string]int          // kills by weapon since the last stats sample
 	IPAddress     string                  // used for teleporting
 	Log           *log.Logger             // log stuff here
 	LogFile       *os.File                // pointer to file so we can close when client disconnects
@@ -594,7 +595,13 @@ func (fe *Frontend) CalculateKDR(cid int) float64 {
 		fmt.Println(err)
 		return 0.0
 	}
-	nom, denom := p.Frags, p.Deaths
+	return KDR(p.Frags, p.Deaths)
+}
+
+// KDR is the kill:death ratio for these totals, negative when deaths
+// outnumber frags (see CalculateKDR).
+func KDR(frags, deaths int) float64 {
+	nom, denom := frags, deaths
 	multiplier := 1
 	if denom > nom {
 		nom, denom = denom, nom
