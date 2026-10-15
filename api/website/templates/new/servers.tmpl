@@ -1,14 +1,52 @@
 {{define "my-servers"}}
 {{template "header" .}}
+<div class="q2a-page-head">
+	<h1>Servers <span class="text-body-secondary fs-6">({{len .Frontends}})</span></h1>
+	<a class="btn btn-primary btn-sm" href="/add-server"><i class="bi bi-plus-lg me-1"></i>Add server</a>
+</div>
 
-<h1>Servers  <a type="button" class="btn btn-primary btn-sm" href="/add-server">Add</a></h1>
-<p id="my-servers">
-    <ul>
-    {{range .Frontends}}
-        <li><a href="/sv/{{.UUID}}/{{.Name}}">{{.Name}}</a></li>
-    {{end}}
-    </ul>
-</p>
-
+{{if .Frontends}}
+<div class="row g-3">
+	{{range .Frontends}}
+	{{$up := and .Connected .Trusted}}
+	<div class="col-12 col-md-6 col-xxl-4">
+		<div class="q2a-panel h-100 d-flex flex-column">
+			<div class="q2a-panel-head">
+				<span class="text-truncate">
+					<span class="q2a-dot {{if $up}}online{{end}} me-2"></span><span class="visually-hidden">{{if $up}}online{{else}}offline{{end}}</span>
+					<a href="/sv/{{.UUID}}/{{.Name}}" class="text-decoration-none">{{.Name}}</a>
+				</span>
+				{{if $up}}<span class="badge text-bg-success">online</span>{{else}}<span class="badge text-bg-secondary">offline</span>{{end}}
+			</div>
+			<div class="q2a-panel-body flex-grow-1">
+				<dl class="q2a-kv small">
+					<dt>Address</dt><dd class="q2a-mono">{{.IPAddress}}:{{.Port}}</dd>
+					{{if $up}}
+					<dt>Map</dt><dd class="q2a-mono">{{.CurrentMap}}</dd>
+					<dt>Players</dt><dd>{{online .}} / {{.MaxPlayers}}</dd>
+					{{end}}
+					<dt>Options</dt>
+					<dd>
+						<span class="badge {{if .Enabled}}text-bg-primary{{else}}text-bg-secondary{{end}}">{{if .Enabled}}enabled{{else}}disabled{{end}}</span>
+						{{if .AllowTeleport}}<span class="badge text-bg-info">teleport</span>{{end}}
+						{{if .AllowInvite}}<span class="badge text-bg-info">invite</span>{{end}}
+					</dd>
+					<dt>Rules</dt><dd>{{len .Rules}}</dd>
+				</dl>
+			</div>
+			<div class="q2a-panel-foot d-flex flex-wrap gap-2">
+				<a class="btn btn-sm btn-outline-secondary" href="/sv/{{.UUID}}/{{.Name}}"><i class="bi bi-speedometer me-1"></i>Manage</a>
+				<a class="btn btn-sm btn-outline-secondary" href="/sv/{{.UUID}}/{{.Name}}/rules"><i class="bi bi-shield-check me-1"></i>Rules</a>
+			</div>
+		</div>
+	</div>
+	{{end}}
+</div>
+{{else}}
+<div class="q2a-panel q2a-empty">
+	<p>You don't have any servers yet.</p>
+	<a class="btn btn-primary btn-sm" href="/add-server">Add your first server</a>
+</div>
+{{end}}
 {{template "footer" .}}
 {{end}}

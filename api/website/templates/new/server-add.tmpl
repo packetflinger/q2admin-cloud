@@ -1,21 +1,40 @@
 {{define "server-add"}}
 {{template "header" .}}
-    <form action="/add-server" method="post">
-        <h2>Add a Quake 2 Server to Manage</h2>
-        <div class="mb-3">
-            <label for="newservername" class="form-label"><b>Unique Name</b><br>Letters and numbers only, use dashes for spaces</label>
-            <input type="text" class="form-control" name="NewServerName" id="newservername" placeholder="my-cool-srvr">
-        </div>
-        <div class="mb-3">
-            <label for="serveraddress" class="form-label"><b>IP/Hostname</b></label>
-            <input type="text" class="form-control" name="NewServerAddress" id="serveraddress" placeholder="100.64.32.16 or cool.server.net">
-        </div>
-        <div class="mb-3">
-            <label for="serverport" class="form-label"><b>Port</b></label>
-            <input type="text" class="form-control" name="NewServerPort" id="serverport" placeholder="27910">
-        </div>
-        <input class="btn btn-primary" type="submit" name="AddButton" value="Add">
-        <a href="#" class="btn btn-secondary">Cancel</a>
-    </form>
+<div class="q2a-page-head">
+	<div>
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item active" aria-current="page">Add</li></ol></nav>
+		<h1>Add a server</h1>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-12 col-lg-8 col-xl-6">
+		<form class="q2a-panel" action="/add-server" method="post">
+			<div class="q2a-panel-body">
+				{{if .FormError}}<div class="alert alert-danger" role="alert">{{.FormError}}</div>{{end}}
+				<div class="mb-3">
+					<label for="newservername" class="form-label">Name</label>
+					<input type="text" class="form-control" name="NewServerName" id="newservername" placeholder="my-cool-server" value="{{.Form.Get "NewServerName"}}" required maxlength="32" aria-describedby="newservername-help">
+					<div id="newservername-help" class="form-text">Letters, numbers and dashes. Used in links and as the teleport name.</div>
+				</div>
+				<div class="row g-3 mb-3">
+					<div class="col-12 col-sm-8">
+						<label for="serveraddress" class="form-label">IP address or hostname</label>
+						<input type="text" class="form-control q2a-mono" name="NewServerAddress" id="serveraddress" placeholder="100.64.32.16" value="{{.Form.Get "NewServerAddress"}}" required>
+					</div>
+					<div class="col-12 col-sm-4">
+						<label for="serverport" class="form-label">Port</label>
+						<input type="number" class="form-control q2a-mono" name="NewServerPort" id="serverport" placeholder="27910" min="1" max="65535" value="{{.Form.Get "NewServerPort"}}">
+					</div>
+				</div>
+				<p class="text-body-secondary small mb-0">New servers start disabled. Add the server's public key on its settings tab before it connects.</p>
+			</div>
+			<div class="q2a-panel-foot d-flex gap-2 justify-content-end">
+				<a href="/my-servers" class="btn btn-outline-secondary">Cancel</a>
+				<button class="btn btn-primary" type="submit" name="AddButton" value="Add">Add server</button>
+			</div>
+		</form>
+	</div>
+</div>
 {{template "footer" .}}
 {{end}}

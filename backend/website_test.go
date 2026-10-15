@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"html/template"
 	"net"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -200,5 +201,40 @@ func TestDashboardEmptyState(t *testing.T) {
 	out := renderPage(t, "dashboard.tmpl", "dashboard", data)
 	if !strings.Contains(out, "Add your first server") {
 		t.Error("empty dashboard should prompt to add a server")
+	}
+}
+
+func TestValidateNewServer(t *testing.T) {
+	tests := []struct {
+		name, addr, port string
+		wantName         string
+		wantPort         int
+		wantErr          bool
+	}{
+		{"My Server", "100.64.1.2", "", "my-server", 27910, false},
+		{"pf-1", "q2.example.com", "27911", "pf-1", 27911, false},
+		{"v6", "2001:db8::1", "", "v6", 27910, false},
+		{"../../etc", "1.2.3.4", "", "", 0, true},
+		{"", "1.2.3.4", "", "", 0, true},
+		{"ok", "", "", "", 0, true},
+		{"ok", "host:27910", "", "", 0, true},
+		{"ok", "1.2.3.4", "70000", "", 0, true},
+		{"ok", "1.2.3.4", "abc", "", 0, true},
+	}
+	for _, tc := range tests {
+		name, port, err := validateNewServer(tc.name, tc.addr, tc.port)
+		if (err != nil) != tc.wantErr || name != tc.wantName || port != tc.wantPort {
+			t.Errorf("validateNewServer(%q, %q, %q) = %q, %d, %v", tc.name, tc.addr, tc.port, name, port, err)
+		}
+	}
+}
+
+func TestAddServerFormShowsError(t *testing.T) {
+	data := samplePage()
+	data.FormError = "port must be a number from 1 to 65535"
+	data.Form = url.Values{"NewServerName": {"keep-me"}}
+	out := renderPage(t, "server-add.tmpl", "server-add", data)
+	if !strings.Contains(out, data.FormError) || !strings.Contains(out, `value="keep-me"`) {
+		t.Error("form error or submitted value missing from re-rendered form")
 	}
 }

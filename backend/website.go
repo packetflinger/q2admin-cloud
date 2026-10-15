@@ -16,9 +16,12 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -93,6 +96,8 @@ type PageResponse struct {
 	SearchResults []frontend.SearchResult
 	SearchQuery   string
 	PlayerDBInfo  PlayerDatabaseInfo
+	Form          url.Values // submitted form values, to refill a form after an error
+	FormError     string     // why the submitted form was rejected
 	Rule          *pb.Rule   // the rule to view/edit
 	Rules         []*pb.Rule // a list of rules (srv level)
 	Player        *frontend.Player
@@ -298,6 +303,30 @@ func (s *Backend) RunHTTPServer(ip string, port int, creds []*pb.OAuth, secret [
 	}
 	s.Logf(LogLevelNormal, "Listening for web requests on http://%s\n", listen)
 	log.Fatal(httpsrv.ListenAndServe())
+}
+
+var serverNameRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
+
+// validateNewServer checks the add-server form. The name ends up in URLs and
+// in a directory path, so it's restricted to lowercase letters, digits and
+// dashes (spaces become dashes). An empty port means the Quake 2 default.
+func validateNewServer(name, address, port string) (string, int, error) {
+	name = strings.ReplaceAll(strings.ToLower(strings.TrimSpace(name)), " ", "-")
+	if !serverNameRE.MatchString(name) {
+		return "", 0, errors.New("name must be 1-32 letters, numbers or dashes")
+	}
+	address = strings.TrimSpace(address)
+	if net.ParseIP(address) == nil && (address == "" || strings.ContainsAny(address, " \t/:") || len(address) > 253) {
+		return "", 0, errors.New("address must be an IP address or hostname, without a port")
+	}
+	if port == "" {
+		return name, 27910, nil
+	}
+	p, err := strconv.Atoi(port)
+	if err != nil || p < 1 || p > 65535 {
+		return "", 0, errors.New("port must be a number from 1 to 65535")
+	}
+	return name, p, nil
 }
 
 // playersOnline counts fe's occupied player slots. PlayerCount isn't used
@@ -509,53 +538,37 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	data := PageResponse{SessionUser: user}
+	data.Head.Title = "Add Server | CloudAdmin"
+	data.NavHighlight.Servers = "active"
+
 	// The add button was pressed to submit the form
 	if r.PostFormValue("AddButton") != "" {
-		name := r.PostFormValue("NewServerName")
-		address := r.PostFormValue("NewServerAddress")
-		port := r.PostFormValue("NewServerPort")
-		if name == "" || address == "" {
-			fmt.Fprintf(w, "error - form fields are empty")
-			return
+		name, port, err := validateNewServer(r.PostFormValue("NewServerName"), r.PostFormValue("NewServerAddress"), r.PostFormValue("NewServerPort"))
+		if err == nil {
+			if _, dupe := be.FindFrontendByName(name); dupe == nil {
+				err = fmt.Errorf("a server named %q already exists", name)
+			}
 		}
-		if port == "" {
-			port = "27910"
+		if err == nil {
+			f := &frontend.Frontend{
+				IPAddress: strings.TrimSpace(r.PostFormValue("NewServerAddress")),
+				Name:      name,
+				Owner:     user.Email,
+				Path:      path.Join(be.config.ClientDirectory, name),
+				Port:      port,
+				UUID:      uuid.NewString(),
+			}
+			if err = be.CreateFrontend(f); err == nil {
+				http.Redirect(w, r, path.Join("/sv", f.UUID, f.Name), http.StatusSeeOther)
+				return
+			}
+			log.Printf("error creating frontend %q: %v\n", name, err)
+			err = errors.New("unable to save the server, try again")
 		}
-		iPort, err := strconv.Atoi(port)
-		if err != nil {
-			fmt.Fprintf(w, "error - invalid port %q", port)
-			return
-		}
-		name = strings.ReplaceAll(strings.ToLower(strings.Trim(name, " \n\r\t")), " ", "-")
-		f := &frontend.Frontend{
-			Enabled:       false,
-			IPAddress:     address,
-			Name:          name,
-			Owner:         user.Email,
-			Path:          path.Join(be.config.ClientDirectory, name),
-			Port:          iPort,
-			UUID:          uuid.NewString(),
-			Description:   "",
-			AllowTeleport: false,
-			AllowInvite:   false,
-			PublicKeyData: "",
-			Verified:      false,
-		}
-		err = be.CreateFrontend(f)
-		if err != nil {
-			fmt.Fprintf(w, "error creating frontend: %v", err)
-			return
-		}
-		http.Redirect(w, r, Routes.Index, http.StatusFound)
-		return
+		data.FormError = err.Error()
+		data.Form = r.PostForm
 	}
-
-	data := PageResponse{
-		Title:       "Add Server | Q2Admin CloudAdmin",
-		HeaderTitle: "Add Server",
-		SessionUser: user,
-	}
-	data.Head.Description = "Add a new server to manange"
 
 	tmpl, e := parsePage("server-add.tmpl")
 

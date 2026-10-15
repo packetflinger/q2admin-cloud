@@ -168,6 +168,7 @@ a:hover { color: var(--q2a-accent-hover); }
 	font-weight: 600;
 }
 .q2a-panel > .q2a-panel-body { padding: 1rem; }
+.q2a-panel > .q2a-panel-foot { padding: .75rem 1rem; border-top: 1px solid var(--q2a-panel-border); }
 .q2a-panel .table { margin: 0; --bs-table-bg: transparent; }
 .q2a-panel .table > :not(caption) > * > * { padding: .6rem 1rem; }
 .q2a-panel .table thead th {
