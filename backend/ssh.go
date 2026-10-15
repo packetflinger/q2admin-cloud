@@ -658,13 +658,12 @@ func sessionHandler(s ssh.Session) {
 					sshterm.Printf("error: no client-scoped rule found with ID %q\n", id)
 					continue
 				}
-				activeFE.Rules = newrules
-				err = activeFE.MaterializeRules(activeFE.Rules)
-				if err != nil {
+				if err := activeFE.DeleteRule(found.Uuid); err != nil {
 					log.Println(err)
-					sshterm.Println("error writing rules to persistent storage")
+					sshterm.Println("error removing the rule from the database")
 					continue
 				}
+				activeFE.Rules = newrules
 				sshterm.Printf("Rule %q removed.\n", found.Uuid)
 			} else if c.argc == 1 && c.argv[0] == "add" {
 				activeFE.Mu.Unlock() // the wizard waits for input
@@ -675,11 +674,12 @@ func sessionHandler(s ssh.Session) {
 					continue
 				}
 				sshterm.Printf("Adding rule proto:\n%s\n", prototext.Format(r))
-				activeFE.Rules = append(activeFE.Rules, r)
-				err = activeFE.MaterializeRules(activeFE.Rules)
-				if err != nil {
-					sshterm.Printf("%s", err.Error())
+				if err := activeFE.InsertRule(r); err != nil {
+					log.Println(err)
+					sshterm.Println("error saving the rule to the database")
+					continue
 				}
+				activeFE.Rules = append(activeFE.Rules, r)
 			}
 		} else if c.command == "settings" {
 			sshterm.Printf("%s\n", prototext.Format(activeFE.ToProto()))

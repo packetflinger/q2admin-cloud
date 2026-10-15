@@ -86,8 +86,50 @@ func Open(filename string) (Database, error) {
 			return database, fmt.Errorf("error loading db schema: %v", err)
 		}
 	}
+	for _, c := range columnAdditions {
+		if err := addColumnIfMissing(db, c.table, c.column, c.decl); err != nil {
+			return database, err
+		}
+	}
 	database.Handle = db
 	return database, nil
+}
+
+// columnAdditions are small schema changes applied to existing databases when
+// they're opened.
+var columnAdditions = []struct{ table, column, decl string }{
+	{"rule", "description", "TEXT"},
+	{"rule", "vpn", "INTEGER DEFAULT 0"},
+}
+
+// addColumnIfMissing adds column to table, unless the table doesn't exist or
+// already has it. The names come from columnAdditions, never from input.
+func addColumnIfMissing(db *sql.DB, table, column, decl string) error {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%q)", table))
+	if err != nil {
+		return fmt.Errorf("reading %s schema: %v", table, err)
+	}
+	defer rows.Close()
+	found := false
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, ctype string
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return fmt.Errorf("reading %s schema: %v", table, err)
+		}
+		if name == column {
+			return nil
+		}
+		found = true
+	}
+	if !found { // no such table
+		return nil
+	}
+	if _, err := db.Exec(fmt.Sprintf("ALTER TABLE %q ADD COLUMN %q %s", table, column, decl)); err != nil {
+		return fmt.Errorf("adding %s.%s: %v", table, column, err)
+	}
+	return nil
 }
 
 // Search will fetch the rows that match the input pattern.

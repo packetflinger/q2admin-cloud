@@ -115,26 +115,117 @@ func (b *InviteBucket) InviteBucketAdd() {
 	}
 }
 
-// Read rules from disk and return a scoped slice of them
+// ruleColumns are the rule table columns FetchRules reads and saveRule
+// writes, in order. List fields are stored one entry per line; userinfo as
+// "property=value" lines.
+const ruleColumns = `frontend, uuid, rule_type, creation_time, expiration_time, delay,
+	stifle_length, disabled, scope, timespec_before, timespec_after,
+	timespec_every, timespec_playtime, addresses, names, hostnames, clients,
+	userinfo, message, description, vpn`
+
+// FetchRules loads this frontend's rules from the database.
 func (fe *Frontend) FetchRules() ([]*pb.Rule, error) {
 	var rules []*pb.Rule
-	qry := "SELECT * FROM rule WHERE frontend = ?"
+	qry := `SELECT id, frontend, COALESCE(uuid, ''), rule_type, COALESCE(creation_time, 0),
+		COALESCE(expiration_time, 0), COALESCE(delay, 0), COALESCE(stifle_length, 0),
+		COALESCE(disabled, 0), COALESCE(scope, ''), COALESCE(timespec_before, ''),
+		COALESCE(timespec_after, ''), COALESCE(timespec_every, ''),
+		COALESCE(timespec_playtime, ''), COALESCE(addresses, ''), COALESCE(names, ''),
+		COALESCE(hostnames, ''), COALESCE(clients, ''), COALESCE(userinfo, ''),
+		COALESCE(message, ''), COALESCE(description, ''), COALESCE(vpn, 0)
+		FROM rule WHERE frontend = ?`
 	rows, err := fe.Data.Handle.Query(qry, fe.ID)
 	if err != nil {
 		return rules, fmt.Errorf("error selecting rules: %v", err)
 	}
 	defer rows.Close()
-	var r pb.Rule
-	r.Timespec = &pb.TimeSpec{}
 	for rows.Next() {
-		err := rows.Scan(&r.Id, &r.FrontendId, &r.Uuid, &r.Type, &r.CreationTime, &r.ExpirationTime, &r.Delay, &r.StifleLength, &r.Disabled, &r.Scope, &r.Timespec.Before, &r.Timespec.After, &r.Timespec.Every, &r.Timespec.PlayTime)
+		r := &pb.Rule{Timespec: &pb.TimeSpec{}}
+		var addresses, names, hostnames, clients, userinfo, message, description string
+		err := rows.Scan(&r.Id, &r.FrontendId, &r.Uuid, &r.Type, &r.CreationTime, &r.ExpirationTime,
+			&r.Delay, &r.StifleLength, &r.Disabled, &r.Scope, &r.Timespec.Before, &r.Timespec.After,
+			&r.Timespec.Every, &r.Timespec.PlayTime, &addresses, &names, &hostnames, &clients,
+			&userinfo, &message, &description, &r.Vpn)
 		if err != nil {
 			return rules, fmt.Errorf("error scanning rules: %v", err)
 		}
-		rules = append(rules, &r)
+		r.Address = splitLines(addresses)
+		r.Name = splitLines(names)
+		r.Hostname = splitLines(hostnames)
+		r.Client = splitLines(clients)
+		r.Message = splitLines(message)
+		r.Description = splitLines(description)
+		for _, line := range splitLines(userinfo) {
+			k, v, _ := strings.Cut(line, "=")
+			r.UserInfo = append(r.UserInfo, &pb.UserInfo{Property: k, Value: v})
+		}
+		rules = append(rules, r)
 	}
-	//fe.ScopeRules("client", rules)
-	return rules, nil
+	return rules, rows.Err()
+}
+
+// splitLines is the inverse of strings.Join(list, "\n") that drops blanks.
+func splitLines(s string) []string {
+	var out []string
+	for _, line := range strings.Split(s, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
+// ruleValues returns r's values in ruleColumns order.
+func (fe *Frontend) ruleValues(r *pb.Rule) []any {
+	ts := r.GetTimespec()
+	var userinfo []string
+	for _, ui := range r.GetUserInfo() {
+		userinfo = append(userinfo, ui.GetProperty()+"="+ui.GetValue())
+	}
+	join := func(l []string) string { return strings.Join(l, "\n") }
+	return []any{fe.ID, r.GetUuid(), r.GetType(), r.GetCreationTime(), r.GetExpirationTime(),
+		r.GetDelay(), r.GetStifleLength(), r.GetDisabled(), r.GetScope(), ts.GetBefore(),
+		ts.GetAfter(), ts.GetEvery(), ts.GetPlayTime(), join(r.GetAddress()), join(r.GetName()),
+		join(r.GetHostname()), join(r.GetClient()), join(userinfo), join(r.GetMessage()),
+		join(r.GetDescription()), r.GetVpn()}
+}
+
+// InsertRule saves a new rule for this frontend, filling in its database id.
+func (fe *Frontend) InsertRule(r *pb.Rule) error {
+	if r.CreationTime == 0 {
+		r.CreationTime = time.Now().Unix()
+	}
+	qry := "INSERT INTO rule (" + ruleColumns + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+	res, err := fe.Data.Handle.Exec(qry, fe.ruleValues(r)...)
+	if err != nil {
+		return fmt.Errorf("error inserting rule: %v", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("error getting new rule id: %v", err)
+	}
+	r.Id = int32(id)
+	r.FrontendId = int32(fe.ID)
+	return nil
+}
+
+// UpdateRule saves changes to one of this frontend's rules, matched by UUID.
+func (fe *Frontend) UpdateRule(r *pb.Rule) error {
+	cols := strings.Fields(strings.ReplaceAll(ruleColumns, ",", " "))
+	qry := "UPDATE rule SET " + strings.Join(cols, " = ?, ") + " = ? WHERE uuid = ? AND frontend = ?"
+	args := append(fe.ruleValues(r), r.GetUuid(), fe.ID)
+	if _, err := fe.Data.Handle.Exec(qry, args...); err != nil {
+		return fmt.Errorf("error updating rule %q: %v", r.GetUuid(), err)
+	}
+	return nil
+}
+
+// DeleteRule removes one of this frontend's rules from the database.
+func (fe *Frontend) DeleteRule(uuid string) error {
+	if _, err := fe.Data.Handle.Exec("DELETE FROM rule WHERE uuid = ? AND frontend = ?", uuid, fe.ID); err != nil {
+		return fmt.Errorf("error deleting rule %q: %v", uuid, err)
+	}
+	return nil
 }
 
 // ScopeRules will add a token to the `Scope` property all the rules in a set.
@@ -147,30 +238,6 @@ func (fe *Frontend) ScopeRules(scope string, rules []*pb.Rule) {
 	for i := range rules {
 		rules[i].Scope = scope
 	}
-}
-
-// MaterializeRules will write the current list of rules to disk. Frontend
-// rules are always found in the <frontend>/rules.pb file.
-func (fe *Frontend) MaterializeRules(rules []*pb.Rule) error {
-	if fe == nil {
-		return fmt.Errorf("error writing rules: null receiver")
-	}
-	if len(rules) == 0 {
-		return nil
-	}
-	collection := &pb.Rules{Rule: rules}
-	filename := path.Join(fe.Path, "rules.pb")
-	data, err := prototext.MarshalOptions{Indent: "  "}.Marshal(collection)
-	if err != nil {
-		return fmt.Errorf("error marshalling rules: %v", err)
-	}
-	header := []byte("# proto-file: proto/serverconfig.proto\n# proto-message: Rules\n\n")
-	data = append(header, data...)
-	err = os.WriteFile(filename, data, 0644)
-	if err != nil {
-		return fmt.Errorf("error writing rules to %q: %v", filename, err)
-	}
-	return nil
 }
 
 // Read settings file for client from disk and make a Frontend struct
