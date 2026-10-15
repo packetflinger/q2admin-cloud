@@ -288,6 +288,6 @@ a:hover { color: var(--q2a-accent-hover); }
 .q2a-provider-Google, .q2a-provider-Google:hover { background: #fff; color: #1f1f1f; }
 .q2a-provider-Discord, .q2a-provider-Discord:hover { background: #5865f2; border-color: #5865f2; color: #fff; }
 .q2a-provider-Discord img { filter: brightness(0) invert(1); } /* the logo file is #5865f2, invisible on this button */
-.q2a-signin-foot { margin-top: 1.5rem; font-size: .85rem; }
-.q2a-signin-foot a { color: var(--q2a-muted-label); }
+.q2a-signin-foot { margin-top: 1.5rem; max-width: 360px; font-size: .85rem; text-align: center; color: var(--q2a-muted-label); }
+.q2a-signin-foot a { color: inherit; text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { .q2a-provider { transition: none; } .q2a-provider:hover { transform: none; } }

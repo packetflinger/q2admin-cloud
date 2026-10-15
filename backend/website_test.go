@@ -483,6 +483,9 @@ func TestSignInPage(t *testing.T) {
 	if err := tmpl.Execute(&out, data); err != nil {
 		t.Fatal(err)
 	}
+	if !strings.Contains(out.String(), `you agree to the <a href="/terms-of-use">Terms</a> and <a href="/privacy-policy">Privacy policy</a>`) {
+		t.Error("sign-in page is missing the terms and privacy agreement line")
+	}
 	if !strings.Contains(out.String(), "Continue with Google") || strings.Contains(out.String(), "Off") {
 		t.Error("sign-in page should list only enabled providers")
 	}
