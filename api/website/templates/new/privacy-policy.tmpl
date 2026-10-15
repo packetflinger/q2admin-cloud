@@ -1,61 +1,87 @@
 {{define "privacy-policy"}}
 {{template "header" .}}
-<div class="q2a-page-head"><h1>Privacy policy</h1></div>
+{{$contact := "privacy@q2admin.com"}}
+<div class="q2a-page-head">
+	<div>
+		<h1>Privacy policy</h1>
+		<div class="text-body-secondary small">Effective October 15, 2026</div>
+	</div>
+</div>
+
 <div class="q2a-panel">
 <div class="q2a-panel-body q2a-prose">
-<p>
-This privacy policy ("policy") will help you understand how Packetflinger Industries ("us", "we",
-"our") uses and protects the data you provide to us when you visit and use https://cloud.q2admin.com ("website ", "service").
-</p>
-<p>
-We reserve the right to change this policy at any given time, of which you will be
-promptly updated. If you want to make sure that you are up to date with the latest
-changes, we advise you to frequently visit this page.
-</p>
-<h3>What User Data We Collect</h3>
-<p>
-When you visit the website, we may collect the following data:
-<ul>
-<li>Your IP address.</li>
-<li>Your browser version</li>
-<li>Your name and email address</li>
-<li>Your avatar</li>
-<li>Your public key</li>
-</ul>
-</p>
-<h3>Why We Collect Your Data</h3>
-<p>
-We are collecting your data for several reasons:
-<ul>
-<li>Website functionality</li>
-<li>To improve our services and products.</li>
-<li>To contact you about your servers</li>
-<li>To customize our website according to your preferences.</li>
-</ul>
-</p>
-<h3>Safeguarding and Securing the Data</h3>
-<p>
-Packetflinger Industries is committed to securing your data and keeping it confidential.
-Packetflinger Industries has done all in its power to prevent data theft, unauthorized access,
-and disclosure by implementing the latest technologies and software, which help us
-safeguard all the information we collect online.
-</p>
-<h3>Our Cookie Policy</h3>
-<p>
-Cookies are required for this site to function. The only data stored in cookies is a random session
-identifier.
-</p>
-<p>
-Please note that cookies don't allow us to gain control of your computer in any way.
-</p>
 
-<h3>Links to Other Websites</h3>
-<p>
-Our website may contains links that lead to other websites. If you click on these links
-Packetflinger Industries is not held responsible for your data and privacy protection. Visiting
-those websites is not governed by this privacy policy agreement. Make sure to read the
-privacy policy documentation of the website you go to from our website.
-</p>
+<div class="alert alert-secondary">
+	<strong>The short version.</strong> CloudAdmin is a personal, non-commercial project. We collect only what it needs to work: your sign-in details if you use the website, and information about players on the Quake 2 servers it manages. We don't sell or rent anyone's data, we don't show ads, and we don't use advertising or analytics trackers. Questions or deletion requests: <a href="mailto:{{$contact}}">{{$contact}}</a>.
+</div>
+
+<h2 class="h5 mt-4">Who we are</h2>
+<p>CloudAdmin (<a href="https://cloud.q2admin.com">cloud.q2admin.com</a>) lets Quake 2 server owners manage their servers: see who's playing, apply bans and mutes, view stats and use the server console. It's run by Packetflinger Industries ("we", "us") as a hobby project.</p>
+<p>This policy covers two groups of people: <strong>website users</strong>, who sign in to manage servers, and <strong>players</strong>, who join a Quake 2 server that uses CloudAdmin. Players don't need to visit this website for their information to be collected.</p>
+
+<h2 class="h5 mt-4">If you sign in to the website</h2>
+<ul>
+	<li><strong>From Google or Discord, when you sign in:</strong> your name, email address and profile picture link. We don't get your password.</li>
+	<li><strong>What you add:</strong> your servers (name, address, port, public key), rules, groups, the people you share servers with, and an SSH public key if you use SSH access.</li>
+	<li><strong>What you do:</strong> commands you run on a server's console are recorded in that server's log with your email address, and shown to anyone watching that console.</li>
+</ul>
+
+<h2 class="h5 mt-4">If you play on a server that uses CloudAdmin</h2>
+<p>When you connect to a managed server, it sends us:</p>
+<div class="table-responsive">
+<table class="table table-sm">
+	<thead><tr><th>Information</th><th>Why</th></tr></thead>
+	<tbody>
+		<tr><td>Player name, IP address and the hostname your IP resolves to</td><td>Identify players, and apply bans and other rules</td></tr>
+		<tr><td>Game client and version, and your userinfo settings (for example skin and field of view)</td><td>Rules, troubleshooting and client statistics</td></tr>
+		<tr><td>A random player ID that the server saves in your game's config file (<span class="q2a-mono">cl_cookie</span>)</td><td>Recognize returning players when their name or IP changes</td></tr>
+		<tr><td>When you joined, how long you played, frags, deaths and the weapons used</td><td>Player and server statistics</td></tr>
+		<tr><td>Chat and other messages shown in the server console</td><td>The server's log and live console, for moderation</td></tr>
+	</tbody>
+</table>
+</div>
+
+<h2 class="h5 mt-4">Cookies and browser storage</h2>
+<ul>
+	<li><strong>A sign-in cookie</strong> keeps you signed in. It holds a signed token with your email address and expires within a day.</li>
+	<li><strong>Your theme choice</strong> (light or dark) is saved in your browser's local storage. It never leaves your browser.</li>
+</ul>
+<p>There are no advertising, analytics or tracking cookies.</p>
+
+<h2 class="h5 mt-4">How we use information</h2>
+<p>Only to run CloudAdmin: signing you in, showing servers and their players and stats, applying the rules server owners set, search, and keeping logs for moderation and fixing problems. We don't sell, rent or trade information, don't use it for advertising, and don't build profiles of people for any other purpose.</p>
+
+<h2 class="h5 mt-4">Who can see it</h2>
+<ul>
+	<li><strong>Server owners</strong> can see everything about players on their own servers, including IP addresses and logs. So can anyone an owner shares a server with.</li>
+	<li><strong>We</strong> can see everything stored in CloudAdmin, and look at it only to run, secure and fix the service.</li>
+	<li><strong>Google and Discord</strong> handle sign-in, under their own privacy policies.</li>
+	<li><strong>jsDelivr</strong>, a content delivery network, supplies some of the website's style and script files. Your browser contacts it directly, so it sees your IP address.</li>
+	<li><strong>Anyone else</strong> only if the law requires it.</li>
+</ul>
+
+<h2 class="h5 mt-4">How long we keep it</h2>
+<ul>
+	<li><strong>Your account</strong> is kept until you ask us to delete it.</li>
+	<li><strong>Player records and server logs</strong> currently have no automatic expiry. They're kept until we delete them, including when you ask. Deleting a server from CloudAdmin doesn't by itself delete its player records or logs.</li>
+	<li><strong>Activity samples</strong> behind the graphs (player counts and kill counts per server) are deleted after 31 days.</li>
+</ul>
+
+<h2 class="h5 mt-4">Keeping it safe</h2>
+<p>The website is served over HTTPS, and game servers authenticate to CloudAdmin with encryption keys, normally over an encrypted connection. Access to servers' information is limited to their owners and the people they share with. No system is perfectly secure, so we can't guarantee that information will never be exposed.</p>
+
+<h2 class="h5 mt-4">Your choices</h2>
+<p>You can ask us to show you, correct or delete the information we hold about you, whether you're a website user or a player. Players: tell us your player name and, if you can, the IP address or server you used, so we can find your records. Email <a href="mailto:{{$contact}}">{{$contact}}</a> and we'll respond within 30 days. Depending on where you live, for example in the EU, UK or California, you may have further rights under local law. We'll honor them, and you can complain to your local data protection authority.</p>
+<p>You can stop the player ID being saved by removing <span class="q2a-mono">cl_cookie</span> from your game's config. A server may give you a new one the next time you join.</p>
+
+<h2 class="h5 mt-4">Children</h2>
+<p>The website isn't meant for children under 13. Game servers record whoever connects, so if you believe we hold a child's information, contact us and we'll delete it.</p>
+
+<h2 class="h5 mt-4">Changes to this policy</h2>
+<p>If we change this policy, we'll update the date at the top. For significant changes, we'll also post a notice on the website.</p>
+
+<h2 class="h5 mt-4">Contact</h2>
+<p class="mb-0">Questions or requests about privacy: <a href="mailto:{{$contact}}">{{$contact}}</a>.</p>
 
 </div>
 </div>
