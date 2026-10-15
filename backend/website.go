@@ -61,6 +61,7 @@ var (
 		"userinfo":   frontend.UserinfoMap,
 		"lines":      func(l []string) string { return strings.Join(l, "\n") },
 		"uilines":    userinfoLines,
+		"inGroup":    func(g *ServerGroup, fe *frontend.Frontend) bool { return slices.Contains(g.Members, fe) },
 	}
 )
 
@@ -95,6 +96,7 @@ type PageResponse struct {
 	NavHighlight  struct {
 		Dashboard string
 		Servers   string
+		Groups    string
 	}
 	AuthProviders []AuthProvider
 	SearchResults []frontend.SearchResult
@@ -105,8 +107,10 @@ type PageResponse struct {
 	Notice        *Notice           // result of the action that redirected here
 	ServerNames   map[string]string // UUID -> name of the user's servers
 	KeyPair       *KeyPair          // just generated, for the keys page
-	Rule          *pb.Rule          // the rule to view/edit
-	Rules         []*pb.Rule        // a list of rules (srv level)
+	Groups        []*ServerGroup
+	Group         *ServerGroup
+	Rule          *pb.Rule   // the rule to view/edit
+	Rules         []*pb.Rule // a list of rules (srv level)
 	Player        *frontend.Player
 }
 
@@ -461,23 +465,27 @@ type Notice struct {
 // notices are looked up by the "notice" query parameter, so pages only ever
 // show these fixed messages.
 var notices = map[string]*Notice{
-	"map":         {"success", "Map change sent. The current map updates once the server reports it."},
-	"badmap":      {"danger", "Map names can only contain letters, numbers, dashes, underscores and slashes."},
-	"offline":     {"warning", "That needs the server to be connected."},
-	"saved":       {"success", "Settings saved."},
-	"uuid":        {"success", "New UUID generated. Update the server's q2admin config to use it."},
-	"key":         {"success", "Public key saved."},
-	"badkey":      {"danger", "That isn't a valid PEM-encoded RSA public key."},
-	"noplayer":    {"warning", "That player isn't connected any more."},
-	"badinput":    {"danger", "Check the message or number of seconds and try again."},
-	"sent":        {"success", "Message sent."},
-	"kicked":      {"success", "Player kicked."},
-	"muted":       {"success", "Player muted."},
-	"stifled":     {"success", "Player stifled."},
-	"banned":      {"success", "Player banned and kicked. The ban rule is on the Rules tab."},
-	"blackholed":  {"success", "Blackhole command sent for the player's address."},
-	"rulesaved":   {"success", "Rule saved."},
-	"ruledeleted": {"success", "Rule deleted."},
+	"map":          {"success", "Map change sent. The current map updates once the server reports it."},
+	"badmap":       {"danger", "Map names can only contain letters, numbers, dashes, underscores and slashes."},
+	"offline":      {"warning", "That needs the server to be connected."},
+	"saved":        {"success", "Settings saved."},
+	"uuid":         {"success", "New UUID generated. Update the server's q2admin config to use it."},
+	"key":          {"success", "Public key saved."},
+	"badkey":       {"danger", "That isn't a valid PEM-encoded RSA public key."},
+	"noplayer":     {"warning", "That player isn't connected any more."},
+	"badinput":     {"danger", "Check the message or number of seconds and try again."},
+	"sent":         {"success", "Message sent."},
+	"kicked":       {"success", "Player kicked."},
+	"muted":        {"success", "Player muted."},
+	"stifled":      {"success", "Player stifled."},
+	"banned":       {"success", "Player banned and kicked. The ban rule is on the Rules tab."},
+	"blackholed":   {"success", "Blackhole command sent for the player's address."},
+	"rulesaved":    {"success", "Rule saved."},
+	"ruledeleted":  {"success", "Rule deleted."},
+	"groupcreated": {"success", "Group created. Add some servers to it."},
+	"groupdeleted": {"success", "Group deleted. Its servers weren't changed."},
+	"groupadd":     {"success", "Server added to the group."},
+	"groupremove":  {"success", "Server removed from the group."},
 }
 
 var mapNameRE = regexp.MustCompile(`^[A-Za-z0-9_/-]{1,64}$`)
@@ -1047,6 +1055,15 @@ func ConsoleStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// validConsoleCommand checks a command typed by a user before it's sent to a
+// server console. A newline would smuggle in extra commands.
+func validConsoleCommand(cmd string) error {
+	if cmd == "" || len(cmd) > 256 || strings.ContainsAny(cmd, "\r\n") {
+		return errors.New("send one command of up to 256 characters")
+	}
+	return nil
+}
+
 // ConsoleCommandHandler runs one console command on a frontend, as if typed
 // at its server console. Output arrives through ConsoleStreamHandler.
 func ConsoleCommandHandler(w http.ResponseWriter, r *http.Request) {
@@ -1060,9 +1077,8 @@ func ConsoleCommandHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cmd := strings.TrimSpace(r.PostFormValue("cmd"))
-	// a newline would smuggle in extra commands
-	if cmd == "" || len(cmd) > 256 || strings.ContainsAny(cmd, "\r\n") {
-		http.Error(w, "send one command of up to 256 characters", http.StatusBadRequest)
+	if err := validConsoleCommand(cmd); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	fe.Mu.Lock()

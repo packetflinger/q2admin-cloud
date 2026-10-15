@@ -25,6 +25,9 @@ type WebRoutes struct {
 	ServerMap        string
 	Terms            string
 	Profile          string
+	Groups           string
+	Group            string
+	GroupAction      string
 	PlayerView       string
 	PlayerAction     string
 	ServerConsole    string
@@ -90,6 +93,9 @@ func LoadWebsiteRoutes() *mux.Router {
 
 	Routes.Terms = "/terms-of-use"
 	Routes.Profile = "/me"
+	Routes.Groups = "/groups"
+	Routes.Group = "/groups/{group}"
+	Routes.GroupAction = "/groups/{group}/action"
 	Routes.Index = "/"
 
 	r := mux.NewRouter()
@@ -107,6 +113,9 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.Servers, ServersHandler)
 	r.HandleFunc(Routes.Terms, TermsHandler)
 	r.HandleFunc(Routes.Profile, ProfileHandler)
+	r.HandleFunc(Routes.Groups, GroupsHandler).Methods("GET", "POST")
+	r.HandleFunc(Routes.Group, GroupViewHandler)
+	r.HandleFunc(Routes.GroupAction, GroupActionHandler).Methods("POST")
 	r.HandleFunc(Routes.ServerEdit, WebEditServer).Methods("POST")
 	r.HandleFunc(Routes.ServerChangeUUID, ChangeUUIDHandler).Methods("POST")
 	r.HandleFunc(Routes.ServerMap, ChangeMapHandler).Methods("POST")

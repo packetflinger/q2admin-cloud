@@ -1,0 +1,49 @@
+{{define "groups"}}
+{{template "header" .}}
+<div class="q2a-page-head">
+	<div>
+		<h1>Groups</h1>
+		<div class="text-body-secondary small">Group your servers any way you like: by mod, location, zone. A server can be in several groups.</div>
+	</div>
+</div>
+
+{{with .Notice}}<div class="alert alert-{{.Class}} alert-dismissible fade show" role="status">{{.Text}}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{{end}}
+
+<div class="row g-3">
+	<div class="col-12 col-xl-8">
+		<div class="q2a-panel">
+			{{if .Groups}}
+			<div class="table-responsive">
+				<table class="table table-hover align-middle">
+					<thead><tr><th>Group</th><th>Servers</th><th class="text-end">Online</th></tr></thead>
+					<tbody>
+					{{range .Groups}}
+						<tr>
+							<td><a href="/groups/{{.Name}}" class="fw-semibold text-decoration-none">{{.Name}}</a></td>
+							<td class="small">{{range $i, $fe := .Members}}{{if $i}}, {{end}}{{$fe.Name}}{{else}}<span class="text-body-secondary">empty</span>{{end}}</td>
+							<td class="text-end text-nowrap">{{(summarize .Members).Online}} / {{len .Members}}</td>
+						</tr>
+					{{end}}
+					</tbody>
+				</table>
+			</div>
+			{{else}}
+			<div class="q2a-empty">No groups yet. Create one to manage several servers at once.</div>
+			{{end}}
+		</div>
+	</div>
+	<div class="col-12 col-xl-4">
+		<form class="q2a-panel" method="post" action="/groups">
+			<div class="q2a-panel-head">New group</div>
+			<div class="q2a-panel-body">
+				{{if .FormError}}<div class="alert alert-danger" role="alert">{{.FormError}}</div>{{end}}
+				<label class="form-label" for="groupname">Name</label>
+				<input type="text" class="form-control" id="groupname" name="name" value="{{.Form.Get "name"}}" placeholder="us-east" maxlength="32" required aria-describedby="groupname-help">
+				<div class="form-text" id="groupname-help">Lowercase letters, numbers and dashes.</div>
+			</div>
+			<div class="q2a-panel-foot text-end"><button class="btn btn-primary" type="submit">Create group</button></div>
+		</form>
+	</div>
+</div>
+{{template "footer" .}}
+{{end}}

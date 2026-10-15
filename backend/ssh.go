@@ -350,6 +350,19 @@ func sessionHandler(s ssh.Session) {
 			}
 			continue // activeFE may have changed and isn't locked yet
 
+		} else if c.command == "group" || c.command == "groups" {
+			if locked != nil { // group commands lock their servers, which may include this one
+				locked.Mu.Unlock()
+				locked = nil
+			}
+			u, err := User(s.User())
+			if err != nil {
+				sshterm.Println("problems identifying you...")
+				continue
+			}
+			sshterm.Println(sshGroupCommand(u.GetEmail(), c))
+			continue
+
 		} else if c.command == "quit" || c.command == "exit" || c.command == "logout" || c.command == "q" {
 			break
 
@@ -362,6 +375,7 @@ func sessionHandler(s ssh.Session) {
 					{Cmd: "help", Desc: "show this message"},
 					{Cmd: "quit", Desc: "close the ssh connection"},
 					{Cmd: "server [name]", Desc: "switch mgmt servers, list"},
+					{Cmd: "groups", Desc: "list and manage groups of servers (group help)"},
 				},
 				Extra: "You need to use the server command to connect to a management server",
 			}
@@ -395,6 +409,7 @@ func sessionHandler(s ssh.Session) {
 					{Cmd: "quit", Desc: "close the ssh connection"},
 					{Cmd: "pause", Desc: "pause the console stream"},
 					{Cmd: "server [name]", Desc: "switch mgmt servers, list"},
+					{Cmd: "groups", Desc: "list and manage groups of servers (group help)"},
 					{Cmd: "settings", Desc: "show front-end config"},
 					{Cmd: "unpause", Desc: "resume the console stream"},
 					{Cmd: "", Desc: ""},

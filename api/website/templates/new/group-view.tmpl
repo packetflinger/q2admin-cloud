@@ -1,0 +1,73 @@
+{{define "group"}}
+{{template "header" .}}
+{{$g := .Group}}
+{{$action := printf "/groups/%s/action" $g.Name}}
+<div class="q2a-page-head">
+	<div class="min-w-0">
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/groups">Groups</a></li><li class="breadcrumb-item active" aria-current="page">{{$g.Name}}</li></ol></nav>
+		<h1 class="text-truncate">{{$g.Name}} <span class="text-body-secondary fs-6">{{(summarize $g.Members).Online}} of {{len $g.Members}} online</span></h1>
+	</div>
+	<form method="post" action="{{$action}}" data-q2a-confirm="Delete the group {{$g.Name}}? Its servers aren't changed.">
+		<button class="btn btn-sm btn-outline-danger" type="submit" name="action" value="delete"><i class="bi bi-trash me-1"></i>Delete group</button>
+	</form>
+</div>
+
+{{with .Notice}}<div class="alert alert-{{.Class}} alert-dismissible fade show" role="status">{{.Text}}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{{end}}
+
+<form class="q2a-panel mb-3" method="post" action="{{$action}}">
+	<div class="q2a-panel-head">Send a command to the group</div>
+	<div class="q2a-panel-body">
+		<div class="input-group">
+			<span class="input-group-text q2a-mono">&gt;</span>
+			<input type="text" class="form-control q2a-mono" name="cmd" maxlength="256" required placeholder="say Server restart in 5 minutes" aria-label="Console command">
+			<button class="btn btn-primary" type="submit" name="action" value="command" {{if not $g.Members}}disabled{{end}}>Send to all</button>
+		</div>
+		<div class="form-text">Runs on each connected server's console, as if typed there. Output shows in each server's console.</div>
+	</div>
+</form>
+
+<div class="row g-3">
+	<div class="col-12 col-xl-8">
+		<div class="q2a-panel">
+			<div class="q2a-panel-head">Servers in this group</div>
+			{{if $g.Members}}
+			<div class="table-responsive">
+				<table class="table table-hover align-middle">
+					<thead><tr><th>Server</th><th class="d-none d-md-table-cell">Address</th><th class="d-none d-sm-table-cell">Map</th><th class="text-end">Players</th><th></th></tr></thead>
+					<tbody>
+					{{range $g.Members}}
+					{{$up := and .Connected .Trusted}}
+						<tr>
+							<td><span class="q2a-dot {{if $up}}online{{end}} me-2"></span><span class="visually-hidden">{{if $up}}online{{else}}offline{{end}}</span><a href="/sv/{{.UUID}}/{{.Name}}" class="text-decoration-none">{{.Name}}</a></td>
+							<td class="d-none d-md-table-cell q2a-mono">{{.IPAddress}}:{{.Port}}</td>
+							<td class="d-none d-sm-table-cell q2a-mono">{{if $up}}{{.CurrentMap}}{{else}}-{{end}}</td>
+							<td class="text-end">{{if $up}}{{online .}}/{{.MaxPlayers}}{{else}}-{{end}}</td>
+							<td class="text-end">
+								<form method="post" action="{{$action}}">
+									<input type="hidden" name="server" value="{{.UUID}}">
+									<button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="remove" aria-label="Remove {{.Name}} from the group"><i class="bi bi-x-lg"></i><span class="d-none d-sm-inline ms-1">Remove</span></button>
+								</form>
+							</td>
+						</tr>
+					{{end}}
+					</tbody>
+				</table>
+			</div>
+			{{else}}<div class="q2a-empty">No servers in this group yet.</div>{{end}}
+		</div>
+	</div>
+	<div class="col-12 col-xl-4">
+		<form class="q2a-panel" method="post" action="{{$action}}">
+			<div class="q2a-panel-head">Add a server</div>
+			<div class="q2a-panel-body">
+				<label class="form-label" for="addserver">Server</label>
+				<select class="form-select" id="addserver" name="server" required>
+					{{range $.Frontends}}{{if not (inGroup $g .)}}<option value="{{.UUID}}">{{.Name}}</option>{{end}}{{end}}
+				</select>
+			</div>
+			<div class="q2a-panel-foot text-end"><button class="btn btn-primary" type="submit" name="action" value="add">Add to group</button></div>
+		</form>
+	</div>
+</div>
+{{template "footer" .}}
+{{end}}

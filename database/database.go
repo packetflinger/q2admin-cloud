@@ -86,6 +86,9 @@ func Open(filename string) (Database, error) {
 			return database, fmt.Errorf("error loading db schema: %v", err)
 		}
 	}
+	if _, err := db.Exec(groupSchema); err != nil {
+		return database, fmt.Errorf("error creating server group tables: %v", err)
+	}
 	for _, c := range columnAdditions {
 		if err := addColumnIfMissing(db, c.table, c.column, c.decl); err != nil {
 			return database, err
@@ -94,6 +97,21 @@ func Open(filename string) (Database, error) {
 	database.Handle = db
 	return database, nil
 }
+
+// groupSchema holds user-defined groups of servers. A frontend can be in any
+// number of groups; names are unique per owner.
+const groupSchema = `
+CREATE TABLE IF NOT EXISTS "server_group" (
+	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"owner"	TEXT NOT NULL,
+	"name"	TEXT NOT NULL,
+	UNIQUE("owner", "name")
+);
+CREATE TABLE IF NOT EXISTS "server_group_member" (
+	"group_id"	INTEGER NOT NULL,
+	"frontend_id"	INTEGER NOT NULL,
+	PRIMARY KEY("group_id", "frontend_id")
+);`
 
 // columnAdditions are small schema changes applied to existing databases when
 // they're opened.

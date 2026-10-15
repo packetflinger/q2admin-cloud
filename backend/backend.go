@@ -233,6 +233,9 @@ func (b *Backend) DeleteFrontend(name string) error {
 	if err != nil {
 		return fmt.Errorf("error removing frontend %q from database: %v", name, err)
 	}
+	if _, err = db.Handle.Exec("DELETE FROM server_group_member WHERE frontend_id = ?", fe.ID); err != nil {
+		return fmt.Errorf("error removing frontend %q from its groups: %v", name, err)
+	}
 	// a new slice, so snapshots from Frontends() stay intact
 	b.frontendsMu.Lock()
 	defer b.frontendsMu.Unlock()
