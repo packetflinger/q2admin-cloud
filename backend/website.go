@@ -161,6 +161,7 @@ type AuthProvider struct {
 	URL     string
 	Icon    string
 	Alt     string
+	Name    string // short provider name for the button, like "Google"
 	Enabled bool
 }
 
@@ -390,6 +391,14 @@ func parsePage(file string) (*template.Template, error) {
 		path.Join(dir, file),
 		path.Join(dir, "common-footer.tmpl"),
 	)
+}
+
+// providerName turns an OAuth type like "GOOGLE" into "Google".
+func providerName(t string) string {
+	if t == "" {
+		return ""
+	}
+	return t[:1] + strings.ToLower(t[1:])
 }
 
 // executeLocked renders a page while holding the given frontends' locks, then
@@ -657,6 +666,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 			URL:     BuildAuthURL(Website.Creds[i], i),
 			Icon:    Website.Creds[i].GetImagePath(),
 			Alt:     Website.Creds[i].GetAlternateText(),
+			Name:    providerName(Website.Creds[i].GetType().String()),
 			Enabled: !Website.Creds[i].GetDisabled(),
 		})
 	}

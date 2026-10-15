@@ -242,3 +242,51 @@ a:hover { color: var(--q2a-accent-hover); }
 .q2a-s2 { background: var(--q2a-series-3); } .q2a-s3 { background: var(--q2a-series-4); }
 .q2a-s4 { background: var(--q2a-series-5); } .q2a-s5 { background: var(--q2a-series-6); }
 .q2a-s6 { background: var(--q2a-series-7); } .q2a-s7 { background: var(--q2a-series-8); }
+
+/* Sign-in: a glowing card over a faint grid */
+.q2a-signin {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	padding: 1.5rem 1rem;
+	background:
+		radial-gradient(ellipse at 50% 0%, rgba(var(--q2a-accent-rgb), .22), transparent 60%),
+		linear-gradient(rgba(127, 127, 127, .07) 1px, transparent 1px) 0 0 / 32px 32px,
+		linear-gradient(90deg, rgba(127, 127, 127, .07) 1px, transparent 1px) 0 0 / 32px 32px,
+		var(--q2a-body-bg);
+}
+.q2a-signin-card {
+	width: 100%;
+	max-width: 360px;
+	padding: 2.25rem 1.75rem;
+	text-align: center;
+	background: var(--q2a-panel-bg);
+	border: 1px solid var(--q2a-panel-border);
+	border-top: 3px solid var(--q2a-accent);
+	border-radius: .75rem;
+	box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, .35), 0 0 4rem rgba(var(--q2a-accent-rgb), .12);
+}
+.q2a-signin-logo { filter: drop-shadow(0 0 1rem rgba(var(--q2a-accent-rgb), .55)); }
+.q2a-signin-card h1 { margin: 1rem 0 .25rem; font-size: 1.6rem; font-weight: 700; letter-spacing: .02em; }
+.q2a-signin-tag { color: var(--q2a-muted-label); margin-bottom: 1.75rem; }
+.q2a-provider {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: .6rem;
+	padding: .7rem 1rem;
+	border-radius: .5rem;
+	border: 1px solid var(--q2a-panel-border);
+	font-weight: 600;
+	text-decoration: none;
+	transition: transform .12s ease, box-shadow .12s ease;
+}
+.q2a-provider:hover { transform: translateY(-1px); box-shadow: 0 .4rem 1rem rgba(0, 0, 0, .25); }
+.q2a-provider:focus-visible { outline: 3px solid var(--q2a-accent); outline-offset: 2px; }
+.q2a-provider-Google, .q2a-provider-Google:hover { background: #fff; color: #1f1f1f; }
+.q2a-provider-Discord, .q2a-provider-Discord:hover { background: #5865f2; border-color: #5865f2; color: #fff; }
+.q2a-signin-foot { margin-top: 1.5rem; font-size: .85rem; }
+.q2a-signin-foot a { color: var(--q2a-muted-label); }
+@media (prefers-reduced-motion: reduce) { .q2a-provider { transition: none; } .q2a-provider:hover { transform: none; } }

@@ -478,11 +478,11 @@ func TestInfoPagesRenderSignedOut(t *testing.T) {
 func TestSignInPage(t *testing.T) {
 	tmpl := template.Must(template.ParseFiles("../api/website/templates/new/sign-in.tmpl"))
 	var out bytes.Buffer
-	data := PageResponse{AuthProviders: []AuthProvider{{URL: "/auth/google", Icon: "/g.svg", Alt: "Google", Enabled: true}, {Alt: "Off"}}}
+	data := PageResponse{AuthProviders: []AuthProvider{{URL: "/auth/google", Icon: "/g.svg", Name: providerName("GOOGLE"), Enabled: true}, {Name: "Off"}}}
 	if err := tmpl.Execute(&out, data); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), `href="/auth/google"`) || strings.Contains(out.String(), "Off") {
+	if !strings.Contains(out.String(), "Continue with Google") || strings.Contains(out.String(), "Off") {
 		t.Error("sign-in page should list only enabled providers")
 	}
 }
