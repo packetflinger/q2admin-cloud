@@ -137,7 +137,12 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.RuleAdd, RuleAddHandler).Methods("GET", "POST")
 	r.HandleFunc(Routes.ServerKeys, ServerKeysHandler)
 
-	r.PathPrefix(Routes.Static).Handler(http.FileServer(http.Dir("./api/website")))
+	static := http.FileServer(http.Dir("./api/website"))
+	r.PathPrefix(Routes.Static).Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// revalidate every time so CSS/JS changes show up without a hard refresh
+		w.Header().Set("Cache-Control", "no-cache")
+		static.ServeHTTP(w, r)
+	}))
 
 	r.HandleFunc(apiRoute.ServerList, APIServerList)
 	r.HandleFunc(apiRoute.APIKeyList, APIKeyList)

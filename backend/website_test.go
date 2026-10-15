@@ -14,6 +14,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -600,5 +601,22 @@ func TestRulePages(t *testing.T) {
 	res, _ = post("/sv/fe1-uuid/fe1/player/0/action", url.Values{"action": {"blackhole"}})
 	if !strings.Contains(res.Header.Get("Location"), "notice=blackholed") {
 		t.Errorf("blackhole redirected to %s", res.Header.Get("Location"))
+	}
+}
+
+func TestStaticFilesRevalidate(t *testing.T) {
+	if err := os.Chdir(".."); err != nil { // static files are served relative to the repo root
+		t.Fatal(err)
+	}
+	defer os.Chdir("backend")
+	srv := httptest.NewServer(LoadWebsiteRoutes())
+	defer srv.Close()
+	res, err := http.Get(srv.URL + "/static/css/q2a.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != 200 || res.Header.Get("Cache-Control") != "no-cache" {
+		t.Errorf("status %d, Cache-Control %q", res.StatusCode, res.Header.Get("Cache-Control"))
 	}
 }
