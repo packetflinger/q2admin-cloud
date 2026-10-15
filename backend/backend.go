@@ -152,12 +152,27 @@ const (
 	LogTypeCommand
 )
 
+// apiSecret returns the key that signs session cookies. If the config has
+// none (or one too short), a random one is generated and saved, so sessions
+// survive restarts.
+func apiSecret(c *pb.Config) ([]byte, error) {
+	if len(c.GetApiSecret()) >= 16 {
+		return []byte(c.GetApiSecret()), nil
+	}
+	c.ApiSecret = hex.EncodeToString(crypto.RandomBytes(32))
+	if _, err := db.Handle.Exec("UPDATE config SET api_secret = ?", c.ApiSecret); err != nil {
+		return nil, fmt.Errorf("error saving the generated api secret: %v", err)
+	}
+	return []byte(c.ApiSecret), nil
+}
+
 // Fetch the config from the database and return it in proto form
 func (b *Backend) LoadConfig() (*pb.Config, error) {
 	var c pb.Config
 	qry := "SELECT * FROM config"
 	r := db.Handle.QueryRow(qry)
-	err := r.Scan(&c.DebugMode, &c.VerboseLevel, &c.Address, &c.Port, &c.PrivateKey, &c.ApiEnabled, &c.ApiAddress, &c.ApiPort, &c.WebRoot, &c.MaintenanceTime, &c.RpcAddress, &c.RpcPort, &c.LogFile, &c.SshAddress, &c.SshPort, &c.SshHostkey)
+	// auth_file and api_secret are added last by database.Open
+	err := r.Scan(&c.DebugMode, &c.VerboseLevel, &c.Address, &c.Port, &c.PrivateKey, &c.ApiEnabled, &c.ApiAddress, &c.ApiPort, &c.WebRoot, &c.MaintenanceTime, &c.RpcAddress, &c.RpcPort, &c.LogFile, &c.SshAddress, &c.SshPort, &c.SshHostkey, &c.AuthFile, &c.ApiSecret)
 	if err != nil {
 		return nil, fmt.Errorf("error scanning config from database: %v", err)
 	}
@@ -877,9 +892,9 @@ func Startup(configFile, databaseFile string, foreground bool) {
 		if err != nil {
 			log.Println(err)
 		}
-		secret := []byte(be.config.GetApiSecret())
-		if len(secret) < 16 {
-			secret = crypto.RandomBytes(16)
+		secret, err := apiSecret(be.config)
+		if err != nil {
+			log.Fatalln(err)
 		}
 		go be.RunHTTPServer(be.config.GetApiAddress(), int(be.config.GetApiPort()), creds, secret)
 	}
