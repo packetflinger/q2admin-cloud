@@ -1,0 +1,210 @@
+/* CloudAdmin control panel theme, layered on Bootstrap 5.3 (light + dark). */
+
+:root,
+[data-bs-theme="light"] {
+	--q2a-accent: #d9631e;
+	--q2a-accent-hover: #bf5418;
+	--q2a-accent-rgb: 217, 99, 30;
+	--q2a-sidebar-bg: #1b1f27;
+	--q2a-sidebar-fg: #aeb6c4;
+	--q2a-sidebar-active: #ffffff;
+	--q2a-body-bg: #f2f4f7;
+	--q2a-panel-bg: #ffffff;
+	--q2a-panel-border: #dfe3ea;
+	--q2a-muted-label: #6b7484;
+	--q2a-online: #1f9d55;
+	--q2a-offline: #8a93a3;
+}
+
+[data-bs-theme="dark"] {
+	--q2a-accent: #f0802f;
+	--q2a-accent-hover: #ff9446;
+	--q2a-accent-rgb: 240, 128, 47;
+	--q2a-sidebar-bg: #0f1218;
+	--q2a-sidebar-fg: #8d97a8;
+	--q2a-sidebar-active: #ffffff;
+	--q2a-body-bg: #151922;
+	--q2a-panel-bg: #1c212c;
+	--q2a-panel-border: #2a3140;
+	--q2a-muted-label: #8d97a8;
+	--q2a-online: #3ccf7a;
+	--q2a-offline: #5d6676;
+	--bs-body-bg: #151922;
+	--bs-secondary-bg: #1c212c;
+	--bs-tertiary-bg: #202634;
+	--bs-border-color: #2a3140;
+}
+
+body {
+	background: var(--q2a-body-bg);
+	min-height: 100vh;
+}
+
+/* Accent-colored primary actions */
+.btn-primary {
+	--bs-btn-bg: var(--q2a-accent);
+	--bs-btn-border-color: var(--q2a-accent);
+	--bs-btn-hover-bg: var(--q2a-accent-hover);
+	--bs-btn-hover-border-color: var(--q2a-accent-hover);
+	--bs-btn-active-bg: var(--q2a-accent-hover);
+	--bs-btn-active-border-color: var(--q2a-accent-hover);
+	--bs-btn-disabled-bg: var(--q2a-accent);
+	--bs-btn-disabled-border-color: var(--q2a-accent);
+	--bs-btn-focus-shadow-rgb: var(--q2a-accent-rgb);
+}
+a { color: var(--q2a-accent); }
+a:hover { color: var(--q2a-accent-hover); }
+.form-control:focus, .form-select:focus {
+	border-color: var(--q2a-accent);
+	box-shadow: 0 0 0 .2rem rgba(var(--q2a-accent-rgb), .25);
+}
+.form-check-input:checked {
+	background-color: var(--q2a-accent);
+	border-color: var(--q2a-accent);
+}
+.nav-tabs .nav-link.active { border-bottom-color: var(--q2a-panel-bg); }
+.nav-tabs .nav-link:not(.active) { color: var(--bs-secondary-color); }
+
+/* App shell: fixed sidebar on large screens, slide-in drawer below that */
+.q2a-shell { display: flex; min-height: 100vh; }
+
+.q2a-sidebar {
+	--bs-offcanvas-width: 240px;
+	--bs-offcanvas-bg: var(--q2a-sidebar-bg);
+	--bs-offcanvas-color: var(--q2a-sidebar-fg);
+	background: var(--q2a-sidebar-bg);
+	color: var(--q2a-sidebar-fg);
+}
+@media (min-width: 992px) {
+	.q2a-sidebar {
+		width: 240px;
+		flex-shrink: 0;
+		position: sticky;
+		top: 0;
+		height: 100vh;
+		overflow-y: auto;
+	}
+}
+.q2a-brand {
+	display: flex;
+	align-items: center;
+	gap: .6rem;
+	color: var(--q2a-sidebar-active);
+	font-weight: 600;
+	letter-spacing: .02em;
+	text-decoration: none;
+	padding: 1rem 1.25rem;
+}
+.q2a-brand:hover { color: var(--q2a-sidebar-active); }
+.q2a-brand img { width: 28px; height: 28px; }
+.q2a-nav-label {
+	font-size: .7rem;
+	text-transform: uppercase;
+	letter-spacing: .08em;
+	padding: 1rem 1.25rem .4rem;
+	opacity: .7;
+}
+.q2a-nav a {
+	display: flex;
+	align-items: center;
+	gap: .75rem;
+	padding: .55rem 1.25rem;
+	color: var(--q2a-sidebar-fg);
+	text-decoration: none;
+	border-left: 3px solid transparent;
+}
+.q2a-nav a:hover { color: var(--q2a-sidebar-active); background: rgba(255, 255, 255, .04); }
+.q2a-nav a.active {
+	color: var(--q2a-sidebar-active);
+	border-left-color: var(--q2a-accent);
+	background: rgba(var(--q2a-accent-rgb), .12);
+}
+.q2a-sidebar .btn-close { filter: invert(1); }
+
+.q2a-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.q2a-topbar {
+	position: sticky;
+	top: 0;
+	z-index: 1020;
+	display: flex;
+	align-items: center;
+	gap: .75rem;
+	padding: .6rem 1rem;
+	background: var(--q2a-panel-bg);
+	border-bottom: 1px solid var(--q2a-panel-border);
+}
+.q2a-topbar .q2a-search { flex: 1; max-width: 480px; }
+.q2a-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+
+.q2a-content { padding: 1.5rem 1rem 3rem; }
+@media (min-width: 768px) { .q2a-content { padding: 1.75rem 2rem 3rem; } }
+
+/* Page header: title on the left, actions on the right, wraps on phones */
+.q2a-page-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: .75rem;
+	margin-bottom: 1.25rem;
+}
+.q2a-page-head h1 { font-size: 1.4rem; margin: 0; font-weight: 600; }
+.q2a-page-head .breadcrumb { margin: 0 0 .15rem; font-size: .85rem; }
+
+/* Panels: the basic content container */
+.q2a-panel {
+	background: var(--q2a-panel-bg);
+	border: 1px solid var(--q2a-panel-border);
+	border-radius: .5rem;
+}
+.q2a-panel > .q2a-panel-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: .5rem;
+	padding: .75rem 1rem;
+	border-bottom: 1px solid var(--q2a-panel-border);
+	font-weight: 600;
+}
+.q2a-panel > .q2a-panel-body { padding: 1rem; }
+.q2a-panel .table { margin: 0; --bs-table-bg: transparent; }
+.q2a-panel .table > :not(caption) > * > * { padding: .6rem 1rem; }
+.q2a-panel .table thead th {
+	font-size: .72rem;
+	text-transform: uppercase;
+	letter-spacing: .06em;
+	color: var(--q2a-muted-label);
+	font-weight: 600;
+	white-space: nowrap;
+}
+.q2a-panel .table tbody tr:last-child > * { border-bottom: 0; }
+
+/* Stat tiles */
+.q2a-stat { padding: 1rem 1.1rem; }
+.q2a-stat .q2a-stat-label {
+	font-size: .72rem;
+	text-transform: uppercase;
+	letter-spacing: .06em;
+	color: var(--q2a-muted-label);
+}
+.q2a-stat .q2a-stat-value { font-size: 1.6rem; font-weight: 600; line-height: 1.2; }
+
+/* Key/value definition lists */
+.q2a-kv { display: grid; grid-template-columns: max-content 1fr; gap: .45rem 1rem; margin: 0; }
+.q2a-kv dt { color: var(--q2a-muted-label); font-weight: 400; }
+.q2a-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+/* Status dot */
+.q2a-dot {
+	display: inline-block;
+	width: .55rem;
+	height: .55rem;
+	border-radius: 50%;
+	background: var(--q2a-offline);
+	vertical-align: middle;
+}
+.q2a-dot.online { background: var(--q2a-online); box-shadow: 0 0 0 3px rgba(60, 207, 122, .18); }
+
+.q2a-mono { font-family: var(--bs-font-monospace); font-size: .875em; }
+.q2a-empty { color: var(--q2a-muted-label); text-align: center; padding: 2rem 1rem; }

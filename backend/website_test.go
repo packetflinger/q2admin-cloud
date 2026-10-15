@@ -3,6 +3,8 @@ package backend
 import (
 	"bytes"
 	"html/template"
+	"net"
+	"strings"
 	"testing"
 
 	"github.com/packetflinger/q2admind/frontend"
@@ -95,5 +97,89 @@ func TestExecuteLocked(t *testing.T) {
 	}
 	if held() {
 		t.Error("frontend still locked after render")
+	}
+}
+
+// renderPage executes a page the way its handler does, failing on any
+// template error.
+func renderPage(t *testing.T, file, name string, data PageResponse) string {
+	t.Helper()
+	saved := be.config
+	be.config = &pb.Config{WebRoot: "../api/website"}
+	defer func() { be.config = saved }()
+	tmpl, err := parsePage(file)
+	if err != nil {
+		t.Fatalf("parsePage(%q): %v", file, err)
+	}
+	var out bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&out, name, data); err != nil {
+		t.Fatalf("executing %q: %v", name, err)
+	}
+	return out.String()
+}
+
+// samplePage is a signed-in page about one connected frontend with a player
+// and a rule, enough to exercise every template branch.
+func samplePage() PageResponse {
+	conn, _ := net.Pipe()
+	fe := &frontend.Frontend{
+		Name:       "pf-tdm",
+		UUID:       "83bfa705-7257-4843-b83a-9bc3ad2a3dfc",
+		IPAddress:  "100.64.1.2",
+		Port:       27910,
+		Connected:  true,
+		Trusted:    true,
+		Connection: &conn,
+		CurrentMap: "q2dm1",
+		MaxPlayers: 2,
+		ServerVars: map[string]string{"dmflags": "1040", "hostname": "test"},
+		Rules: []*pb.Rule{{
+			Uuid:        "5d435f38-7756-4899-b43f-b44599f442c5",
+			Type:        pb.RuleType_BAN,
+			Address:     []string{"10.0.0.0/8"},
+			Description: []string{"test ban"},
+		}},
+	}
+	fe.Players = []frontend.Player{
+		{ClientID: 0, ConnectTime: 100, Name: "alpha", IP: "192.0.2.1", Frontend: fe},
+		{ClientID: 1},
+	}
+	fe.PlayerCount = 1
+	data := PageResponse{
+		SessionUser: &pb.User{Email: "admin@example.com"},
+		Frontends:   []*frontend.Frontend{fe},
+		Frontend:    fe,
+		Player:      &fe.Players[0],
+		Rule:        fe.Rules[0],
+		Rules:       fe.Rules,
+	}
+	data.Head.Title = "Test"
+	return data
+}
+
+func TestPagesRender(t *testing.T) {
+	pages := map[string]string{ // file -> template name
+		"dashboard.tmpl":     "dashboard",
+		"servers.tmpl":       "my-servers",
+		"server-add.tmpl":    "server-add",
+		"server-view.tmpl":   "server-view",
+		"player-view.tmpl":   "player-view",
+		"terminal.tmpl":      "terminal",
+		"search.tmpl":        "search",
+		"player.tmpl":        "player",
+		"rule-list.tmpl":     "rule-list",
+		"rule-view.tmpl":     "rule",
+		"rule-add.tmpl":      "rule-add",
+		"rule-edit.tmpl":     "rule-edit",
+		"generate-keys.tmpl": "keygen",
+		"terms-of-use.tmpl":  "terms-of-use",
+	}
+	for file, name := range pages {
+		t.Run(name, func(t *testing.T) {
+			out := renderPage(t, file, name, samplePage())
+			if !strings.Contains(out, `data-bs-theme="dark"`) || !strings.Contains(out, "</html>") {
+				t.Error("page is missing the shared layout")
+			}
+		})
 	}
 }

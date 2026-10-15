@@ -298,6 +298,17 @@ func (s *Backend) RunHTTPServer(ip string, port int, creds []*pb.OAuth, secret [
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
+// parsePage loads a page template along with the shared header, footer and
+// template functions.
+func parsePage(file string) (*template.Template, error) {
+	dir := path.Join(be.config.GetWebRoot(), "templates", "new")
+	return template.New(file).Funcs(funcMap).ParseFiles(
+		path.Join(dir, "common-header.tmpl"),
+		path.Join(dir, file),
+		path.Join(dir, "common-footer.tmpl"),
+	)
+}
+
 // executeLocked renders a page while holding the given frontends' locks, then
 // writes it after unlocking so a slow client can't stall a game server. Pass
 // frontends in Frontends() order: their relative order never changes, which
@@ -339,11 +350,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, e := template.New("dashboard").Funcs(funcMap).ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "dashboard.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("dashboard.tmpl")
 
 	if e != nil {
 		log.Println(e)
@@ -392,11 +399,7 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	data.Frontend = fe
 
 	data.NavHighlight.Servers = "active"
-	tmpl, e := template.New("dashboard").Funcs(funcMap).ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "server-view.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("server-view.tmpl")
 
 	if e != nil {
 		log.Println(e)
@@ -520,11 +523,7 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 	}
 	data.Head.Description = "Add a new server to manange"
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "server-add.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("server-add.tmpl")
 
 	if e != nil {
 		log.Println(e)
@@ -640,11 +639,7 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 
 	data.NavHighlight.Servers = "active"
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "servers.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("servers.tmpl")
 
 	if e != nil {
 		log.Println(e)
@@ -697,11 +692,7 @@ func TermsHandler(w http.ResponseWriter, r *http.Request) {
 	data.Title = "Terms of Use"
 	data.SessionUser = user
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "terms-of-use.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("terms-of-use.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -858,12 +849,7 @@ func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {
 	data.SessionUser = user
 	data.Frontend = fe
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "player-view.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
-	tmpl = tmpl.Funcs(funcMap)
+	tmpl, e := parsePage("player-view.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -886,11 +872,7 @@ func ServerConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	data.Title = "Server Console"
 	data.SessionUser = user
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "terminal.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("terminal.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -977,11 +959,7 @@ func ServerSearchHandler(w http.ResponseWriter, r *http.Request) {
 	data.Frontend = f
 	data.SearchQuery = q
 
-	tmpl, e := template.New("searchresults").Funcs(funcMap).ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "search.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("search.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -1033,11 +1011,7 @@ func PlayerSearchViewHandler(w http.ResponseWriter, r *http.Request) {
 	data.Title = "Player: " + nameLookup
 	data.SessionUser = user
 	data.PlayerDBInfo = p
-	tmpl, e := template.New("searchresults").Funcs(funcMap).ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "player.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("player.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -1073,11 +1047,7 @@ func RuleViewHandler(w http.ResponseWriter, r *http.Request) {
 		f.Mu.Unlock()
 	}
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "rule-view.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("rule-view.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -1112,11 +1082,7 @@ func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
 		f.Mu.Unlock()
 	}
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "rule-edit.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("rule-edit.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -1138,11 +1104,7 @@ func RuleAddHandler(w http.ResponseWriter, r *http.Request) {
 	data.Title = "Rules"
 	data.SessionUser = user
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "rule-add.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("rule-add.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -1178,11 +1140,7 @@ func RuleListHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "rule-list.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("rule-list.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {
@@ -1253,11 +1211,7 @@ func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
 		f.Mu.Unlock()
 	}
 
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "generate-keys.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-	)
+	tmpl, e := parsePage("generate-keys.tmpl")
 	if e != nil {
 		log.Println(e)
 	} else {

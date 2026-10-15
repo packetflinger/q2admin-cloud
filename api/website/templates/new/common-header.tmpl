@@ -1,60 +1,51 @@
 {{define "header"}}
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
 	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="{{.Head.Description}}">
-	<meta name="author" content="{{.Head.Author}}">
 	<meta name="keywords" content="{{.Head.Keywords}}">
-	<link rel="shortcut icon" href="/static/img/q2-48.png" />
 	<title>{{.Head.Title}}</title>
+	<!-- set the saved theme before first paint so there's no light flash -->
+	<script>try { document.documentElement.dataset.bsTheme = localStorage.getItem("q2a-theme") || "dark"; } catch (e) {}</script>
+	<link rel="icon" href="/static/img/q2-48.png">
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-	<script src="/static/js/feather.min.js"></script>
+	<link href="/static/css/q2a.css" rel="stylesheet">
 </head>
-
 <body>
-	<div class="container-fluid">
-		<nav class="navbar navbar-expand-lg navbar-light bg-light">
-			<div class="container-fluid">
-				<a class="navbar-brand" href="/">CloudAdmin</a>
-				<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				<div class="collapse navbar-collapse" id="navbarNavDropdown">
-					<ul class="navbar-nav">
-						<li class="nav-item">
-							<a class="nav-link active" href="/dashboard">Dashboard</a>
-						</li>
-						<li class="nav-item">
-							<a class="nav-link" href="/my-servers">Servers</a>
-						</li>
-						<!--
-						<li class="nav-item dropdown">
-							<a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-							Dropdown link
-							</a>
-							<ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-								<li><a class="dropdown-item" href="#">Action</a></li>
-								<li><a class="dropdown-item" href="#">Another action</a></li>
-								<li><a class="dropdown-item" href="#">Something else here</a></li>
-							</ul>
-						</li>
-						-->
-					</ul>
-					<ul class="navbar-nav ms-auto">
-						<li class="nav-item dropdown">
-							<a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"><img src="{{.SessionUser.Session.Avatar}}" class="rounded-circle" style="max-height: 50px;"></a>
-							<ul class="dropdown-menu">
-								<li><a class="dropdown-item" href="/me">Profile</a></li>
-								<li><a class="dropdown-item" href="/signout">Signout</a></li>
-							</ul>
-						</li>
+<div class="q2a-shell">
+	<aside class="q2a-sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="q2a-sidebar" aria-label="Main navigation">
+		<div class="d-flex align-items-center justify-content-between">
+			<a class="q2a-brand" href="/dashboard"><img src="/static/img/q2-48.png" alt=""> CloudAdmin</a>
+			<button type="button" class="btn-close d-lg-none me-3" data-bs-dismiss="offcanvas" data-bs-target="#q2a-sidebar" aria-label="Close menu"></button>
+		</div>
+		<nav class="q2a-nav">
+			<div class="q2a-nav-label">Manage</div>
+			<a href="/dashboard" class="{{.NavHighlight.Dashboard}}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+			<a href="/my-servers" class="{{.NavHighlight.Servers}}"><i class="bi bi-hdd-stack"></i> Servers</a>
+			<a href="/add-server"><i class="bi bi-plus-square"></i> Add server</a>
+		</nav>
+	</aside>
+
+	<div class="q2a-main">
+		<header class="q2a-topbar">
+			<button class="btn btn-sm btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#q2a-sidebar" aria-controls="q2a-sidebar" aria-label="Open menu"><i class="bi bi-list"></i></button>
+			<div class="ms-auto d-flex align-items-center gap-2">
+				<button id="q2a-theme-toggle" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Switch between dark and light theme"><i class="bi bi-sun"></i></button>
+				{{with .SessionUser}}
+				<div class="dropdown">
+					<button class="btn btn-link p-0 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
+						{{if .GetSession.GetAvatar}}<img src="{{.GetSession.GetAvatar}}" class="q2a-avatar" alt="">{{else}}<i class="bi bi-person-circle fs-4 text-body-secondary"></i>{{end}}
+					</button>
+					<ul class="dropdown-menu dropdown-menu-end">
+						<li><h6 class="dropdown-header">{{.GetEmail}}</h6></li>
+						<li><a class="dropdown-item" href="/sign-out"><i class="bi bi-box-arrow-right me-2"></i>Sign out</a></li>
 					</ul>
 				</div>
+				{{end}}
 			</div>
-		</nav>
-
+		</header>
+		<main class="q2a-content">
 {{end}}
