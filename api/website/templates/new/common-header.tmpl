@@ -32,6 +32,9 @@
 	<div class="q2a-main">
 		<header class="q2a-topbar">
 			<button class="btn btn-sm btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#q2a-sidebar" aria-controls="q2a-sidebar" aria-label="Open menu"><i class="bi bi-list"></i></button>
+			<form class="q2a-search" method="get" action="/search" role="search">
+				<input type="search" name="q" class="form-control form-control-sm" placeholder="Search players on all servers" aria-label="Search players on all servers">
+			</form>
 			<div class="ms-auto d-flex align-items-center gap-2">
 				<button id="q2a-theme-toggle" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Switch between dark and light theme"><i class="bi bi-sun"></i></button>
 				{{with .SessionUser}}

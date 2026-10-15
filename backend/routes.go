@@ -116,7 +116,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.ConsoleStream, ConsoleStreamHandler)
 	r.HandleFunc(Routes.ConsoleCommand, ConsoleCommandHandler).Methods("POST")
 	r.HandleFunc(Routes.Search, SearchHandler)
-	r.HandleFunc(Routes.SearchServer, SearchHandler)
+	r.HandleFunc(Routes.SearchServer, ServerSearchHandler)
 	r.HandleFunc(Routes.PlayerSearchView, PlayerSearchViewHandler)
 	r.HandleFunc(Routes.RuleView, RuleViewHandler)
 	r.HandleFunc(Routes.RuleEdit, RuleEditHandler)

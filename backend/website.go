@@ -9,6 +9,7 @@ package backend
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -56,6 +57,7 @@ var (
 		"online":     playersOnline,
 		"summarize":  summarize,
 		"join":       strings.Join,
+		"userinfo":   frontend.UserinfoMap,
 	}
 )
 
@@ -67,7 +69,6 @@ type PlayerDatabaseInfo struct {
 	IP          string
 	Name        string
 	ServerUUID  string
-	Server_id   int
 	Userinfo    string
 	Version     string
 	Vpn         bool
@@ -97,11 +98,12 @@ type PageResponse struct {
 	SearchResults []frontend.SearchResult
 	SearchQuery   string
 	PlayerDBInfo  PlayerDatabaseInfo
-	Form          url.Values // submitted form values, to refill a form after an error
-	FormError     string     // why the submitted form was rejected
-	Notice        *Notice    // result of the action that redirected here
-	Rule          *pb.Rule   // the rule to view/edit
-	Rules         []*pb.Rule // a list of rules (srv level)
+	Form          url.Values        // submitted form values, to refill a form after an error
+	FormError     string            // why the submitted form was rejected
+	Notice        *Notice           // result of the action that redirected here
+	ServerNames   map[string]string // UUID -> name of the user's servers
+	Rule          *pb.Rule          // the rule to view/edit
+	Rules         []*pb.Rule        // a list of rules (srv level)
 	Player        *frontend.Player
 }
 
@@ -1101,45 +1103,46 @@ func ConsoleCommandHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
-	/*
-		user, err := GetSessionUser(r)
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	data := PageResponse{SessionUser: user, SearchQuery: strings.TrimSpace(r.URL.Query().Get("q"))}
+	data.Head.Title = "Search | CloudAdmin"
+	data.ServerNames = myServerNames(user)
+	if data.SearchQuery != "" {
+		results, err := be.Search(r.Context(), data.SearchQuery)
 		if err != nil {
-			RedirectToSignon(w, r)
+			log.Printf("error searching %q: %v\n", data.SearchQuery, err)
+			http.Error(w, "500 - search failed", http.StatusInternalServerError)
 			return
 		}
-		q := r.URL.Query().Get("q")
-		if q == "" {
-			fmt.Fprintf(w, "500 - blank search query")
-			return
-		}
-		_, err = be.Search(r.Context(), q)
-		if err != nil {
-			fmt.Fprintf(w, "500 - search failed")
-			fmt.Printf("error searching %q on %q: %v\n", q, f.Name, err)
-			return
-		}
-		data := PageResponse{}
-		data.Head.Title = "Search | Q2Admin CloudAdmin"
-		data.Title = "Search"
-		data.SessionUser = user
-		// data.SearchResults = results
-		// data.Frontend = f
-		data.SearchQuery = q
-
-		tmpl, e := template.New("searchresults").Funcs(funcMap).ParseFiles(
-			path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
-			path.Join(be.config.GetWebRoot(), "templates", "new", "search.tmpl"),
-			path.Join(be.config.GetWebRoot(), "templates", "new", "common-footer.tmpl"),
-		)
-		if e != nil {
-			log.Println(e)
-		} else {
-			err = tmpl.ExecuteTemplate(w, "search", data)
-			if err != nil {
-				log.Println(err)
+		for _, res := range results {
+			if _, mine := data.ServerNames[res.ServerUUID]; mine { // only the user's own servers
+				data.SearchResults = append(data.SearchResults, frontend.SearchResult(res))
 			}
 		}
-	*/
+	}
+	tmpl, err := parsePage("search.tmpl")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := executeLocked(w, tmpl, "search", data); err != nil {
+		log.Println(err)
+	}
+}
+
+// myServerNames maps the UUIDs of the servers user owns to their names.
+func myServerNames(user *pb.User) map[string]string {
+	names := map[string]string{}
+	for _, fe := range FrontendsByIdentity(user.GetEmail()) {
+		fe.Mu.Lock()
+		names[fe.UUID] = fe.Name
+		fe.Mu.Unlock()
+	}
+	return names
 }
 
 func ServerSearchHandler(w http.ResponseWriter, r *http.Request) {
@@ -1148,42 +1151,31 @@ func ServerSearchHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	vars := mux.Vars(r)
-	uuid := vars["UUID"]
-	f, err := be.FindFrontend(uuid)
+	f, err := be.FindFrontend(mux.Vars(r)["UUID"])
 	if err != nil {
-		fmt.Fprintf(w, "500 - error looking up frontend: %q", uuid)
+		http.NotFound(w, r)
 		return
 	}
-	q := r.URL.Query().Get("q")
-	if q == "" {
-		fmt.Fprintf(w, "500 - blank search query")
-		return
-	}
-	f.Mu.Lock() // Search reads f.UUID
-	results, err := f.Search(r.Context(), q)
-	f.Mu.Unlock()
-	if err != nil {
-		fmt.Fprintf(w, "500 - search failed")
-		fmt.Printf("error searching %q on %q: %v\n", q, f.Name, err)
-		return
-	}
-	data := PageResponse{}
-	data.Head.Title = "Search | Q2Admin CloudAdmin"
-	data.Title = "Search"
-	data.SessionUser = user
-	data.SearchResults = results
-	data.Frontend = f
-	data.SearchQuery = q
-
-	tmpl, e := parsePage("search.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = executeLocked(w, tmpl, "search", data, f)
+	data := PageResponse{SessionUser: user, Frontend: f, SearchQuery: strings.TrimSpace(r.URL.Query().Get("q"))}
+	data.Head.Title = "Search | CloudAdmin"
+	data.NavHighlight.Servers = "active"
+	if data.SearchQuery != "" {
+		f.Mu.Lock() // Search reads f.UUID
+		data.SearchResults, err = f.Search(r.Context(), data.SearchQuery)
+		f.Mu.Unlock()
 		if err != nil {
-			log.Println(err)
+			log.Printf("error searching %q: %v\n", data.SearchQuery, err)
+			http.Error(w, "500 - search failed", http.StatusInternalServerError)
+			return
 		}
+	}
+	tmpl, err := parsePage("search.tmpl")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := executeLocked(w, tmpl, "search", data, f); err != nil {
+		log.Println(err)
 	}
 }
 
@@ -1193,49 +1185,37 @@ func PlayerSearchViewHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	vars := mux.Vars(r)
-	lookup := vars["lookup"]
-	lu, err := base64.StdEncoding.DecodeString(lookup)
-	if err != nil {
-		fmt.Fprintf(w, "500 - can't decode lookup string")
-		fmt.Printf("Error decoding %q for player lookup\n", lookup)
+	lu, err := base64.StdEncoding.DecodeString(mux.Vars(r)["lookup"])
+	name, when, ok := strings.Cut(string(lu), "\\")
+	if err != nil || !ok {
+		http.Error(w, "400 - invalid player lookup", http.StatusBadRequest)
 		return
 	}
-	tokens := strings.Split(string(lu), "\\")
-	if len(tokens) != 2 {
-		fmt.Fprintf(w, "500 - invalid lookup string")
-		fmt.Printf("Error: player lookup %q not properly formatted\n", string(lu))
-		return
-	}
-	nameLookup := tokens[0]
-	timeLookup := tokens[1]
 	qry := `
-	SELECT p.*, f.uuid
+	SELECT p.id, p.name, p.ip, p.hostname, p.vpn, p.cookie, p.version, p.userinfo, p.time, f.uuid
 	FROM player AS p
-	JOIN frontend AS f ON f.id = p.server_id
+	JOIN frontend AS f ON f.name = p.server -- player.server holds the frontend name
 	WHERE p.name = ? AND p.time = ?
 	LIMIT 1`
-	res := db.Handle.QueryRow(qry, nameLookup, timeLookup)
 	var p PlayerDatabaseInfo
-	err = res.Scan(&p.Id, &p.Server_id, &p.Name, &p.IP, &p.Hostname, &p.Vpn, &p.Cookie, &p.Version, &p.Userinfo, &p.ConnectTime, &p.ServerUUID)
-	if err != nil {
-		fmt.Fprintf(w, "500 - error scanning player data")
-		fmt.Printf("Error: scanning player data: %v\n", err)
+	err = db.Handle.QueryRow(qry, name, when).Scan(&p.Id, &p.Name, &p.IP, &p.Hostname, &p.Vpn, &p.Cookie, &p.Version, &p.Userinfo, &p.ConnectTime, &p.ServerUUID)
+	data := PageResponse{SessionUser: user, ServerNames: myServerNames(user)}
+	if _, mine := data.ServerNames[p.ServerUUID]; err != nil || !mine {
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("error looking up player %q: %v\n", name, err)
+		}
+		http.NotFound(w, r)
 		return
 	}
-	data := PageResponse{}
-	data.Head.Title = "Player | Q2Admin CloudAdmin"
-	data.Title = "Player: " + nameLookup
-	data.SessionUser = user
 	data.PlayerDBInfo = p
-	tmpl, e := parsePage("player.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = tmpl.ExecuteTemplate(w, "player", data)
-		if err != nil {
-			log.Println(err)
-		}
+	data.Head.Title = p.Name + " | CloudAdmin"
+	tmpl, err := parsePage("player.tmpl")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := tmpl.ExecuteTemplate(w, "player", data); err != nil {
+		log.Println(err)
 	}
 }
 

@@ -35,7 +35,7 @@ func (b *Backend) Search(ctx context.Context, what string) ([]SearchResult, erro
 		p.time,
 		f.uuid AS server
 	FROM player AS p
-	JOIN frontend AS f ON f.id = p.server_id
+	JOIN frontend AS f ON f.name = p.server -- player.server holds the frontend name
 	WHERE true
 		AND (
 			p.userinfo LIKE ? OR
@@ -44,7 +44,8 @@ func (b *Backend) Search(ctx context.Context, what string) ([]SearchResult, erro
 			p.cookie LIKE ?
 		)
 	GROUP BY p.name, p.ip, p.hostname, p.version, f.uuid
-	ORDER BY p.time DESC;
+	ORDER BY p.time DESC
+	LIMIT 200;
 	`
 	what = fmt.Sprintf("%%%s%%", what)
 	res, err := db.Handle.QueryContext(ctx, qry, what, what, what, what)

@@ -161,6 +161,14 @@ func samplePage() PageResponse {
 		Player:      &fe.Players[0],
 		Rule:        fe.Rules[0],
 		Rules:       fe.Rules,
+		ServerNames: map[string]string{fe.UUID: fe.Name},
+		SearchResults: []frontend.SearchResult{{
+			Name: "alpha", IP: "192.0.2.1", ServerUUID: fe.UUID, Lookup: "YWxwaGFcMTAw",
+		}},
+		SearchQuery: "alp",
+		PlayerDBInfo: PlayerDatabaseInfo{
+			Name: "alpha", IP: "192.0.2.1", ServerUUID: fe.UUID, Userinfo: `\\name\\alpha\\skin\\male/grunt`,
+		},
 	}
 	data.Head.Title = "Test"
 	return data
@@ -415,5 +423,22 @@ func TestPlayerActions(t *testing.T) {
 		if loc := res.Header.Get("Location"); !strings.Contains(loc, "notice="+tc.wantNotice) {
 			t.Errorf("%v on player %s redirected to %q, want notice=%s", tc.form, tc.player, loc, tc.wantNotice)
 		}
+	}
+}
+
+func TestSearchPages(t *testing.T) {
+	data := samplePage()
+	out := renderPage(t, "search.tmpl", "search", data)
+	if !strings.Contains(out, "/player/YWxwaGFcMTAw") || strings.Contains(out, "<th class=\"d-none d-sm-table-cell\">Server</th>") {
+		t.Error("server search should list the result without a Server column")
+	}
+	data.Frontend = nil
+	out = renderPage(t, "search.tmpl", "search", data)
+	if !strings.Contains(out, "Search all servers") || !strings.Contains(out, ">pf-tdm</td>") {
+		t.Error("global search should show which server each result is from")
+	}
+	out = renderPage(t, "player.tmpl", "player", data)
+	if !strings.Contains(out, "male/grunt") {
+		t.Error("player record should show parsed userinfo")
 	}
 }

@@ -1,39 +1,53 @@
-{{ define "search" }}
-{{ template "header" .}}
-
-<h1 class="h3 mb-3"><a href="/sv/{{ .Frontend.UUID }}/{{ .Frontend.Name }}">{{ .Frontend.Name}}</a> > {{ .Title }}</h1>
-
-<div class="row">
-    <div>
-        <form method="get" action="/search/{{ .Frontend.UUID }}">
-            <div class="input-group mb-3">
-                <input type="text" name="q" value="{{ .SearchQuery }}" class="form-control" placeholder="Search IPs, player names, more" aria-label="Example text with button addon" aria-describedby="searchbutton">
-                <button class="btn btn-primary" type="submit" id="searchbutton">Search</button>
-            </div>
-        </form>
-    </div>
+{{define "search"}}
+{{template "header" .}}
+<div class="q2a-page-head">
+	<div class="min-w-0">
+		{{with .Frontend}}<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item"><a href="/sv/{{.UUID}}/{{.Name}}">{{.Name}}</a></li><li class="breadcrumb-item active" aria-current="page">Search</li></ol></nav>{{end}}
+		<h1>{{if .Frontend}}Search {{.Frontend.Name}}{{else}}Search all servers{{end}}</h1>
+	</div>
 </div>
 
-<table class="table table-hover">
-    <thead>
-        <th scope="col">Name</th>
-        <th scope="col">IP</th>
-        <th scope="col">Hostname</th>
-        <th scope="col">Version</th>
-        <th scope="col">Connected</th>
-    </thead>
-    <tbody>
-    {{ range .SearchResults }}
-        <tr role="button" onclick="window.location='/player/{{ .Lookup }}';">
-            <td>{{ .Name }}</td>
-            <td>{{ .IP }}</td>
-            <td>{{ .Hostname }}</td>
-            <td>{{ .Version }}</td>
-            <td>{{ .ConnectTime | datetime }}</td>
-        </tr>
-    {{ end }}
-    </tbody>
-</table>
+<form class="mb-3" method="get" action="{{with .Frontend}}/search/{{.UUID}}{{else}}/search{{end}}" role="search">
+	<div class="input-group">
+		<span class="input-group-text"><i class="bi bi-search"></i></span>
+		<input type="search" name="q" value="{{.SearchQuery}}" class="form-control" placeholder="Name, IP, hostname, client version or userinfo" aria-label="Search players" autofocus>
+		<button class="btn btn-primary" type="submit">Search</button>
+	</div>
+	<div class="form-text">Matches anywhere in the text. Shows the 200 most recent matches.</div>
+</form>
 
-{{ template "footer" . }}
-{{ end }}
+{{if .SearchQuery}}
+<div class="q2a-panel">
+	<div class="q2a-panel-head">{{len .SearchResults}} result{{if ne (len .SearchResults) 1}}s{{end}} for "{{.SearchQuery}}"</div>
+	{{if .SearchResults}}
+	<div class="table-responsive">
+		<table class="table table-hover align-middle">
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>IP</th>
+					{{if not $.Frontend}}<th class="d-none d-sm-table-cell">Server</th>{{end}}
+					<th class="d-none d-lg-table-cell">Hostname</th>
+					<th class="d-none d-xl-table-cell">Client</th>
+					<th class="d-none d-md-table-cell">Seen</th>
+				</tr>
+			</thead>
+			<tbody>
+			{{range .SearchResults}}
+				<tr>
+					<td><a href="/player/{{.Lookup}}" class="text-decoration-none">{{.Name}}</a>{{if .VPN}} <span class="badge text-bg-warning">VPN</span>{{end}}</td>
+					<td class="q2a-mono">{{.IP}}</td>
+					{{if not $.Frontend}}<td class="d-none d-sm-table-cell">{{index $.ServerNames .ServerUUID}}</td>{{end}}
+					<td class="d-none d-lg-table-cell q2a-mono text-break">{{.Hostname}}</td>
+					<td class="d-none d-xl-table-cell q2a-mono">{{.Version}}</td>
+					<td class="d-none d-md-table-cell text-body-secondary text-nowrap">{{datetime .ConnectTime}}</td>
+				</tr>
+			{{end}}
+			</tbody>
+		</table>
+	</div>
+	{{else}}<div class="q2a-empty">No players match.</div>{{end}}
+</div>
+{{end}}
+{{template "footer" .}}
+{{end}}
