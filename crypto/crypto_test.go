@@ -154,3 +154,32 @@ func TestSHA256Hash(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateKeyPairRoundTrip(t *testing.T) {
+	priv, pub, err := GenerateKeyPair(2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	privKey, err := LoadPrivateKey(priv)
+	if err != nil {
+		t.Fatalf("LoadPrivateKey: %v", err)
+	}
+	pubKey, err := LoadPublicKey(pub)
+	if err != nil {
+		t.Fatalf("LoadPublicKey: %v", err)
+	}
+	if !privKey.PublicKey.Equal(pubKey) {
+		t.Error("public key doesn't match the private key")
+	}
+	if _, _, err := GenerateKeyPair(1024); err == nil {
+		t.Error("1024-bit keys should be refused")
+	}
+}
+
+func TestLoadPublicKeyRejectsGarbage(t *testing.T) {
+	for _, in := range []string{"", "not a key", "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----\n"} {
+		if _, err := LoadPublicKey([]byte(in)); err == nil {
+			t.Errorf("LoadPublicKey(%q) succeeded", in)
+		}
+	}
+}

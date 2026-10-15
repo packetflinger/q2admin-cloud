@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 )
 
 const (
@@ -61,65 +60,35 @@ func MD5Hash(input string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// Generate a private/public key pair of a certain bit length
-func GenerateKeys(bitlength int) bool {
-	if bitlength < 1024 {
-		return false
+// GenerateKeyPair makes an RSA key pair and returns it PEM-encoded: the
+// private key as PKCS#8 ("PRIVATE KEY", what openssl genpkey writes) and the
+// public key as PKIX ("PUBLIC KEY").
+func GenerateKeyPair(bitlength int) (private, public []byte, err error) {
+	if bitlength < 2048 {
+		return nil, nil, fmt.Errorf("key length %d is too short, use at least 2048", bitlength)
 	}
-	// make the actual keys
-	privatekey, err := rsa.GenerateKey(rand.Reader, bitlength)
+	key, err := rsa.GenerateKey(rand.Reader, bitlength)
 	if err != nil {
-		fmt.Printf("Cannot generate RSA key\n")
-		return false
+		return nil, nil, fmt.Errorf("generating RSA key: %v", err)
 	}
-	publickey := &privatekey.PublicKey
-
-	// dump to disk
-	var privBytes []byte = x509.MarshalPKCS1PrivateKey(privatekey)
-	privateKeyBlock := &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: privBytes,
-	}
-	privatePem, err := os.Create("private.pem")
+	privBytes, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
-		fmt.Printf("error when create private.pem: %s \n", err)
-		return false
+		return nil, nil, fmt.Errorf("encoding private key: %v", err)
 	}
-	err = pem.Encode(privatePem, privateKeyBlock)
+	pubBytes, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
 	if err != nil {
-		fmt.Printf("error when encode private pem: %s \n", err)
-		return false
+		return nil, nil, fmt.Errorf("encoding public key: %v", err)
 	}
-
-	// dump public key to disk
-	pubBytes, err := x509.MarshalPKIXPublicKey(publickey)
-	if err != nil {
-		fmt.Printf("error when dumping publickey: %s \n", err)
-		return false
-	}
-	publicKeyBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pubBytes,
-	}
-	publicPem, err := os.Create("public.pem")
-	if err != nil {
-		fmt.Printf("error when create public.pem: %s \n", err)
-		return false
-	}
-	err = pem.Encode(publicPem, publicKeyBlock)
-	if err != nil {
-		fmt.Printf("error when encode public pem: %s \n", err)
-		return false
-	}
-
-	return true
+	private = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
+	public = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes})
+	return private, public, nil
 }
 
 // Read an RSA private key into memory from the filesystem
 func LoadPrivateKey(keybytes []byte) (*rsa.PrivateKey, error) {
 	var err error
 	privPem, _ := pem.Decode(keybytes)
-	if privPem.Type != "PRIVATE KEY" {
+	if privPem == nil || privPem.Type != "PRIVATE KEY" {
 		return nil, fmt.Errorf("not a private key file")
 	}
 	var parsedKey interface{}
@@ -137,12 +106,19 @@ func LoadPrivateKey(keybytes []byte) (*rsa.PrivateKey, error) {
 // Read an RSA public key from the filesystem and get it ready to use
 func LoadPublicKey(pub []byte) (*rsa.PublicKey, error) {
 	pubPem, _ := pem.Decode(pub)
+	if pubPem == nil {
+		return nil, errors.New("no PEM data found")
+	}
 	if pubPem.Type == "PUBLIC KEY" {
 		public, err := x509.ParsePKIXPublicKey(pubPem.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("parsing PKIX key: %v", err)
 		}
-		return public.(*rsa.PublicKey), nil
+		rsaKey, ok := public.(*rsa.PublicKey)
+		if !ok {
+			return nil, errors.New("not an RSA public key")
+		}
+		return rsaKey, nil
 	}
 	if pubPem.Type == "RSA PUBLIC KEY" {
 		public, err := x509.ParsePKCS1PublicKey(pubPem.Bytes)

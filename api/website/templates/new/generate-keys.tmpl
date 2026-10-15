@@ -1,26 +1,82 @@
-{{ define "keygen" }}
-{{ template "header" .}}
+{{define "keygen"}}
+{{template "header" .}}
+{{$fe := .Frontend}}
+{{$base := printf "/sv/%s/%s" $fe.UUID $fe.Name}}
+<div class="q2a-page-head">
+	<div>
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item"><a href="{{$base}}#settings">{{$fe.Name}}</a></li><li class="breadcrumb-item active" aria-current="page">Keys</li></ol></nav>
+		<h1>Encryption keys</h1>
+	</div>
+</div>
 
-<h1 class="h3 mb-3">Encryption Keys Info and Generation</h1>
-<p>CloudAdmin uses public key encryption for frontend/backend authentication.
-Your frontend (Quake 2 server) will authenticate the backend (our CloudAdmin server) by using the backend's public key to decrypt a challenge.
-The backend will then authenticate your frontend by decrypting a challenge using your public key.</p>
-<p>
-Generally, it's a bad idea to to transmit a private key over the internet. You should be generating your frontend's key pair on your frontend.
-However, this isn't a high-risk system so you'll most likely be fine having this server generate a private key for you and display it for you to copy/paste on your frontend.
-Only the public key will be saved and associated with your frontend.
-</p>
+{{with .KeyPair}}
+<div class="alert alert-warning" role="alert">
+	<strong>Copy the private key now.</strong> It isn't stored anywhere, and this page won't show it again.
+</div>
+<div class="row g-3 mb-4">
+	<div class="col-12 col-xl-6">
+		<div class="q2a-panel h-100">
+			<div class="q2a-panel-head">
+				<span>Private key <span class="fw-normal text-body-secondary small">(goes on your Quake 2 server)</span></span>
+				<button class="btn btn-sm btn-outline-secondary" type="button" data-q2a-copy="#privkey"><i class="bi bi-clipboard me-1"></i>Copy</button>
+			</div>
+			<div class="q2a-panel-body">
+				<textarea id="privkey" class="form-control q2a-mono" rows="12" readonly aria-label="Private key">{{.Private}}</textarea>
+			</div>
+		</div>
+	</div>
+	<div class="col-12 col-xl-6">
+		<form class="q2a-panel h-100 d-flex flex-column" method="post" action="{{$base}}/manage-keys">
+			<div class="q2a-panel-head">
+				<span>Public key</span>
+				<button class="btn btn-sm btn-outline-secondary" type="button" data-q2a-copy="#pubkey"><i class="bi bi-clipboard me-1"></i>Copy</button>
+			</div>
+			<div class="q2a-panel-body flex-grow-1">
+				<textarea id="pubkey" name="keydata" class="form-control q2a-mono" rows="8" readonly aria-label="Public key">{{.Public}}</textarea>
+			</div>
+			<div class="q2a-panel-foot text-end">
+				<input type="hidden" name="action" value="SaveKey">
+				<button class="btn btn-primary" type="submit">Use this public key for {{$fe.Name}}</button>
+			</div>
+		</form>
+	</div>
+</div>
+{{end}}
 
-<h2>Why not use certificates?</h2>
-<p>Encryption keys don't expire, certificates do. Using certificate auth would require:</p>
-<ul>
-    <li>Maintaining a certificate authority</li>
-    <li>Maintaining a revocation list</li>
-    <li>Frontend owners actively manage certs</li>
-    <li>Create/manage renewal automation</li>
-<ui>
-
-
-
-{{ template "footer" . }}
-{{ end }}
+<div class="row g-3">
+	<div class="col-12 col-xl-6">
+		<div class="q2a-panel h-100">
+			<div class="q2a-panel-head">Generate a key pair here</div>
+			<div class="q2a-panel-body">
+				<p>Quick, but the private key travels to your browser over the network. Fine for most servers.</p>
+				<form method="post" action="{{$base}}/manage-keys">
+					<input type="hidden" name="action" value="Generate">
+					<button class="btn btn-primary" type="submit"><i class="bi bi-key me-1"></i>Generate 2048-bit key pair</button>
+				</form>
+			</div>
+		</div>
+	</div>
+	<div class="col-12 col-xl-6">
+		<div class="q2a-panel h-100">
+			<div class="q2a-panel-head">Or generate it on your server <span class="badge text-bg-success fw-normal">recommended</span></div>
+			<div class="q2a-panel-body">
+				<p class="mb-2">The private key never leaves the machine:</p>
+				<pre class="q2a-mono bg-body-tertiary p-2 rounded text-wrap mb-2">openssl genpkey -out private.pem -algorithm RSA -pkeyopt rsa_keygen_bits:2048
+openssl pkey -in private.pem -pubout -out public.pem</pre>
+				<p class="mb-0">Then paste <span class="q2a-mono">public.pem</span> into <a href="{{$base}}#settings">{{$fe.Name}}'s settings</a>.</p>
+			</div>
+		</div>
+	</div>
+	<div class="col-12">
+		<div class="q2a-panel">
+			<div class="q2a-panel-head">How the keys are used</div>
+			<div class="q2a-panel-body">
+				<p>When your Quake 2 server connects, CloudAdmin challenges it with data encrypted using this public key. Only the matching private key can decrypt it, which proves it's really your server.</p>
+				<p>If the connection is encrypted (the default), the public key also protects the session key used for the rest of the connection. Session keys rotate about every hour.</p>
+				<p class="mb-0">Keys don't expire, unlike certificates, so there's no certificate authority, revocation list or renewal to manage.</p>
+			</div>
+		</div>
+	</div>
+</div>
+{{template "footer" .}}
+{{end}}

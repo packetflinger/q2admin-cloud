@@ -442,3 +442,16 @@ func TestSearchPages(t *testing.T) {
 		t.Error("player record should show parsed userinfo")
 	}
 }
+
+func TestKeysPage(t *testing.T) {
+	data := samplePage()
+	data.KeyPair = &KeyPair{Private: "-----BEGIN PRIVATE KEY-----", Public: "-----BEGIN PUBLIC KEY-----"}
+	out := renderPage(t, "generate-keys.tmpl", "keygen", data)
+	if !strings.Contains(out, "Copy the private key now") || !strings.Contains(out, "BEGIN PRIVATE KEY") {
+		t.Error("generated key pair isn't shown")
+	}
+	data.KeyPair = nil
+	if out := renderPage(t, "generate-keys.tmpl", "keygen", data); strings.Contains(out, "Copy the private key now") {
+		t.Error("key warning shown with no key pair")
+	}
+}

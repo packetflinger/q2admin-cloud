@@ -20,7 +20,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"regexp"
 	"slices"
@@ -34,6 +33,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/packetflinger/libq2/flags"
 	"github.com/packetflinger/q2admind/api"
+	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/frontend"
 	"github.com/packetflinger/q2admind/util"
 
@@ -102,6 +102,7 @@ type PageResponse struct {
 	FormError     string            // why the submitted form was rejected
 	Notice        *Notice           // result of the action that redirected here
 	ServerNames   map[string]string // UUID -> name of the user's servers
+	KeyPair       *KeyPair          // just generated, for the keys page
 	Rule          *pb.Rule          // the rule to view/edit
 	Rules         []*pb.Rule        // a list of rules (srv level)
 	Player        *frontend.Player
@@ -1348,75 +1349,65 @@ func RuleListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ServerKeysHandler shows the key page for a frontend, generates a key pair
+// to show once (action=Generate), or saves a public key (action=SaveKey).
 func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
 		return
 	}
-
-	// handle saving public key
-	if r.PostFormValue("action") == "SaveKey" {
-		uuid := r.PostFormValue("uuid")
-		name := r.PostFormValue("srvname")
-		keydata := r.PostFormValue("keydata")
-		if uuid == "" || name == "" || keydata == "" {
-			fmt.Fprintln(w, "error 500 - bad form submission")
-			return
-		}
-		f, err := be.FindFrontend(uuid)
-		if err != nil {
-			log.Println(err)
-			fmt.Fprintln(w, "error 500 - bad frontend lookup")
-			return
-		}
-		f.Mu.Lock()
-		if f.Owner != user.Email {
-			f.Mu.Unlock()
-			fmt.Fprintln(w, "403 - permission denied")
-			return
-		}
-		f.PublicKeyData = strings.Trim(keydata, " \r\n\t")
-		keyData := f.PublicKeyData
-		f.Mu.Unlock()
-		dest := path.Join(be.config.ClientDirectory, name, "key")
-		err = os.WriteFile(dest, []byte(keyData), 0600)
-		if err != nil {
-			fmt.Fprintf(w, "error 500 - unable to write key file")
-			return
-		}
-		http.Redirect(w, r, path.Join("/sv", uuid, name), http.StatusSeeOther)
+	fe := ownedFrontend(w, r, user)
+	if fe == nil {
 		return
 	}
+	data := PageResponse{SessionUser: user, Frontend: fe}
+	data.Head.Title = "Keys | CloudAdmin"
+	data.NavHighlight.Servers = "active"
 
-	data := PageResponse{}
-	data.Head.Title = "Generate Encyption Key Pair | Q2Admin CloudAdmin"
-	data.Title = "Keys"
-	data.SessionUser = user
-
-	lookup := mux.Vars(r)["uuid"]
-	var owner *frontend.Frontend // whose Rules the page renders
-	for _, f := range be.UserFrontends(user.GetEmail()) {
-		f.Mu.Lock()
-		for _, r := range f.Rules {
-			if r.GetUuid() == lookup {
-				data.Rules = f.Rules
-				data.Rule = r
-				owner = f
-			}
+	switch r.PostFormValue("action") {
+	case "SaveKey":
+		keydata := strings.TrimSpace(r.PostFormValue("keydata"))
+		fe.Mu.Lock()
+		defer fe.Mu.Unlock()
+		back := path.Join("/sv", fe.UUID, fe.Name)
+		if _, err := crypto.LoadPublicKey([]byte(keydata)); err != nil {
+			http.Redirect(w, r, back+"?notice=badkey#settings", http.StatusSeeOther)
+			return
 		}
-		f.Mu.Unlock()
-	}
-
-	tmpl, e := parsePage("generate-keys.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = executeLocked(w, tmpl, "keygen", data, owner)
+		if _, err := db.Handle.Exec("UPDATE frontend SET public_key_data=? WHERE id=?", keydata, fe.ID); err != nil {
+			log.Printf("error saving public key for %q: %v\n", fe.Name, err)
+			http.Error(w, "500 - unable to save the key", http.StatusInternalServerError)
+			return
+		}
+		fe.PublicKeyData = keydata
+		http.Redirect(w, r, back+"?notice=key#settings", http.StatusSeeOther)
+		return
+	case "Generate":
+		priv, pub, err := crypto.GenerateKeyPair(2048)
 		if err != nil {
 			log.Println(err)
+			http.Error(w, "500 - key generation failed", http.StatusInternalServerError)
+			return
 		}
+		data.KeyPair = &KeyPair{Private: string(priv), Public: string(pub)}
+		w.Header().Set("Cache-Control", "no-store") // the private key is only ever shown here
 	}
+
+	tmpl, err := parsePage("generate-keys.tmpl")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := executeLocked(w, tmpl, "keygen", data, fe); err != nil {
+		log.Println(err)
+	}
+}
+
+// KeyPair is a freshly generated key pair, PEM-encoded. It's shown once and
+// never stored.
+type KeyPair struct {
+	Private, Public string
 }
 
 func RedirectToSignon(w http.ResponseWriter, r *http.Request) {

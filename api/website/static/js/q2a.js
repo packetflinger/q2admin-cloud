@@ -31,3 +31,17 @@ document.querySelectorAll("form[data-q2a-confirm]").forEach((form) => {
 		if (!confirm(form.dataset.q2aConfirm)) e.preventDefault();
 	});
 });
+
+// Buttons marked data-q2a-copy="#id" copy that field's text.
+document.querySelectorAll("[data-q2a-copy]").forEach((button) => {
+	button.addEventListener("click", async () => {
+		const field = document.querySelector(button.dataset.q2aCopy);
+		try {
+			await navigator.clipboard.writeText(field.value);
+		} catch (e) { // clipboard API needs https; fall back to selecting it
+			field.select();
+			document.execCommand("copy");
+		}
+		button.innerHTML = '<i class="bi bi-check2 me-1"></i>Copied';
+	});
+});
