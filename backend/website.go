@@ -8,15 +8,18 @@
 package backend
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -295,6 +298,30 @@ func (s *Backend) RunHTTPServer(ip string, port int, creds []*pb.OAuth, secret [
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
+// executeLocked renders a page while holding the given frontends' locks, then
+// writes it after unlocking so a slow client can't stall a game server. Pass
+// frontends in Frontends() order: their relative order never changes, which
+// keeps holding several at once deadlock-free.
+func executeLocked(w io.Writer, tmpl *template.Template, name string, data any, fes ...*frontend.Frontend) error {
+	var held []*frontend.Frontend
+	for _, f := range fes {
+		if f != nil && !slices.Contains(held, f) {
+			f.Mu.Lock()
+			held = append(held, f)
+		}
+	}
+	var buf bytes.Buffer
+	err := tmpl.ExecuteTemplate(&buf, name, data)
+	for _, f := range held {
+		f.Mu.Unlock()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = buf.WriteTo(w)
+	return err
+}
+
 // Dashboard handler
 //
 // This is the main landing page after authenticating
@@ -321,7 +348,7 @@ func WebsiteHandlerDashboard(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "dashboard", page)
+		err = executeLocked(w, tmpl, "dashboard", page, page.Frontends...)
 		if err != nil {
 			log.Println(err)
 		}
@@ -356,9 +383,11 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := PageResponse{}
+	fe.Mu.Lock()
 	data.Head.Title = fmt.Sprintf("%s | Q2Admin CloudAdmin", fe.Name)
-	data.Head.Keywords = ""
 	data.Title = fe.Name
+	fe.Mu.Unlock()
+	data.Head.Keywords = ""
 	data.SessionUser = user
 	data.Frontend = fe
 
@@ -372,7 +401,7 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "server-view", data)
+		err = executeLocked(w, tmpl, "server-view", data, fe)
 		if err != nil {
 			log.Println(err)
 		}
@@ -418,10 +447,12 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	var activeservers []ActiveServer
 	for _, s := range be.Frontends() {
+		s.Mu.Lock()
 		if s.Connected {
 			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
 			activeservers = append(activeservers, srv)
 		}
+		s.Mu.Unlock()
 	}
 
 	j, e := json.Marshal(activeservers)
@@ -520,12 +551,15 @@ func WebDelServer(w http.ResponseWriter, r *http.Request) {
 		be.Logf(LogLevelInfo, "deleting frontend: %v", err)
 		return
 	}
-	if fe.Owner != user.Email {
+	fe.Mu.Lock()
+	owner, name := fe.Owner, fe.Name
+	fe.Mu.Unlock()
+	if owner != user.Email {
 		fmt.Fprintf(w, "403 - not owner")
-		be.Logf(LogLevelInfo, "Non-owner %q attempt to delete %q", user.Email, fe.Name)
+		be.Logf(LogLevelInfo, "Non-owner %q attempt to delete %q", user.Email, name)
 		return
 	}
-	err = be.DeleteFrontend(fe.Name)
+	err = be.DeleteFrontend(name)
 	if err != nil {
 		fmt.Fprintf(w, "500 - error deleting frontend")
 		be.Logf(LogLevelInfo, "%s", err)
@@ -615,7 +649,7 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "my-servers", data)
+		err = executeLocked(w, tmpl, "my-servers", data, fes...)
 		if err != nil {
 			log.Println(err)
 		}
@@ -690,6 +724,8 @@ func ChangeUUIDHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "error 500 - error finding frontend")
 		return
 	}
+	f.Mu.Lock()
+	defer f.Mu.Unlock()
 	if f.Owner != user.Email {
 		fmt.Fprintln(w, "403 - unauthorized")
 		return
@@ -710,7 +746,9 @@ func ChangeUUIDHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	be.frontendsMu.Lock() // lookups match on UUID
 	f.UUID = newUUID
+	be.frontendsMu.Unlock()
 	if err = f.Materialize(); err != nil {
 		fmt.Fprintln(w, "error 500 - error saving frontend")
 		return
@@ -751,6 +789,8 @@ func WebEditServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	f.Mu.Lock()
+	defer f.Mu.Unlock()
 	if f.Owner != user.Email {
 		fmt.Fprintln(w, "403 - permission denied")
 		return
@@ -767,7 +807,9 @@ func WebEditServer(w http.ResponseWriter, r *http.Request) {
 	f.Enabled = enabled
 	f.AllowTeleport = teleport
 	f.AllowInvite = invite
+	be.frontendsMu.Lock() // lookups match on Name
 	f.Name = name
+	be.frontendsMu.Unlock()
 	f.DeleteProtect = protect
 
 	qry := "UPDATE frontend SET name=?, ip_address=?, port=?, enabled=?, allow_teleport=?, allow_invite=?, delete_protection=? WHERE id=?"
@@ -800,18 +842,21 @@ func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "invalid player id %q", playerId)
 		return
 	}
-	if pid < 0 || pid >= fe.MaxPlayers {
+	fe.Mu.Lock()
+	if pid < 0 || pid >= len(fe.Players) {
+		fe.Mu.Unlock()
 		be.Logf(LogLevelInfo, "invalid player id %q - not a valid client slot", playerId)
 		fmt.Fprintf(w, "invalid player id %q", playerId)
 		return
 	}
 	data := PageResponse{}
+	data.Player = &(fe.Players[pid])
+	fe.Mu.Unlock()
 	data.Head.Title = "Player View | Q2Admin CloudAdmin"
 	data.Head.Keywords = "Player"
 	data.Title = "Player View"
 	data.SessionUser = user
 	data.Frontend = fe
-	data.Player = &(fe.Players[pid])
 
 	tmpl, e := template.ParseFiles(
 		path.Join(be.config.GetWebRoot(), "templates", "new", "common-header.tmpl"),
@@ -822,7 +867,7 @@ func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "player-view", data)
+		err = executeLocked(w, tmpl, "player-view", data, fe)
 		if err != nil {
 			log.Println(err)
 		}
@@ -916,7 +961,9 @@ func ServerSearchHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "500 - blank search query")
 		return
 	}
+	f.Mu.Lock() // Search reads f.UUID
 	results, err := f.Search(r.Context(), q)
+	f.Mu.Unlock()
 	if err != nil {
 		fmt.Fprintf(w, "500 - search failed")
 		fmt.Printf("error searching %q on %q: %v\n", q, f.Name, err)
@@ -938,7 +985,7 @@ func ServerSearchHandler(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "search", data)
+		err = executeLocked(w, tmpl, "search", data, f)
 		if err != nil {
 			log.Println(err)
 		}
@@ -1013,14 +1060,17 @@ func RuleViewHandler(w http.ResponseWriter, r *http.Request) {
 	data.SessionUser = user
 
 	lookup := mux.Vars(r)["uuid"]
-	fes := be.UserFrontends(user.GetEmail())
-	for _, f := range fes {
+	var owner *frontend.Frontend // whose Rules the page renders
+	for _, f := range be.UserFrontends(user.GetEmail()) {
+		f.Mu.Lock()
 		for _, r := range f.Rules {
 			if r.GetUuid() == lookup {
 				data.Rules = f.Rules
 				data.Rule = r
+				owner = f
 			}
 		}
+		f.Mu.Unlock()
 	}
 
 	tmpl, e := template.ParseFiles(
@@ -1031,7 +1081,7 @@ func RuleViewHandler(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "rule", data)
+		err = executeLocked(w, tmpl, "rule", data, owner)
 		if err != nil {
 			log.Println(err)
 		}
@@ -1052,12 +1102,14 @@ func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
 	lookup := mux.Vars(r)["uuid"]
 	//fes := be.UserFrontends(user.GetEmail())
 	for _, f := range be.Frontends() {
+		f.Mu.Lock()
 		for j, r := range f.Rules {
 			if r.GetUuid() == lookup {
 				data.Frontend = f
 				data.Rule = f.Rules[j]
 			}
 		}
+		f.Mu.Unlock()
 	}
 
 	tmpl, e := template.ParseFiles(
@@ -1068,7 +1120,7 @@ func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "rule-edit", data)
+		err = executeLocked(w, tmpl, "rule-edit", data, data.Frontend)
 		if err != nil {
 			log.Println(err)
 		}
@@ -1115,9 +1167,13 @@ func RuleListHandler(w http.ResponseWriter, r *http.Request) {
 	lookup := mux.Vars(r)["ServerUUID"]
 	fes := be.UserFrontends(user.GetEmail())
 	for _, f := range fes {
+		f.Mu.Lock()
 		if f.UUID == lookup {
 			data.Frontend = f
 			data.Frontend.Rules = SortRules(data.Frontend.Rules)
+		}
+		f.Mu.Unlock()
+		if data.Frontend != nil {
 			break
 		}
 	}
@@ -1130,7 +1186,7 @@ func RuleListHandler(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "rule-list", data)
+		err = executeLocked(w, tmpl, "rule-list", data, data.Frontend)
 		if err != nil {
 			log.Println(err)
 		}
@@ -1159,13 +1215,17 @@ func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "error 500 - bad frontend lookup")
 			return
 		}
+		f.Mu.Lock()
 		if f.Owner != user.Email {
+			f.Mu.Unlock()
 			fmt.Fprintln(w, "403 - permission denied")
 			return
 		}
 		f.PublicKeyData = strings.Trim(keydata, " \r\n\t")
+		keyData := f.PublicKeyData
+		f.Mu.Unlock()
 		dest := path.Join(be.config.ClientDirectory, name, "key")
-		err = os.WriteFile(dest, []byte(f.PublicKeyData), 0600)
+		err = os.WriteFile(dest, []byte(keyData), 0600)
 		if err != nil {
 			fmt.Fprintf(w, "error 500 - unable to write key file")
 			return
@@ -1180,14 +1240,17 @@ func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
 	data.SessionUser = user
 
 	lookup := mux.Vars(r)["uuid"]
-	fes := be.UserFrontends(user.GetEmail())
-	for _, f := range fes {
+	var owner *frontend.Frontend // whose Rules the page renders
+	for _, f := range be.UserFrontends(user.GetEmail()) {
+		f.Mu.Lock()
 		for _, r := range f.Rules {
 			if r.GetUuid() == lookup {
 				data.Rules = f.Rules
 				data.Rule = r
+				owner = f
 			}
 		}
+		f.Mu.Unlock()
 	}
 
 	tmpl, e := template.ParseFiles(
@@ -1198,7 +1261,7 @@ func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
 	if e != nil {
 		log.Println(e)
 	} else {
-		err = tmpl.ExecuteTemplate(w, "keygen", data)
+		err = executeLocked(w, tmpl, "keygen", data, owner)
 		if err != nil {
 			log.Println(err)
 		}

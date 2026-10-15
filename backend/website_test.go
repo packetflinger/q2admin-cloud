@@ -1,7 +1,11 @@
 package backend
 
 import (
+	"bytes"
+	"html/template"
 	"testing"
+
+	"github.com/packetflinger/q2admind/frontend"
 
 	"github.com/golang-jwt/jwt"
 	pb "github.com/packetflinger/q2admind/proto"
@@ -68,5 +72,28 @@ func TestValidateSessionToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 		})
+	}
+}
+
+func TestExecuteLocked(t *testing.T) {
+	fe := &frontend.Frontend{Name: "fe1"}
+	held := func() bool { // reports whether fe is locked right now
+		if fe.Mu.TryLock() {
+			fe.Mu.Unlock()
+			return false
+		}
+		return true
+	}
+	tmpl := template.Must(template.New("t").Funcs(template.FuncMap{"held": held}).Parse(`{{define "page"}}{{.Name}} {{held}}{{end}}`))
+	var out bytes.Buffer
+	// fe passed twice must not self-deadlock
+	if err := executeLocked(&out, tmpl, "page", fe, fe, fe); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != "fe1 true" {
+		t.Errorf("output = %q, want %q", out.String(), "fe1 true")
+	}
+	if held() {
+		t.Error("frontend still locked after render")
 	}
 }
