@@ -7,10 +7,13 @@
 			<stop offset="1" stop-color="#2a5a14"/>
 		</linearGradient>
 		<!-- the ring: a circle minus a slightly higher, smaller one, so it's
-		     thickest at the bottom and tapers to points where they cross -->
+		     thickest at the bottom and tapers to points where they cross.
+		     Measured from the original: the tips sit near the top at about
+		     27% and 73% across, and the bottom crosses the II just under its
+		     top bar (50-60% down). -->
 		<mask id="ring">
-			<circle cx="50" cy="40" r="38" fill="#fff"/>
-			<circle cx="50" cy="35" r="34" fill="#000"/>
+			<circle cx="50" cy="26" r="34" fill="#fff"/>
+			<circle cx="50" cy="20.6" r="29.4" fill="#000"/>
 		</mask>
 	</defs>
 	<rect width="100" height="100" fill="url(#metal)" mask="url(#ring)"/>
