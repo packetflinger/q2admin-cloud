@@ -24,6 +24,7 @@ type WebRoutes struct {
 	ServerView       string
 	ServerEdit       string
 	ServerChangeUUID string
+	ServerMap        string
 	Terms            string
 	PlayerView       string
 	ServerConsole    string
@@ -61,6 +62,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.ServerChangeUUID = "/sv/{ServerUUID}/{ServerName}/change-uuid"
 	Routes.ServerView = "/sv/{ServerUUID}/{ServerName}"
 	Routes.ServerRemove = "/sv/{ServerUUID}/{ServerName}/delete"
+	Routes.ServerMap = "/sv/{ServerUUID}/{ServerName}/map"
 
 	Routes.ServerAdd = "/add-server"
 	Routes.ConnectedServers = "/api/GetConnectedServers"
@@ -92,7 +94,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.AuthDiscord, ProcessDiscordLogin)
 	r.HandleFunc(Routes.AuthGoogle, ProcessGoogleLogin)
 	r.HandleFunc(Routes.Dashboard, WebsiteHandlerDashboard)
-	r.HandleFunc(Routes.ServerRemove, WebDelServer)
+	r.HandleFunc(Routes.ServerRemove, WebDelServer).Methods("POST")
 	r.HandleFunc(Routes.ServerView, WebsiteHandlerServerView)
 	r.HandleFunc(Routes.ConnectedServers, WebsiteAPIGetConnectedServers)
 	r.HandleFunc(Routes.Groups, GroupsHandler)
@@ -100,7 +102,8 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.Servers, ServersHandler)
 	r.HandleFunc(Routes.Terms, TermsHandler)
 	r.HandleFunc(Routes.ServerEdit, WebEditServer).Methods("POST")
-	r.HandleFunc(Routes.ServerChangeUUID, ChangeUUIDHandler)
+	r.HandleFunc(Routes.ServerChangeUUID, ChangeUUIDHandler).Methods("POST")
+	r.HandleFunc(Routes.ServerMap, ChangeMapHandler).Methods("POST")
 	r.HandleFunc(Routes.PlayerView, PlayerViewHandler)
 	r.HandleFunc(Routes.ServerConsole, ServerConsoleHandler)
 	r.HandleFunc(Routes.Search, SearchHandler)

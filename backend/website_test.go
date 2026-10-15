@@ -238,3 +238,40 @@ func TestAddServerFormShowsError(t *testing.T) {
 		t.Error("form error or submitted value missing from re-rendered form")
 	}
 }
+
+func TestMapNameRE(t *testing.T) {
+	for _, ok := range []string{"q2dm1", "tltf", "dm/q2rdm2", "my_map-2"} {
+		if !mapNameRE.MatchString(ok) {
+			t.Errorf("%q should be allowed", ok)
+		}
+	}
+	// these would inject extra console commands or are empty
+	for _, bad := range []string{"", "q2dm1;quit", "q2dm1\nquit", "q2dm1 quit", `"q2dm1"`} {
+		if mapNameRE.MatchString(bad) {
+			t.Errorf("%q should be rejected", bad)
+		}
+	}
+}
+
+func TestServerViewStates(t *testing.T) {
+	data := samplePage()
+	out := renderPage(t, "server-view.tmpl", "server-view", data)
+	for _, want := range []string{"Change map", ">alpha</a>", "192.0.2.1", "test ban"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("online server page is missing %q", want)
+		}
+	}
+
+	data.Frontend.Connected = false
+	data.FormError = "port must be a number from 1 to 65535"
+	data.Notice = notices["saved"]
+	out = renderPage(t, "server-view.tmpl", "server-view", data)
+	for _, want := range []string{"isn't connected to CloudAdmin", data.FormError, notices["saved"].Text} {
+		if !strings.Contains(out, want) {
+			t.Errorf("offline server page is missing %q", want)
+		}
+	}
+	if strings.Contains(out, "Change map") {
+		t.Error("offline server page shouldn't offer a map change")
+	}
+}

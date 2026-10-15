@@ -14,3 +14,13 @@
 		showIcon();
 	});
 })();
+
+// Tabs marked data-q2a-remember open the tab named in the URL hash and keep
+// the hash updated, so reloads and redirects land on the same tab.
+document.querySelectorAll("[data-q2a-remember]").forEach((tabs) => {
+	const fromHash = tabs.querySelector(`[data-bs-target="${CSS.escape(location.hash)}"]`);
+	if (location.hash && fromHash) bootstrap.Tab.getOrCreateInstance(fromHash).show();
+	tabs.addEventListener("shown.bs.tab", (e) => {
+		history.replaceState(null, "", e.target.dataset.bsTarget);
+	});
+});

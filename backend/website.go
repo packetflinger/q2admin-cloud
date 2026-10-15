@@ -55,6 +55,7 @@ var (
 		"datetime":   util.TimeDateString,
 		"online":     playersOnline,
 		"summarize":  summarize,
+		"join":       strings.Join,
 	}
 )
 
@@ -98,6 +99,7 @@ type PageResponse struct {
 	PlayerDBInfo  PlayerDatabaseInfo
 	Form          url.Values // submitted form values, to refill a form after an error
 	FormError     string     // why the submitted form was rejected
+	Notice        *Notice    // result of the action that redirected here
 	Rule          *pb.Rule   // the rule to view/edit
 	Rules         []*pb.Rule // a list of rules (srv level)
 	Player        *frontend.Player
@@ -438,40 +440,88 @@ func dashboardPage(user *pb.User) (PageResponse, error) {
 
 // Displays info page for a particular client
 func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["ServerUUID"]
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
 		return
 	}
-
-	fe, err := be.FindFrontend(uuid)
+	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
 	if err != nil {
-		log.Println("invalid server id:", uuid)
+		http.NotFound(w, r)
 		return
 	}
+	renderServerView(w, user, fe, notices[r.URL.Query().Get("notice")], "")
+}
 
-	data := PageResponse{}
+// renderServerView shows fe's page, optionally with a notice from a previous
+// action or the reason a settings change was rejected.
+func renderServerView(w http.ResponseWriter, user *pb.User, fe *frontend.Frontend, notice *Notice, formError string) {
+	data := PageResponse{SessionUser: user, Frontend: fe, Notice: notice, FormError: formError}
 	fe.Mu.Lock()
-	data.Head.Title = fmt.Sprintf("%s | Q2Admin CloudAdmin", fe.Name)
-	data.Title = fe.Name
+	data.Head.Title = fe.Name + " | CloudAdmin"
 	fe.Mu.Unlock()
-	data.Head.Keywords = ""
-	data.SessionUser = user
-	data.Frontend = fe
-
 	data.NavHighlight.Servers = "active"
-	tmpl, e := parsePage("server-view.tmpl")
-
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = executeLocked(w, tmpl, "server-view", data, fe)
-		if err != nil {
-			log.Println(err)
-		}
+	tmpl, err := parsePage("server-view.tmpl")
+	if err != nil {
+		log.Println(err)
+		return
 	}
+	if err := executeLocked(w, tmpl, "server-view", data, fe); err != nil {
+		log.Println(err)
+	}
+}
+
+// Notice is a one-line status message shown at the top of a page after an
+// action redirects back to it.
+type Notice struct {
+	Class string // bootstrap alert color: success, warning, danger
+	Text  string
+}
+
+// notices are looked up by the "notice" query parameter, so pages only ever
+// show these fixed messages.
+var notices = map[string]*Notice{
+	"map":     {"success", "Map change sent. The current map updates once the server reports it."},
+	"badmap":  {"danger", "Map names can only contain letters, numbers, dashes, underscores and slashes."},
+	"offline": {"warning", "That needs the server to be connected."},
+	"saved":   {"success", "Settings saved."},
+	"uuid":    {"success", "New UUID generated. Update the server's q2admin config to use it."},
+	"key":     {"success", "Public key saved."},
+	"badkey":  {"danger", "That isn't a valid PEM-encoded RSA public key."},
+}
+
+var mapNameRE = regexp.MustCompile(`^[A-Za-z0-9_/-]{1,64}$`)
+
+// ChangeMapHandler tells a connected frontend to switch maps.
+func ChangeMapHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	mapname := strings.TrimSpace(r.PostFormValue("map"))
+	fe.Mu.Lock()
+	defer fe.Mu.Unlock()
+	if fe.Owner != user.Email {
+		http.Error(w, "403 - permission denied", http.StatusForbidden)
+		return
+	}
+	notice := "map"
+	switch {
+	case !mapNameRE.MatchString(mapname): // it's sent as a console command
+		notice = "badmap"
+	case !(fe.Connected && fe.Trusted):
+		notice = "offline"
+	default:
+		ConsoleCommand(fe, "gamemap "+mapname)
+		SendMessages(fe)
+	}
+	http.Redirect(w, r, path.Join("/sv", fe.UUID, fe.Name)+"?notice="+notice, http.StatusSeeOther)
 }
 
 // the "index" handler
@@ -584,30 +634,31 @@ func WebAddServer(w http.ResponseWriter, r *http.Request) {
 
 // Handler to delete a user's frontend
 func WebDelServer(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["ServerUUID"]
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe, err := be.FindFrontend(uuid)
+	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
 	if err != nil {
-		fmt.Fprintf(w, "500 - unable to locate frontend %q", uuid)
-		be.Logf(LogLevelInfo, "deleting frontend: %v", err)
+		http.NotFound(w, r)
 		return
 	}
 	fe.Mu.Lock()
-	owner, name := fe.Owner, fe.Name
+	owner, name, protected := fe.Owner, fe.Name, fe.DeleteProtect
 	fe.Mu.Unlock()
 	if owner != user.Email {
-		fmt.Fprintf(w, "403 - not owner")
+		http.Error(w, "403 - not owner", http.StatusForbidden)
 		be.Logf(LogLevelInfo, "Non-owner %q attempt to delete %q", user.Email, name)
+		return
+	}
+	if protected {
+		http.Error(w, "403 - delete protection is on, turn it off in settings first", http.StatusForbidden)
 		return
 	}
 	err = be.DeleteFrontend(name)
 	if err != nil {
-		fmt.Fprintf(w, "500 - error deleting frontend")
+		http.Error(w, "500 - error deleting frontend", http.StatusInternalServerError)
 		be.Logf(LogLevelInfo, "%s", err)
 		return
 	}
@@ -759,39 +810,32 @@ func ChangeUUIDHandler(w http.ResponseWriter, r *http.Request) {
 	currentUUID := mux.Vars(r)["ServerUUID"]
 	f, err := be.FindFrontend(currentUUID)
 	if err != nil {
-		fmt.Fprintln(w, "error 500 - error finding frontend")
+		http.NotFound(w, r)
 		return
 	}
 	f.Mu.Lock()
 	defer f.Mu.Unlock()
 	if f.Owner != user.Email {
-		fmt.Fprintln(w, "403 - unauthorized")
+		http.Error(w, "403 - unauthorized", http.StatusForbidden)
 		return
 	}
 	newUUID := uuid.NewString()
-	qry := `UPDATE frontend SET uuid = ? WHERE uuid = ?`
-	res, err := db.Handle.Exec(qry, newUUID, currentUUID)
+	res, err := db.Handle.Exec(`UPDATE frontend SET uuid = ? WHERE uuid = ?`, newUUID, currentUUID)
+	if err == nil {
+		var n int64
+		if n, err = res.RowsAffected(); err == nil && n != 1 {
+			err = fmt.Errorf("%d rows affected", n)
+		}
+	}
 	if err != nil {
-		ar, err := res.RowsAffected()
-		if err != nil {
-			fmt.Fprintln(w, "500 - db update failed")
-			log.Println("Error updating UUID:", err)
-			return
-		}
-		if ar != 1 {
-			fmt.Fprintln(w, "500 - db update failed")
-			log.Println("Error updating UUID: affected row != 1")
-			return
-		}
+		http.Error(w, "500 - db update failed", http.StatusInternalServerError)
+		log.Println("Error updating UUID:", err)
+		return
 	}
 	be.frontendsMu.Lock() // lookups match on UUID
 	f.UUID = newUUID
 	be.frontendsMu.Unlock()
-	if err = f.Materialize(); err != nil {
-		fmt.Fprintln(w, "error 500 - error saving frontend")
-		return
-	}
-	http.Redirect(w, r, path.Join("/sv", f.UUID, f.Name), http.StatusSeeOther)
+	http.Redirect(w, r, path.Join("/sv", f.UUID, f.Name)+"?notice=uuid#settings", http.StatusSeeOther)
 }
 
 func WebEditServer(w http.ResponseWriter, r *http.Request) {
@@ -800,64 +844,50 @@ func WebEditServer(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	uuid := r.PostFormValue("uuid")
-	if uuid == "" {
-		fmt.Fprintln(w, "error 500 - bad form submission")
+	f, err := be.FindFrontend(r.PostFormValue("uuid"))
+	if err != nil {
+		http.NotFound(w, r)
 		return
 	}
-	name := r.PostFormValue("servername")
-	if name == "" {
-		fmt.Fprintln(w, "error 500 - bad form submission")
+	name, port, err := validateNewServer(r.PostFormValue("servername"), r.PostFormValue("serveraddr"), r.PostFormValue("serverport"))
+	if err == nil {
+		if other, dupe := be.FindFrontendByName(name); dupe == nil && other != f {
+			err = fmt.Errorf("a server named %q already exists", name)
+		}
+	}
+	if err != nil {
+		renderServerView(w, user, f, nil, err.Error())
 		return
 	}
-	name = strings.Trim(strings.ReplaceAll(name, " ", "-"), " \n\r\t")
-	addr := r.PostFormValue("serveraddr")
-	if addr == "" {
-		fmt.Fprintln(w, "500 - empty frontend address")
-		return
-	}
+	addr := strings.TrimSpace(r.PostFormValue("serveraddr"))
 	enabled := r.PostFormValue("switchenabled") == "on"
 	teleport := r.PostFormValue("switchteleport") == "on"
 	invite := r.PostFormValue("switchinvite") == "on"
 	protect := r.PostFormValue("switchprotect") == "on"
-	f, err := be.FindFrontend(uuid)
-	if err != nil {
-		log.Println(err)
-		fmt.Fprintln(w, "error 500 - bad frontend lookup")
-		return
-	}
 
 	f.Mu.Lock()
 	defer f.Mu.Unlock()
 	if f.Owner != user.Email {
-		fmt.Fprintln(w, "403 - permission denied")
+		http.Error(w, "403 - permission denied", http.StatusForbidden)
 		return
 	}
-	tokens := strings.Split(addr, ":")
-	if len(tokens) == 2 {
-		f.IPAddress = tokens[0]
-		port, err := strconv.Atoi(tokens[1])
-		if err != nil {
-			port = 27910
-		}
-		f.Port = port
-	}
-	f.Enabled = enabled
-	f.AllowTeleport = teleport
-	f.AllowInvite = invite
-	be.frontendsMu.Lock() // lookups match on Name
-	f.Name = name
-	be.frontendsMu.Unlock()
-	f.DeleteProtect = protect
-
+	// save first so memory doesn't diverge from the database on failure
 	qry := "UPDATE frontend SET name=?, ip_address=?, port=?, enabled=?, allow_teleport=?, allow_invite=?, delete_protection=? WHERE id=?"
-	_, err = db.Handle.Exec(qry, f.Name, f.IPAddress, f.Port, f.Enabled, f.AllowTeleport, f.AllowInvite, f.DeleteProtect, f.ID)
-	if err != nil {
-		fmt.Fprintf(w, "500 - error updating frontend in database")
+	if _, err = db.Handle.Exec(qry, name, addr, port, enabled, teleport, invite, protect, f.ID); err != nil {
+		http.Error(w, "500 - error updating frontend in database", http.StatusInternalServerError)
 		log.Printf("error updating frontend %q: %v\n", f.Name, err)
 		return
 	}
-	http.Redirect(w, r, path.Join("/sv", uuid, name), http.StatusSeeOther)
+	f.IPAddress = addr
+	f.Port = port
+	f.Enabled = enabled
+	f.AllowTeleport = teleport
+	f.AllowInvite = invite
+	f.DeleteProtect = protect
+	be.frontendsMu.Lock() // lookups match on Name
+	f.Name = name
+	be.frontendsMu.Unlock()
+	http.Redirect(w, r, path.Join("/sv", f.UUID, name)+"?notice=saved#settings", http.StatusSeeOther)
 }
 
 func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {

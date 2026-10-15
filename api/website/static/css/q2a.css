@@ -209,3 +209,8 @@ a:hover { color: var(--q2a-accent-hover); }
 
 .q2a-mono { font-family: var(--bs-font-monospace); font-size: .875em; }
 .q2a-empty { color: var(--q2a-muted-label); text-align: center; padding: 2rem 1rem; }
+.min-w-0 { min-width: 0; }
+
+/* Danger zone */
+.q2a-panel.q2a-danger { border-color: rgba(220, 53, 69, .5); }
+.q2a-danger > .q2a-panel-head { color: var(--bs-danger); }

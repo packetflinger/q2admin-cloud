@@ -1,324 +1,270 @@
 {{define "server-view"}}
 {{template "header" .}}
+{{$fe := .Frontend}}
+{{$up := and $fe.Connected $fe.Trusted}}
+{{$base := printf "/sv/%s/%s" $fe.UUID $fe.Name}}
+<div class="q2a-page-head">
+	<div class="min-w-0">
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item active" aria-current="page">{{$fe.Name}}</li></ol></nav>
+		<h1 class="text-truncate">
+			<span class="q2a-dot {{if $up}}online{{end}} me-1"></span>
+			{{$fe.Name}}
+			{{if $up}}<span class="badge text-bg-success fs-6 align-middle">online</span>{{else}}<span class="badge text-bg-secondary fs-6 align-middle">offline</span>{{end}}
+			{{if not $fe.Enabled}}<span class="badge text-bg-warning fs-6 align-middle">disabled</span>{{end}}
+		</h1>
+	</div>
+	<div class="d-flex flex-wrap gap-2">
+		<a class="btn btn-sm btn-outline-secondary" href="quake2://{{$fe.IPAddress}}:{{$fe.Port}}"><i class="bi bi-controller me-1"></i>Join</a>
+		{{if $up}}<a class="btn btn-sm btn-primary" href="{{$base}}/console"><i class="bi bi-terminal me-1"></i>Console</a>{{end}}
+	</div>
+</div>
 
-		<h1 class="h3 mb-3">{{.Title}}</h1>
-		<div class="row">
-			<div>
-				<form method="get" action="/search/{{.Frontend.UUID}}">
-					<div class="input-group mb-3">
-						<input type="text" name="q" class="form-control" placeholder="Search IPs, player names, more" aria-label="Example text with button addon" aria-describedby="searchbutton">
-						<button class="btn btn-primary" type="submit" id="searchbutton">Search</button>
+{{with .Notice}}<div class="alert alert-{{.Class}} alert-dismissible fade show" role="status">{{.Text}}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{{end}}
+{{if .FormError}}<div class="alert alert-danger" role="alert">Settings not saved: {{.FormError}}</div>{{end}}
+
+<form class="mb-3" method="get" action="/search/{{$fe.UUID}}" role="search">
+	<div class="input-group">
+		<span class="input-group-text"><i class="bi bi-search"></i></span>
+		<input type="search" name="q" class="form-control" placeholder="Search this server's players: name, IP, hostname, userinfo" aria-label="Search players">
+		<button class="btn btn-outline-secondary" type="submit">Search</button>
+	</div>
+</form>
+
+<ul class="nav nav-tabs flex-nowrap overflow-x-auto overflow-y-hidden" role="tablist" data-q2a-remember>
+	<li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">Overview</button></li>
+	<li class="nav-item" role="presentation"><button class="nav-link text-nowrap" data-bs-toggle="tab" data-bs-target="#players" type="button" role="tab" aria-controls="players" aria-selected="false">Players {{if $up}}<span class="badge text-bg-secondary">{{online $fe}}</span>{{end}}</button></li>
+	<li class="nav-item" role="presentation"><button class="nav-link text-nowrap" data-bs-toggle="tab" data-bs-target="#rules" type="button" role="tab" aria-controls="rules" aria-selected="false">Rules <span class="badge text-bg-secondary">{{len $fe.Rules}}</span></button></li>
+	<li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false">Settings</button></li>
+</ul>
+
+<div class="tab-content pt-3">
+	<!-- Overview -->
+	<div class="tab-pane fade show active" id="overview" role="tabpanel" tabindex="0">
+		{{if $up}}
+		<div class="row g-3">
+			<div class="col-12 col-xl-6">
+				<div class="q2a-panel h-100">
+					<div class="q2a-panel-head">Status</div>
+					<div class="q2a-panel-body">
+						<dl class="q2a-kv">
+							<dt>Peer</dt><dd class="q2a-mono">{{$fe.Connection.RemoteAddr.String}} {{if $fe.Encrypted}}<i class="bi bi-lock-fill text-success" title="encrypted"></i><span class="visually-hidden">encrypted</span>{{end}}</dd>
+							<dt>Connected</dt><dd>{{ago $fe.ConnectTime}}</dd>
+							<dt>Map</dt><dd class="q2a-mono">{{$fe.CurrentMap}}{{if $fe.PreviousMap}} <span class="text-body-secondary">(previous: {{$fe.PreviousMap}})</span>{{end}}</dd>
+							<dt>Players</dt><dd>{{online $fe}} / {{$fe.MaxPlayers}}</dd>
+							<dt>q2admin</dt><dd>version {{$fe.Version}}</dd>
+							<dt>DM flags</dt><dd class="small">{{with index $fe.ServerVars "dmflags"}}{{dmflags .}}{{else}}-{{end}}</dd>
+							<dt>Teleports</dt><dd>{{$fe.TeleportCount}}</dd>
+							<dt>Invites</dt><dd>{{$fe.Invites.UseCount}}</dd>
+						</dl>
 					</div>
-				</form>
+				</div>
 			</div>
-		</div>
-
-		<div class="row">
-			<div class="col-12 col-sm-4 gy-3">
-				<div class="card">
-					<div class="card-header">
-						<h4>Settings <a href="#" data-bs-toggle="modal" data-bs-target="#edit-server-modal"><i class="float-end" data-feather="edit-2"></i></a></h4>
-					</div>
-					<div class="card-body">
-						<table class="table">
-							<tr><td>ID:</td><td><span class="font-monospace">{{.Frontend.UUID}}</span> <a href="#" data-bs-toggle="modal" data-bs-target="#changeuuid"><i data-feather="refresh-cw"></i></a></td></tr>
-							<tr><td>Address:</td><td><a href="quake2://{{.Frontend.IPAddress}}:{{.Frontend.Port}}">{{.Frontend.IPAddress}}:{{.Frontend.Port}}</a></td></tr>
-							<tr><td></td><td>
-								<div>{{ .Frontend.Enabled | yesnoemoji }} Enabled</div>
-								<div>{{ .Frontend.AllowTeleport | yesnoemoji }} Teleport Allowed</div>
-								<div>{{ .Frontend.AllowInvite | yesnoemoji }} Invite Allowed</div>
-							</td></tr>
+			<div class="col-12 col-xl-6">
+				<div class="q2a-panel mb-3">
+					<div class="q2a-panel-head">Change map</div>
+					<form class="q2a-panel-body" method="post" action="{{$base}}/map">
+						<div class="input-group">
+							<input type="text" class="form-control q2a-mono" name="map" placeholder="q2dm1" required pattern="[A-Za-z0-9_/\-]{1,64}" aria-label="Map name">
+							<button class="btn btn-primary" type="submit">Change</button>
+						</div>
+					</form>
+				</div>
+				<div class="q2a-panel">
+					<div class="q2a-panel-head">Server variables</div>
+					{{if $fe.ServerVars}}
+					<div class="table-responsive">
+						<table class="table table-sm">
+							<tbody>
+							{{range $k, $v := $fe.ServerVars}}
+								<tr><th class="fw-normal text-body-secondary">{{$k}}</th><td class="q2a-mono text-break">{{$v}}</td></tr>
+							{{end}}
+							</tbody>
 						</table>
 					</div>
-				</div>
-			</div>
-
-			<div class="col-12 col-sm-4 gy-3">
-				<div class="card">
-					<div class="card-header"><h4>Keys <a href="#" data-bs-toggle="modal" data-bs-target="#key-explain-modal"><i class="float-end" data-feather="help-circle"></i></a></h4></div>
-					<div class="card-body">
-						{{ if .Frontend.PublicKeyData }}<div><a href="#" data-bs-toggle="modal" data-bs-target="#publickey">View/Edit Public Key</a></div>
-						{{ else }}<div><a href="#" data-bs-toggle="modal" data-bs-target="#publickey">Add Public Key</a></div>{{ end }}
-						<div><a href="/sv/{{ .Frontend.UUID }}/{{ .Frontend.Name }}/generate-keys">Generate Key Pair</a></div>
-					</div>
-				</div>
-			</div>
-{{if .Frontend.Connected}}
-			<div class="col-12 col-sm-4 gy-3">
-				<div class="card">
-					<div class="card-header">
-						<h4>Frontend Status</h4>
-					</div>
-					<div class="card-body">
-						<table class="table">
-							<tr><td>Peer Address: </td><td><span class="font-monospace">{{.Frontend.Connection.RemoteAddr.String}}</span> {{if .Frontend.Encrypted}}<i data-feather="lock"></i>{{end}}</td></tr>
-							<tr><td>Last connected: </td><td>{{.Frontend.ConnectTime | ago}}</td></tr>
-							<tr><td>Flags: </td><td>{{ index .Frontend.ServerVars "dmflags" | dmflags}}</td></tr>
-							<tr><td>Current Map: </td><td><span class="font-monospace">{{ .Frontend.CurrentMap }}</span></td></tr>
-							<tr><td>Teleports: </td><td>{{ .Frontend.TeleportCount }}</td></tr>
-							<tr><td>Invites: </td><td>{{ .Frontend.Invites.UseCount }}</td></tr>
-						</table>
-					</div>
-				</div>
-			</div>
-			<div class="col-12 col-sm-4 gy-3">
-				<div class="card">
-					<div class="card-header"><h4>Current Players [{{ .Frontend.PlayerCount}}/{{ .Frontend.MaxPlayers}}]</h4></div>
-					<div class="card-body">
-					{{ if .Frontend.PlayerCount}}
-					  {{ range $index, $val := .Frontend.Players}}
-					    {{ if .IP }}
-						<p><a href="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/player/{{$index}}">{{ $val.Name }}</a> [{{$val.IP}}]</p>
-					    {{ end }}
-					  {{ end }}
-					{{ else }}
-					  <p>none</p>
-					{{ end }}
-					</div>
-				</div>
-			</div>
-			<div class="col-12 col-sm-4 gy-3">
-				<div class="card">
-					<div class="card-header"><h4>Server Vars</h4></div>
-					<div class="card-body">
-{{ range $key, $value := .Frontend.ServerVars }}
-						<div class="row"><div class="col"><strong>{{ $key }}</strong>:</div><div class="col">{{ $value }}</div></div>
-{{ end }}
-					</div>
-				</div>
-			</div>
-			<div class="col-12 col-sm-4 gy-3">
-				<div class="card">
-					<div class="card-header"><h4>Actions</h4></div>
-					<div class="card-body">
-						<div><i data-feather="command"></i> <a href="#" data-bs-toggle="modal" data-bs-target="#runcmd">Run a command</a></div>
-						<div><i data-feather="map"></i> <a href="#">Change the map</a> [{{ .Frontend.CurrentMap}}]</div>
-						<div><i data-feather="terminal"></i> <a href="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/console">Console</a></div>
-					</div>
-				</div>
-			</div>
-{{else}}
-			<div class="col gy-3">
-				<div class="card">
-					<div class="card-header">
-						Quake 2 server not connected
-					</div>
-				</div>
-			</div>
-{{end}}
-			<div class="col-12 col-sm-4 gy-3">
-				<div class="card">
-					<div class="card-header"><h4>Rules <a class="float-end" href="#"><i data-feather="file-plus"></i></a></h4></div>
-					<div class="card-body">
-					{{ range .Frontend.Rules }}
-						<div><a href="/rules/{{ .GetUuid }}/view">{{ .GetDescription }}</a></div>
-					{{ end }}
-					</div>
+					{{else}}<div class="q2a-empty">No variables reported yet.</div>{{end}}
 				</div>
 			</div>
 		</div>
-		<div class="row">
-			<div class="col gy-4">
-				<p><button class="btn btn-danger {{ if .Frontend.DeleteProtect }}disabled{{ end }}" data-bs-toggle="modal" data-bs-target="#deletefrontend">Delete this Frontend</button></p>
-			</div>
+		{{else}}
+		<div class="q2a-panel q2a-empty">
+			<p class="mb-1"><i class="bi bi-plug fs-3"></i></p>
+			<p class="mb-1">This server isn't connected to CloudAdmin.</p>
+			<p class="small mb-0">Check that its q2admin config uses UUID <span class="q2a-mono">{{$fe.UUID}}</span> and that its public key is set on the Settings tab.</p>
 		</div>
+		{{end}}
 	</div>
-	
 
-	<div class="modal fade" id="edit-server-modal" tabindex="-1" aria-labelledby="edit-server-modal" aria-hidden="true">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<form method="post" action="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/edit">
-					<div class="modal-header">
-						<h5 class="modal-title">Edit Frontend Settings</h5>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-					</div>
-					<div class="modal-body">
-						<p>
-							<b><label for="servername" class="form-label">Frontend Name</label></b>
-							<input type="text" class="form-control" id="servername" name="servername" placeholder="pf-tdm-antarctica" value="{{.Frontend.Name}}">
-						</p>
-						<p>
-							<b><label for="serveraddr" class="form-label">Frontend Address</label></b>
-							<input type="text" class="form-control" id="serveraddr" name="serveraddr" placeholder="100.64.55.4:27910" value="{{.Frontend.IPAddress}}:{{.Frontend.Port}}">
-						</p>
-						<p>
-							<div class="form-check form-switch">
-								<input class="form-check-input" type="checkbox" id="switchEnabled" name="switchenabled" {{.Frontend.Enabled | checked}}>
-								<label class="form-check-label" for="switchEnabled">Enabled</label>
-							</div>
-							<div class="form-check form-switch">
-								<input class="form-check-input" type="checkbox" id="switchTeleport" name="switchteleport" {{.Frontend.AllowTeleport | checked}}>
-								<label class="form-check-label" for="switchTeleport">Allow player teleporting to other frontends</label>
-							</div>
-							<div class="form-check form-switch">
-								<input class="form-check-input" type="checkbox" id="switchInvite" name="switchinvite" {{.Frontend.AllowInvite | checked}}>
-								<label class="form-check-label" for="switchInvite">Allow player invite broadcasts</label>
-							</div>
-						</p>
-						<p>
-						    <div class="form-check form-switch">
-								<input class="form-check-input" type="checkbox" id="switchProtect" name="switchprotect" {{.Frontend.DeleteProtect | checked}}>
-								<label class="form-check-label" for="switchProtect">Delete Protection</label>
-							</div>
-						</p>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-						<button type="submit" class="btn btn-primary">Save</button>
-					</div>
-					<input type="hidden" name="uuid" value="{{.Frontend.UUID}}">
-					<!-- <input type="hidden" name="srvname" value="{{.Frontend.Name}}"> -->
-					<input type="hidden" name="action" value="SaveFrontendSettings">
-				</form>
-			 </div>
+	<!-- Players -->
+	<div class="tab-pane fade" id="players" role="tabpanel" tabindex="0">
+		<div class="q2a-panel">
+			{{if and $up (online $fe)}}
+			<div class="table-responsive">
+				<table class="table table-hover align-middle">
+					<thead><tr><th>#</th><th>Name</th><th class="d-none d-md-table-cell">Address</th><th class="text-end">Frags</th><th class="d-none d-sm-table-cell">Joined</th></tr></thead>
+					<tbody>
+					{{range $fe.Players}}{{if .ConnectTime}}
+						<tr>
+							<td class="q2a-mono">{{.ClientID}}</td>
+							<td><a href="{{$base}}/player/{{.ClientID}}" class="text-decoration-none">{{.Name}}</a>{{if .VPN}} <span class="badge text-bg-warning">VPN</span>{{end}}{{if .Muted}} <span class="badge text-bg-secondary">muted</span>{{end}}</td>
+							<td class="d-none d-md-table-cell q2a-mono">{{.IP}}</td>
+							<td class="text-end">{{.Frags}}</td>
+							<td class="d-none d-sm-table-cell text-body-secondary">{{ago .ConnectTime}}</td>
+						</tr>
+					{{end}}{{end}}
+					</tbody>
+				</table>
+			</div>
+			{{else}}
+			<div class="q2a-empty">{{if $up}}Nobody is playing right now.{{else}}The server is offline.{{end}}</div>
+			{{end}}
 		</div>
 	</div>
 
-	<div class="modal fade" id="changeuuid" tabindex="-1" aria-labelledby="changeuuid" aria-hidden="true">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title">Generate new unique ID?</h5>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-body">
-					<p>Are you sure you want to change your frontend's UUID?</p>
-					<p>Any active frontend using the current UUID will disconnect from CloudAdmin and require an update to its config. This change can't be reverted as UUIDs are auto-generated.</p>
-					<p>The primary use-case for regenerating IDs is when someone else knows the ID and is trying to use it.</p>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No!</button>
-					<a href="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/changeuuid" type="button" class="btn btn-primary">Sure</a>
-				</div>
-			 </div>
+	<!-- Rules -->
+	<div class="tab-pane fade" id="rules" role="tabpanel" tabindex="0">
+		<div class="q2a-panel">
+			<div class="q2a-panel-head">
+				<span>Rules for this server</span>
+				<a class="btn btn-sm btn-outline-secondary" href="{{$base}}/rules">Manage rules</a>
+			</div>
+			{{if $fe.Rules}}
+			<div class="table-responsive">
+				<table class="table table-hover align-middle">
+					<thead><tr><th>ID</th><th>Type</th><th>Description</th></tr></thead>
+					<tbody>
+					{{range $fe.Rules}}
+						<tr>
+							<td class="q2a-mono"><a href="/rules/{{.GetUuid}}/view">{{printf "%.8s" .GetUuid}}</a></td>
+							<td><span class="badge text-bg-secondary">{{.GetType}}</span></td>
+							<td>{{join .GetDescription " "}}</td>
+						</tr>
+					{{end}}
+					</tbody>
+				</table>
+			</div>
+			{{else}}<div class="q2a-empty">No rules apply to this server.</div>{{end}}
 		</div>
 	</div>
 
-	<div class="modal fade" id="runcmd" tabindex="-1" aria-labelledby="runcmd" aria-hidden="true">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title">Run a command</h5>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-body">
-					<div class="mb-3">
-						<label for="cmdinput" class="form-label">Command</label>
-						<input type="text" class="form-control" id="cmdinput" placeholder="">
-					</div>
-					<div class="mb-3">
-						<label for="cmdoutput" class="form-label">Output</label>
-						<textarea class="form-control" id="cmdoutput" rows="3"></textarea>
-					</div>
-					<div>
-						<button type="button" class="btn btn-primary float-end">Run</button>
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-				</div>
-			 </div>
-		</div>
-	</div>
-
-	<div class="modal fade" id="publickey" tabindex="-1" aria-labelledby="publickey" aria-hidden="true">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<form action="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/manage-keys" method="post">
-					<div class="modal-header">
-						<h5 class="modal-title">Frontend Public Key</h5>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-					</div>
-					<div class="modal-body">
+	<!-- Settings -->
+	<div class="tab-pane fade" id="settings" role="tabpanel" tabindex="0">
+		<div class="row g-3">
+			<div class="col-12 col-xl-6">
+				<form class="q2a-panel" method="post" action="{{$base}}/edit">
+					<div class="q2a-panel-head">General</div>
+					<div class="q2a-panel-body">
 						<div class="mb-3">
-							<label for="keydata" class="form-label">Key Data:</label>
-							<textarea style="height: 300px;" class="form-control" id="keydata" name="keydata" placeholder="">{{ .Frontend.PublicKeyData }}</textarea>
+							<label for="servername" class="form-label">Name</label>
+							<input type="text" class="form-control" id="servername" name="servername" value="{{$fe.Name}}" required maxlength="32">
+						</div>
+						<div class="row g-3 mb-3">
+							<div class="col-12 col-sm-8">
+								<label for="serveraddr" class="form-label">IP address or hostname</label>
+								<input type="text" class="form-control q2a-mono" id="serveraddr" name="serveraddr" value="{{$fe.IPAddress}}" required>
+							</div>
+							<div class="col-12 col-sm-4">
+								<label for="serverport" class="form-label">Port</label>
+								<input type="number" class="form-control q2a-mono" id="serverport" name="serverport" value="{{$fe.Port}}" min="1" max="65535">
+							</div>
+						</div>
+						<div class="form-check form-switch mb-2">
+							<input class="form-check-input" type="checkbox" role="switch" id="switchEnabled" name="switchenabled" {{if $fe.Enabled}}checked{{end}}>
+							<label class="form-check-label" for="switchEnabled">Enabled</label>
+						</div>
+						<div class="form-check form-switch mb-2">
+							<input class="form-check-input" type="checkbox" role="switch" id="switchTeleport" name="switchteleport" {{if $fe.AllowTeleport}}checked{{end}}>
+							<label class="form-check-label" for="switchTeleport">Allow players to teleport to other servers</label>
+						</div>
+						<div class="form-check form-switch mb-2">
+							<input class="form-check-input" type="checkbox" role="switch" id="switchInvite" name="switchinvite" {{if $fe.AllowInvite}}checked{{end}}>
+							<label class="form-check-label" for="switchInvite">Allow player invite broadcasts</label>
+						</div>
+						<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" role="switch" id="switchProtect" name="switchprotect" {{if $fe.DeleteProtect}}checked{{end}}>
+							<label class="form-check-label" for="switchProtect">Delete protection</label>
 						</div>
 					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+					<div class="q2a-panel-foot text-end">
+						<input type="hidden" name="uuid" value="{{$fe.UUID}}">
 						<button type="submit" class="btn btn-primary">Save</button>
 					</div>
-					<input type="hidden" name="uuid" value="{{.Frontend.UUID}}">
-					<input type="hidden" name="srvname" value="{{.Frontend.Name}}">
-					<input type="hidden" name="action" value="SaveKey">
 				</form>
+			</div>
+
+			<div class="col-12 col-xl-6">
+				<form class="q2a-panel mb-3" method="post" action="{{$base}}/manage-keys">
+					<div class="q2a-panel-head">
+						<span>Public key</span>
+						<a class="small fw-normal" href="{{$base}}/manage-keys">Generate a key pair</a>
+					</div>
+					<div class="q2a-panel-body">
+						<label for="keydata" class="form-label small text-body-secondary">The PEM public key matching the private key on your Quake 2 server.</label>
+						<textarea class="form-control q2a-mono" rows="6" id="keydata" name="keydata" placeholder="-----BEGIN PUBLIC KEY-----" required>{{$fe.PublicKeyData}}</textarea>
+					</div>
+					<div class="q2a-panel-foot text-end">
+						<input type="hidden" name="uuid" value="{{$fe.UUID}}">
+						<input type="hidden" name="srvname" value="{{$fe.Name}}">
+						<input type="hidden" name="action" value="SaveKey">
+						<button type="submit" class="btn btn-primary">Save key</button>
+					</div>
+				</form>
+
+				<div class="q2a-panel mb-3">
+					<div class="q2a-panel-head">Server ID</div>
+					<div class="q2a-panel-body">
+						<p class="q2a-mono text-break mb-2">{{$fe.UUID}}</p>
+						<p class="small text-body-secondary">Regenerate it if someone else knows it. The server disconnects until its q2admin config is updated.</p>
+						<button class="btn btn-sm btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#changeuuid">Generate new ID</button>
+					</div>
+				</div>
+
+				<div class="q2a-panel q2a-danger">
+					<div class="q2a-panel-head">Danger zone</div>
+					<div class="q2a-panel-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+						<span class="small">{{if $fe.DeleteProtect}}Turn off delete protection to delete this server.{{else}}Delete this server and its history.{{end}}</span>
+						<button class="btn btn-sm btn-danger" type="button" data-bs-toggle="modal" data-bs-target="#deletefrontend" {{if $fe.DeleteProtect}}disabled{{end}}>Delete server</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
+</div>
 
-	<div class="modal fade" id="key-explain-modal" tabindex="-1" aria-labelledby="key-explain-modal" aria-hidden="true">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title">Keys?</h5>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-body">
-					<h5>How does Q2Admin use them?</h5>
-					<p>
-						Q2Admin uses asymmetric encryption keys (public/private pairs) for authentication and key exchange.
-					</p>
-					<p>
-						You store a private key securely along with your Quake 2 server locally, and provide 
-						the public key here. When your Quake 2 server initiates a connection to this CloudAdmin server, 
-						the server will challenge your server with data encrypted with the public key. Only the 
-						complementary private key will be able to decrypt this data, proving this is the intended 
-						server and allowing the connection.
-					</p>
-					<p>
-						If the local Q2Admin is configured for an encrypted connection (default behavior), the public key
-						provided is used for encrypting an ephemeral symmetric session key used for securing the data
-						exchanged between the CloudAdmin and your Quake 2 server. These sessions keys are automatically
-						rotated every hour or so.
-					</p>
-					<h5>Can I generate my own keys on my end?</h5>
-					<p>
-						Yes you can, and you should. It's considered insecure to transmit private keys between devices over
-						untrusted networks. The Generate Keys function is for convenience. Generate these with the openssl program:
-					</p>
-					<p>
-						<div>For the private key "private.pem"</div>
-						<code>
-						$ openssl genpkey -out private.pem -algorithm RSA -pkeyopt rsa_keygen_bits:2048
-						</code>
-					</p>
-					<p>
-						<div>For the complementary public key "public.pem"</div>
-						<code>
-						$ openssl pkey -in private.pem -pubout -out public.pem
-						</code>
-					</p>
-					<p>
-						Then click the <b>View/Edit Public Key</b> link and simply paste the contents of the public key.
-					</p>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Okay</button>
-				</div>
-			 </div>
-		</div>
+<div class="modal fade" id="changeuuid" tabindex="-1" aria-labelledby="changeuuid-title" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<form class="modal-content" method="post" action="{{$base}}/change-uuid">
+			<div class="modal-header">
+				<h5 class="modal-title" id="changeuuid-title">Generate a new ID?</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<p>The server will disconnect from CloudAdmin until its q2admin config is updated with the new ID. This can't be undone.</p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="submit" class="btn btn-warning">Generate new ID</button>
+			</div>
+		</form>
 	</div>
+</div>
 
-	<div class="modal fade" id="deletefrontend" tabindex="-1" aria-labelledby="deletefrontend" aria-hidden="true">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title">Delete Frontend "{{ .Frontend.Name }}"?</h5>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-body">
-					<p>Are you sure you want to delete this frontend?</p>
-					<p>Any historical data/statistics/logs will be automatically deleted and this frontend will no longer be a valid teleport destination.</p>
-					<p><b>This action cannot be undone!</b> (but you can certainly recreate it)
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">NO!</button>
-					<a href="/sv/{{.Frontend.UUID}}/{{.Frontend.Name}}/delete" type="button" class="btn btn-danger"><b>Yes, delete please</b></a>
-				</div>
-			 </div>
-		</div>
+<div class="modal fade" id="deletefrontend" tabindex="-1" aria-labelledby="deletefrontend-title" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<form class="modal-content" method="post" action="{{$base}}/delete">
+			<div class="modal-header">
+				<h5 class="modal-title" id="deletefrontend-title">Delete {{$fe.Name}}?</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<p>Its history, statistics and logs are deleted and it stops being a teleport destination.</p>
+				<p class="mb-0"><strong>This can't be undone.</strong></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="submit" class="btn btn-danger">Delete server</button>
+			</div>
+		</form>
 	</div>
+</div>
 {{template "footer" .}}
 {{end}}
