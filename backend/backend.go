@@ -236,6 +236,9 @@ func (b *Backend) DeleteFrontend(name string) error {
 	if _, err = db.Handle.Exec("DELETE FROM server_group_member WHERE frontend_id = ?", fe.ID); err != nil {
 		return fmt.Errorf("error removing frontend %q from its groups: %v", name, err)
 	}
+	if _, err = db.Handle.Exec("DELETE FROM frontend_delegate WHERE frontend_id = ?", fe.ID); err != nil {
+		return fmt.Errorf("error removing frontend %q's delegates: %v", name, err)
+	}
 	// a new slice, so snapshots from Frontends() stay intact
 	b.frontendsMu.Lock()
 	defer b.frontendsMu.Unlock()
@@ -288,7 +291,7 @@ func (b *Backend) GetUserByEmail(email string) (*pb.User, error) {
 		return nil, fmt.Errorf("blank email address")
 	}
 	for _, u := range b.users {
-		if u.GetEmail() == email {
+		if strings.EqualFold(u.GetEmail(), email) {
 			return u, nil
 		}
 	}
@@ -318,15 +321,19 @@ func FrontendsByContext(ctx *IdentityContext) []*frontend.Frontend {
 	return cls
 }
 
-// Acquire a slice of client pointers that a particular identity has access to
-// (owners and delegates)
+// FrontendsByIdentity returns the frontends the user with this email owns or
+// has been delegated, in Frontends() order. It locks each frontend briefly, so
+// don't call it holding one.
 func FrontendsByIdentity(ident string) []*frontend.Frontend {
 	list := []*frontend.Frontend{}
 	if ident == "" {
 		return list
 	}
 	for _, cl := range be.Frontends() {
-		if strings.EqualFold(cl.Owner, ident) {
+		cl.Mu.Lock()
+		ok := cl.CanAccess(ident)
+		cl.Mu.Unlock()
+		if ok {
 			list = append(list, cl)
 		}
 	}
@@ -375,10 +382,30 @@ func (b *Backend) LoadFrontends() ([]*frontend.Frontend, error) {
 		}
 		fes = append(fes, fe)
 	}
+	if err := rs.Err(); err != nil {
+		return fes, err
+	}
+	delegates, err := db.Handle.Query("SELECT frontend_id, email FROM frontend_delegate ORDER BY email")
+	if err != nil {
+		return fes, fmt.Errorf("error selecting delegates: %v", err)
+	}
+	defer delegates.Close()
+	for delegates.Next() {
+		var id int
+		var email string
+		if err := delegates.Scan(&id, &email); err != nil {
+			return fes, fmt.Errorf("error scanning delegates: %v", err)
+		}
+		for _, fe := range fes {
+			if fe.ID == id {
+				fe.Delegates = append(fe.Delegates, email)
+			}
+		}
+	}
 	slices.SortFunc(fes, func(a, b *frontend.Frontend) int {
 		return strings.Compare(a.Name, b.Name)
 	})
-	return fes, nil
+	return fes, delegates.Err()
 }
 
 /*
@@ -733,22 +760,6 @@ func SendMessages(fe *frontend.Frontend) {
 	}
 	(*fe.Connection).Write(fe.MessageOut.Data)
 	(&fe.MessageOut).Reset()
-}
-
-// Get list of frontends this email address has access to
-func (b *Backend) UserFrontends(u string) []*frontend.Frontend {
-	var out []*frontend.Frontend
-	if u == "" {
-		return out
-	}
-	for _, f := range b.Frontends() {
-		for k := range f.WebUsers {
-			if strings.EqualFold(k, u) {
-				out = append(out, f)
-			}
-		}
-	}
-	return out
 }
 
 // Gracefully shut everything down. Close database connection, write states to

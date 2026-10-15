@@ -32,6 +32,7 @@
 						{{if .AllowInvite}}<span class="badge text-bg-info">invite</span>{{end}}
 					</dd>
 					<dt>Rules</dt><dd>{{len .Rules}}</dd>
+					{{if ne .Owner $.SessionUser.GetEmail}}<dt>Owner</dt><dd class="text-break">{{.Owner}} <span class="badge text-bg-info">shared with you</span></dd>{{end}}
 				</dl>
 			</div>
 			<div class="q2a-panel-foot d-flex flex-wrap gap-2">

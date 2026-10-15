@@ -35,54 +35,53 @@ var terminalsMu sync.Mutex
 // on disk during init and the rest is filled in when the game
 // server actually connects
 type Frontend struct {
-	AllowInvite   bool                    // honor invites from players
-	AllowTeleport bool                    // enable teleport functionality
-	APIKeys       *pb.ApiKeys             // keys generated for accessing this client
-	Challenge     []byte                  // random data for auth set by server
-	Connected     bool                    // is it currently connected to us?
-	Connection    *net.Conn               // the tcp connection
-	ConnectTime   int64                   // unix timestamp when connection made
-	CurrentMap    string                  // what map is currently running
-	Data          *database.Database      // pointer to database
-	DeleteProtect bool                    // can be deleted or not
-	Description   string                  // used in teleporting
-	Enabled       bool                    // actually use it
-	Encrypted     bool                    // are the messages AES encrypted?
-	ID            int                     // this is the database index, remove later
-	InitVector    []byte                  // AES IV,
-	Invites       InviteBucket            // Invite throttling
-	Kills         map[string]int          // kills by weapon since the last stats sample
-	IPAddress     string                  // used for teleporting
-	Log           *log.Logger             // log stuff here
-	LogFile       *os.File                // pointer to file so we can close when client disconnects
-	Maplist       *maprotator.MapList     // the maps for the frontend
-	MaxPlayers    int                     // total number
-	Message       message.Buffer          // incoming byte stream
-	MessageOut    message.Buffer          // outgoing byte stream
-	Mu            sync.Mutex              // guards state shared by the connection goroutine, SSH sessions and maintenance
-	Name          string                  // the teleport name
-	Owner         string                  // email addr
-	Path          string                  // the fs path for this client
-	PingCount     int                     // how many pings client has seen
-	PlayerCount   int                     // len(Players)
-	Players       []Player                // all the connected players
-	Port          int                     // used for teleporting
-	PreviousIV    []byte                  // the next to last AES IV we used (just in case)
-	PreviousMap   string                  // what was the last map?
-	PublicKey     *rsa.PublicKey          // supplied by owner via website
-	PublicKeyData string                  // the contents of the `key` file
-	Rules         []*pb.Rule              // bans, mutes, etc
-	Server        any                     // pointer for circular reference back
-	ServerVars    map[string]string       // public server cvars
-	SymmetricKey  []byte                  // AES 128 CBC
-	TeleportCount int                     // how many times teleport was used
-	Terminals     []*chan string          // pointers to the console streams
-	Trusted       bool                    // signature challenge verified
-	Users         map[*pb.User][]*pb.Role // users who have access via ssh/web
-	UUID          string                  // random identifier
-	Verified      bool                    // client owner proved they're the owner
-	Version       int                     // q2admin library version
-	WebUsers      map[string]bool         // key is email addr, val is write access
+	AllowInvite   bool                // honor invites from players
+	AllowTeleport bool                // enable teleport functionality
+	APIKeys       *pb.ApiKeys         // keys generated for accessing this client
+	Challenge     []byte              // random data for auth set by server
+	Connected     bool                // is it currently connected to us?
+	Connection    *net.Conn           // the tcp connection
+	ConnectTime   int64               // unix timestamp when connection made
+	CurrentMap    string              // what map is currently running
+	Data          *database.Database  // pointer to database
+	DeleteProtect bool                // can be deleted or not
+	Description   string              // used in teleporting
+	Enabled       bool                // actually use it
+	Encrypted     bool                // are the messages AES encrypted?
+	ID            int                 // this is the database index, remove later
+	InitVector    []byte              // AES IV,
+	Invites       InviteBucket        // Invite throttling
+	Kills         map[string]int      // kills by weapon since the last stats sample
+	IPAddress     string              // used for teleporting
+	Log           *log.Logger         // log stuff here
+	LogFile       *os.File            // pointer to file so we can close when client disconnects
+	Maplist       *maprotator.MapList // the maps for the frontend
+	MaxPlayers    int                 // total number
+	Message       message.Buffer      // incoming byte stream
+	MessageOut    message.Buffer      // outgoing byte stream
+	Mu            sync.Mutex          // guards state shared by the connection goroutine, SSH sessions and maintenance
+	Name          string              // the teleport name
+	Owner         string              // email addr
+	Delegates     []string            // emails of users the owner shared this frontend with
+	Path          string              // the fs path for this client
+	PingCount     int                 // how many pings client has seen
+	PlayerCount   int                 // len(Players)
+	Players       []Player            // all the connected players
+	Port          int                 // used for teleporting
+	PreviousIV    []byte              // the next to last AES IV we used (just in case)
+	PreviousMap   string              // what was the last map?
+	PublicKey     *rsa.PublicKey      // supplied by owner via website
+	PublicKeyData string              // the contents of the `key` file
+	Rules         []*pb.Rule          // bans, mutes, etc
+	Server        any                 // pointer for circular reference back
+	ServerVars    map[string]string   // public server cvars
+	SymmetricKey  []byte              // AES 128 CBC
+	TeleportCount int                 // how many times teleport was used
+	Terminals     []*chan string      // pointers to the console streams
+	Trusted       bool                // signature challenge verified
+	UUID          string              // random identifier
+	Verified      bool                // client owner proved they're the owner
+	Version       int                 // q2admin library version
 }
 
 // Each frontend has a small collection of invite tokens available. As players
@@ -241,67 +240,6 @@ func (fe *Frontend) ScopeRules(scope string, rules []*pb.Rule) {
 	}
 }
 
-// Read settings file for client from disk and make a Frontend struct
-// from them.
-func LoadSettings(name string, clientsDir string) (*Frontend, error) {
-	fe := &Frontend{}
-	if name == "" {
-		return fe, fmt.Errorf("error loading settings: blank client name supplied")
-	}
-	if clientsDir == "" {
-		return fe, fmt.Errorf("error loading settings: blank client directly supplied")
-	}
-	filename := path.Join(clientsDir, name, "settings.pb")
-	contents, err := os.ReadFile(filename)
-	if err != nil {
-		return fe, err
-	}
-	fes := pb.Frontends{}
-	err = prototext.Unmarshal(contents, &fes)
-	if err != nil {
-		return fe, err
-	}
-
-	for _, f := range fes.GetFrontend() {
-		if f.GetName() != name {
-			continue
-		}
-		fe.Name = f.GetName()
-		fe.Owner = f.GetOwner()
-		fe.Description = f.GetDescription()
-		fe.UUID = f.GetUuid()
-		fe.Path = path.Join(clientsDir, fe.Name)
-		fe.Enabled = !f.GetDisabled()
-		fe.AllowInvite = f.GetAllowInvite()
-		fe.AllowTeleport = f.GetAllowTeleport()
-
-		tokens := strings.Split(f.GetAddress(), ":")
-		if len(tokens) == 2 {
-			fe.Port, err = strconv.Atoi(tokens[1])
-			if err != nil {
-				fe.Port = 27910
-			}
-		} else {
-			fe.Port = 27910
-		}
-		fe.IPAddress = tokens[0]
-		fe.WebUsers = make(map[string]bool)
-		for _, user := range f.GetUsers() {
-			fe.WebUsers[user.GetEmail()] = (user.GetAccess() == "write")
-		}
-		contents, err := os.ReadFile(path.Join(clientsDir, name, "key"))
-		if err == nil { // is nil!
-			fe.PublicKeyData = string(contents)
-		}
-		rules, err := fe.FetchRules()
-		if err != nil {
-			log.Printf("error fetching rules for %q: %v\n", fe.Name, err)
-		}
-		fe.Rules = rules
-	}
-	return fe, nil
-}
-
 // GetPlayerFromPrint attempts to identify a player object associated with a
 // print message. Returns a slice since Q2 allows multiple players to use the
 // same name.
@@ -381,6 +319,17 @@ func (fe *Frontend) ResolvePlayers(in string) ([]*Player, error) {
 	return found, nil
 }
 
+// CanAccess reports whether the user with this email owns fe or has had it
+// delegated to them. Call it holding fe.Mu.
+func (fe *Frontend) CanAccess(email string) bool {
+	if email == "" {
+		return false
+	}
+	return strings.EqualFold(fe.Owner, email) || slices.ContainsFunc(fe.Delegates, func(d string) bool {
+		return strings.EqualFold(d, email)
+	})
+}
+
 // ToProto will convert a Frontend struct into the corresponding protobuf. This
 // is used when materializing the frontends to disk.
 func (fe *Frontend) ToProto() *pb.Frontend {
@@ -388,12 +337,8 @@ func (fe *Frontend) ToProto() *pb.Frontend {
 		return &pb.Frontend{}
 	}
 	var users []*pb.FrontendUser
-	for k, v := range fe.WebUsers {
-		access := "read"
-		if v {
-			access = "write"
-		}
-		users = append(users, &pb.FrontendUser{Email: k, Access: access})
+	for _, email := range fe.Delegates {
+		users = append(users, &pb.FrontendUser{Email: email, Access: "delegate"})
 	}
 	return &pb.Frontend{
 		Address:       fmt.Sprintf("%s:%d", fe.IPAddress, fe.Port),
@@ -568,14 +513,6 @@ func (fe *Frontend) Materialize() error {
 		return fmt.Errorf("error writing rules to %q: %v", filename, err)
 	}
 	return nil
-}
-
-// Get the roles associated with a user for this frontend
-func (fe *Frontend) FetchUserRoles(u *pb.User) ([]*pb.Role, error) {
-	if u == nil {
-		return nil, fmt.Errorf("unknown user")
-	}
-	return fe.Users[u], nil
 }
 
 // Calculate the current kill:death ratio for a player based on their current

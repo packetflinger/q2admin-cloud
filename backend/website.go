@@ -119,6 +119,7 @@ type PageResponse struct {
 	Groups        []*ServerGroup
 	Group         *ServerGroup
 	Stats         *Stats
+	CanEdit       bool       // the user owns Frontend, so can change its settings
 	Rule          *pb.Rule   // the rule to view/edit
 	Rules         []*pb.Rule // a list of rules (srv level)
 	Player        *frontend.Player
@@ -465,9 +466,8 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
-	if err != nil {
-		http.NotFound(w, r)
+	fe := frontendFor(w, r, user, false)
+	if fe == nil {
 		return
 	}
 	renderServerView(w, user, fe, notices[r.URL.Query().Get("notice")], "", r.URL.Query().Get("span"))
@@ -477,6 +477,9 @@ func WebsiteHandlerServerView(w http.ResponseWriter, r *http.Request) {
 // action or the reason a settings change was rejected.
 func renderServerView(w http.ResponseWriter, user *pb.User, fe *frontend.Frontend, notice *Notice, formError, span string) {
 	data := PageResponse{SessionUser: user, Frontend: fe, Notice: notice, FormError: formError}
+	fe.Mu.Lock()
+	data.CanEdit = strings.EqualFold(fe.Owner, user.GetEmail()) // delegates can't change settings
+	fe.Mu.Unlock()
 	var err error
 	if data.Stats, err = loadStats([]*frontend.Frontend{fe}, span); err != nil {
 		log.Println(err)
@@ -524,6 +527,10 @@ var notices = map[string]*Notice{
 	"blackholed":   {"success", "Blackhole command sent for the player's address."},
 	"rulesaved":    {"success", "Rule saved."},
 	"ruledeleted":  {"success", "Rule deleted."},
+	"delegated":    {"success", "Access granted. The server now shows up in their dashboard."},
+	"undelegated":  {"success", "Access removed."},
+	"nouser":       {"danger", "Nobody is registered with that email address. They need to sign in once first."},
+	"selfdelegate": {"warning", "You already own this server."},
 	"groupcreated": {"success", "Group created. Add some servers to it."},
 	"groupdeleted": {"success", "Group deleted. Its servers weren't changed."},
 	"groupadd":     {"success", "Server added to the group."},
@@ -532,6 +539,62 @@ var notices = map[string]*Notice{
 
 var mapNameRE = regexp.MustCompile(`^[A-Za-z0-9_/-]{1,64}$`)
 
+// DelegateHandler lets a server's owner give a registered user access to it
+// (action=add) or take that access away (action=remove). Delegates can do
+// everything except change the server's settings.
+func DelegateHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	fe := frontendFor(w, r, user, true)
+	if fe == nil {
+		return
+	}
+	email := strings.TrimSpace(r.PostFormValue("email"))
+	fe.Mu.Lock()
+	defer fe.Mu.Unlock()
+	notice := ""
+	switch r.PostFormValue("action") {
+	case "add":
+		u, _ := be.GetUserByEmail(email)
+		switch {
+		case u == nil:
+			notice = "nouser"
+		case strings.EqualFold(u.GetEmail(), fe.Owner):
+			notice = "selfdelegate"
+		case fe.CanAccess(u.GetEmail()):
+			notice = "delegated" // already has it
+		default:
+			if _, err := db.Handle.Exec("INSERT INTO frontend_delegate (frontend_id, email) VALUES (?, ?)", fe.ID, u.GetEmail()); err != nil {
+				log.Printf("error delegating %q to %q: %v\n", fe.Name, u.GetEmail(), err)
+				http.Error(w, "500 - unable to save", http.StatusInternalServerError)
+				return
+			}
+			fe.Delegates = append(slices.Clone(fe.Delegates), u.GetEmail())
+			notice = "delegated"
+		}
+	case "remove":
+		for _, d := range fe.Delegates {
+			if !strings.EqualFold(d, email) {
+				continue
+			}
+			if _, err := db.Handle.Exec("DELETE FROM frontend_delegate WHERE frontend_id = ? AND email = ?", fe.ID, d); err != nil {
+				log.Printf("error removing %q's delegate %q: %v\n", fe.Name, d, err)
+				http.Error(w, "500 - unable to save", http.StatusInternalServerError)
+				return
+			}
+			fe.Delegates = slices.DeleteFunc(slices.Clone(fe.Delegates), func(x string) bool { return x == d })
+		}
+		notice = "undelegated"
+	default:
+		http.Error(w, "unknown action", http.StatusBadRequest)
+		return
+	}
+	http.Redirect(w, r, path.Join("/sv", fe.UUID, fe.Name)+"?notice="+notice+"#settings", http.StatusSeeOther)
+}
+
 // ChangeMapHandler tells a connected frontend to switch maps.
 func ChangeMapHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := GetSessionUser(r)
@@ -539,7 +602,7 @@ func ChangeMapHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe := ownedFrontend(w, r, user)
+	fe := frontendFor(w, r, user, false)
 	if fe == nil {
 		return
 	}
@@ -894,9 +957,8 @@ func PlayerViewHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
-	if err != nil {
-		http.NotFound(w, r)
+	fe := frontendFor(w, r, user, false)
+	if fe == nil {
 		return
 	}
 	data := PageResponse{SessionUser: user, Frontend: fe, Notice: notices[r.URL.Query().Get("notice")]}
@@ -924,7 +986,7 @@ func PlayerActionHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe := ownedFrontend(w, r, user)
+	fe := frontendFor(w, r, user, false)
 	if fe == nil {
 		return
 	}
@@ -1019,9 +1081,8 @@ func ServerConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
-	if err != nil {
-		http.NotFound(w, r)
+	fe := frontendFor(w, r, user, false)
+	if fe == nil {
 		return
 	}
 	data := PageResponse{SessionUser: user, Frontend: fe}
@@ -1039,19 +1100,25 @@ func ServerConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ownedFrontend finds the frontend named in the URL and checks user owns it,
-// writing the error response and returning nil if not.
-func ownedFrontend(w http.ResponseWriter, r *http.Request, user *pb.User) *frontend.Frontend {
+// frontendFor finds the frontend named in the URL and checks user may use it:
+// as its owner, or as a delegate unless ownerOnly (settings). It writes the
+// error response and returns nil if not.
+func frontendFor(w http.ResponseWriter, r *http.Request, user *pb.User, ownerOnly bool) *frontend.Frontend {
 	fe, err := be.FindFrontend(mux.Vars(r)["ServerUUID"])
 	if err != nil {
 		http.NotFound(w, r)
 		return nil
 	}
 	fe.Mu.Lock()
-	owner := fe.Owner
+	access := fe.CanAccess(user.GetEmail())
+	owner := strings.EqualFold(fe.Owner, user.GetEmail())
 	fe.Mu.Unlock()
-	if owner != user.Email {
-		http.Error(w, "403 - permission denied", http.StatusForbidden)
+	if !access {
+		http.NotFound(w, r) // same as a server that doesn't exist
+		return nil
+	}
+	if ownerOnly && !owner {
+		http.Error(w, "403 - only the server's owner can change its settings", http.StatusForbidden)
 		return nil
 	}
 	return fe
@@ -1065,7 +1132,7 @@ func ConsoleStreamHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "401 - signed out", http.StatusUnauthorized)
 		return
 	}
-	fe := ownedFrontend(w, r, user)
+	fe := frontendFor(w, r, user, false)
 	if fe == nil {
 		return
 	}
@@ -1114,7 +1181,7 @@ func ConsoleCommandHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "401 - signed out", http.StatusUnauthorized)
 		return
 	}
-	fe := ownedFrontend(w, r, user)
+	fe := frontendFor(w, r, user, false)
 	if fe == nil {
 		return
 	}
@@ -1185,9 +1252,8 @@ func ServerSearchHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	f, err := be.FindFrontend(mux.Vars(r)["UUID"])
-	if err != nil {
-		http.NotFound(w, r)
+	f := frontendFor(w, r, user, false)
+	if f == nil {
 		return
 	}
 	data := PageResponse{SessionUser: user, Frontend: f, SearchQuery: strings.TrimSpace(r.URL.Query().Get("q"))}
@@ -1260,7 +1326,7 @@ func RuleListHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe := ownedFrontend(w, r, user)
+	fe := frontendFor(w, r, user, false)
 	if fe == nil {
 		return
 	}
@@ -1298,7 +1364,7 @@ func RuleAddHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe := ownedFrontend(w, r, user)
+	fe := frontendFor(w, r, user, false)
 	if fe == nil {
 		return
 	}
@@ -1515,7 +1581,7 @@ func ServerKeysHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe := ownedFrontend(w, r, user)
+	fe := frontendFor(w, r, user, true) // keys are settings
 	if fe == nil {
 		return
 	}

@@ -142,9 +142,9 @@ func TestCanManage(t *testing.T) {
 	saved := be.frontends
 	defer func() { be.frontends = saved }()
 	be.frontends = []*frontend.Frontend{{
-		Name:  "fe1",
-		Owner: owner.Email,
-		Users: map[*pb.User][]*pb.Role{delegate: {{Context: pb.Context_SSH}}},
+		Name:      "fe1",
+		Owner:     owner.Email,
+		Delegates: []string{"Delegate@Example.com"}, // emails match case-insensitively
 	}}
 	fe := be.frontends[0]
 	for _, tc := range []struct {

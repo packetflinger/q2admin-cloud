@@ -58,6 +58,7 @@
 						<span class="q2a-dot {{if $up}}online{{end}} me-2" title="{{if $up}}online{{else}}offline{{end}}"></span><span class="visually-hidden">{{if $up}}online{{else}}offline{{end}}</span>
 						<a href="/sv/{{.UUID}}/{{.Name}}" class="fw-semibold text-decoration-none">{{.Name}}</a>
 						{{if not .Enabled}}<span class="badge text-bg-secondary ms-1">disabled</span>{{end}}
+						{{if ne .Owner $.SessionUser.GetEmail}}<span class="badge text-bg-info ms-1" title="Shared with you by {{.Owner}}">shared</span>{{end}}
 					</td>
 					<td class="d-none d-md-table-cell q2a-mono">{{.IPAddress}}:{{.Port}}</td>
 					<td class="q2a-mono">{{if $up}}{{.CurrentMap}}{{else}}<span class="text-body-secondary">-</span>{{end}}</td>

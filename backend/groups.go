@@ -114,17 +114,17 @@ func DeleteGroup(owner, name string) error {
 }
 
 // SetGroupMember adds fe to, or removes it from, one of owner's groups. Only
-// the owner's own servers can be added.
+// servers the user owns or has been delegated can be added.
 func SetGroupMember(owner, name string, fe *frontend.Frontend, member bool) error {
 	g, err := MyGroup(owner, name)
 	if err != nil {
 		return err
 	}
 	fe.Mu.Lock()
-	feOwner, feName, feID := fe.Owner, fe.Name, fe.ID
+	access, feName, feID := fe.CanAccess(owner), fe.Name, fe.ID
 	fe.Mu.Unlock()
-	if feOwner != owner {
-		return fmt.Errorf("you don't own a server named %q", feName)
+	if !access {
+		return fmt.Errorf("you don't have a server named %q", feName)
 	}
 	qry := "DELETE FROM server_group_member WHERE group_id = ? AND frontend_id = ?"
 	if member {
@@ -223,7 +223,7 @@ func sshGroupCommand(owner string, c CmdArgs) string {
 	case "add", "remove":
 		fe, findErr := be.FindFrontendByName(c.argv[2])
 		if findErr != nil {
-			return fmt.Sprintf("you don't own a server named %q", c.argv[2])
+			return fmt.Sprintf("you don't have a server named %q", c.argv[2])
 		}
 		err = SetGroupMember(owner, c.argv[1], fe, sub == "add")
 	case "cmd":

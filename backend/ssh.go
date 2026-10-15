@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -307,6 +306,10 @@ func sessionHandler(s ssh.Session) {
 		}
 
 		if c.command == "server" || c.command == "servers" {
+			if locked != nil { // checking access locks servers, which may include this one
+				locked.Mu.Unlock()
+				locked = nil
+			}
 			if c.argc == 0 {
 				u, err := User(s.User())
 				if err != nil {
@@ -314,7 +317,7 @@ func sessionHandler(s ssh.Session) {
 					continue
 				}
 				var msg bytes.Buffer
-				cls := MyFrontends(u)
+				cls := FrontendsByIdentity(u.GetEmail())
 				if err := srvTmpl.Execute(&msg, cls); err != nil {
 					log.Println("error executing servers template:", err)
 				}
@@ -839,40 +842,6 @@ func (t *SSHTerminal) Printf(format string, a ...any) {
 	t.terminal.Write([]byte(str))
 }
 
-// Get the frontends owned by this user
-func MyFrontends(u *pb.User) []*frontend.Frontend {
-	var fes []*frontend.Frontend
-	if u == nil {
-		return fes
-	}
-	for _, c := range be.Frontends() {
-		if c.Owner == u.Email {
-			fes = append(fes, c)
-		}
-	}
-	return fes
-}
-
-// Get the frontends who have access delegated to the user
-func MyDelegates(u *pb.User) []*frontend.Frontend {
-	var fes []*frontend.Frontend
-	if u == nil {
-		return fes
-	}
-	for _, f := range be.Frontends() {
-		roles, ok := f.Users[u]
-		if !ok {
-			continue
-		}
-		for _, r := range roles {
-			if r.Context == pb.Context_SSH {
-				fes = append(fes, f)
-			}
-		}
-	}
-	return fes
-}
-
 // resolvePlayer finds the single connected player on fe matching in, which is
 // a client ID or part of a name.
 func resolvePlayer(fe *frontend.Frontend, in string) (*frontend.Player, error) {
@@ -886,9 +855,11 @@ func resolvePlayer(fe *frontend.Frontend, in string) (*frontend.Player, error) {
 	return players[0], nil
 }
 
-// canManage reports whether u owns fe or has been delegated SSH access to it.
+// canManage reports whether u owns fe or has had it delegated to them.
 func canManage(u *pb.User, fe *frontend.Frontend) bool {
-	return slices.Contains(MyFrontends(u), fe) || slices.Contains(MyDelegates(u), fe)
+	fe.Mu.Lock()
+	defer fe.Mu.Unlock()
+	return fe.CanAccess(u.GetEmail())
 }
 
 // User returns a user proto for the given email address

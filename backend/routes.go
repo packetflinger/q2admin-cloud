@@ -23,6 +23,7 @@ type WebRoutes struct {
 	ServerEdit       string
 	ServerChangeUUID string
 	ServerMap        string
+	ServerDelegates  string
 	Terms            string
 	Profile          string
 	Groups           string
@@ -73,6 +74,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.ServerView = "/sv/{ServerUUID}/{ServerName}"
 	Routes.ServerRemove = "/sv/{ServerUUID}/{ServerName}/delete"
 	Routes.ServerMap = "/sv/{ServerUUID}/{ServerName}/map"
+	Routes.ServerDelegates = "/sv/{ServerUUID}/{ServerName}/delegates"
 
 	Routes.ServerAdd = "/add-server"
 	Routes.ConnectedServers = "/api/GetConnectedServers"
@@ -85,7 +87,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.RuleView = "/rules/{uuid}/view"
 	Routes.RuleEdit = "/rules/{uuid}/edit"
 	Routes.RuleDelete = "/rules/{uuid}/delete"
-	Routes.SearchServer = "/search/{UUID}"
+	Routes.SearchServer = "/search/{ServerUUID}"
 	Routes.Search = "/search"
 	Routes.AuthLogin = "/sign-in"
 	Routes.AuthLogout = "/sign-out"
@@ -119,6 +121,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.ServerEdit, WebEditServer).Methods("POST")
 	r.HandleFunc(Routes.ServerChangeUUID, ChangeUUIDHandler).Methods("POST")
 	r.HandleFunc(Routes.ServerMap, ChangeMapHandler).Methods("POST")
+	r.HandleFunc(Routes.ServerDelegates, DelegateHandler).Methods("POST")
 	r.HandleFunc(Routes.PlayerView, PlayerViewHandler)
 	r.HandleFunc(Routes.PlayerAction, PlayerActionHandler).Methods("POST")
 	r.HandleFunc(Routes.ServerConsole, ServerConsoleHandler)

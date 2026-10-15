@@ -101,14 +101,20 @@ func Open(filename string) (Database, error) {
 	return database, nil
 }
 
-// groupSchema holds user-defined groups of servers. A frontend can be in any
-// number of groups; names are unique per owner.
+// groupSchema holds user-defined groups of servers (a frontend can be in any
+// number of groups; names are unique per owner) and the users each frontend's
+// owner has delegated it to.
 const groupSchema = `
 CREATE TABLE IF NOT EXISTS "server_group" (
 	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"owner"	TEXT NOT NULL,
 	"name"	TEXT NOT NULL,
 	UNIQUE("owner", "name")
+);
+CREATE TABLE IF NOT EXISTS "frontend_delegate" (
+	"frontend_id"	INTEGER NOT NULL,
+	"email"	TEXT NOT NULL,
+	PRIMARY KEY("frontend_id", "email")
 );
 CREATE TABLE IF NOT EXISTS "server_group_member" (
 	"group_id"	INTEGER NOT NULL,

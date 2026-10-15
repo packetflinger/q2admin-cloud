@@ -394,8 +394,8 @@ func TestConsoleRejectsOtherOwners(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.Body.Close()
-	if r.StatusCode != http.StatusForbidden {
-		t.Errorf("status = %d, want 403", r.StatusCode)
+	if r.StatusCode != http.StatusNotFound { // same as a server that doesn't exist
+		t.Errorf("status = %d, want 404", r.StatusCode)
 	}
 }
 
@@ -496,7 +496,14 @@ func ruleDB(t *testing.T) *database.Database {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { d.Handle.Close() })
-	_, err = d.Handle.Exec(`CREATE TABLE "rule" (
+	createRuleTable(t, &d)
+	return &d
+}
+
+// createRuleTable adds the rule table to d.
+func createRuleTable(t *testing.T, d *database.Database) {
+	t.Helper()
+	_, err := d.Handle.Exec(`CREATE TABLE "rule" (
 		"id" INTEGER, "frontend" INTEGER, "uuid" TEXT NOT NULL, "rule_type" INTEGER NOT NULL,
 		"creation_time" INTEGER, "expiration_time" INTEGER DEFAULT 0, "delay" INTEGER DEFAULT 0,
 		"stifle_length" INTEGER DEFAULT 60, "disabled" INTEGER DEFAULT 1, "scope" TEXT DEFAULT 'local',
@@ -506,7 +513,6 @@ func ruleDB(t *testing.T) *database.Database {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &d
 }
 
 func TestRulePages(t *testing.T) {
