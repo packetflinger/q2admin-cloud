@@ -26,6 +26,7 @@ type WebRoutes struct {
 	ServerChangeUUID string
 	ServerMap        string
 	Terms            string
+	Profile          string
 	PlayerView       string
 	PlayerAction     string
 	ServerConsole    string
@@ -90,6 +91,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.Static2 = "/static2/"
 
 	Routes.Terms = "/terms-of-use"
+	Routes.Profile = "/me"
 	Routes.Index = "/"
 
 	r := mux.NewRouter()
@@ -107,6 +109,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.Privacy, PrivacyHandler)
 	r.HandleFunc(Routes.Servers, ServersHandler)
 	r.HandleFunc(Routes.Terms, TermsHandler)
+	r.HandleFunc(Routes.Profile, ProfileHandler)
 	r.HandleFunc(Routes.ServerEdit, WebEditServer).Methods("POST")
 	r.HandleFunc(Routes.ServerChangeUUID, ChangeUUIDHandler).Methods("POST")
 	r.HandleFunc(Routes.ServerMap, ChangeMapHandler).Methods("POST")

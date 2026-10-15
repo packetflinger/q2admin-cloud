@@ -222,3 +222,5 @@ a:hover { color: var(--q2a-accent-hover); }
 	background: #0b0d12;
 	padding: .5rem;
 }
+
+.q2a-prose { max-width: 75ch; }

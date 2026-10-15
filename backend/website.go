@@ -754,54 +754,45 @@ func ServersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := GetSessionUser(r)
-	if err != nil {
-		RedirectToSignon(w, r)
-		return
-	}
-
-	data := WebpageData{
-		Title:       "Privacy Policy | Q2Admin CloudAdmin",
-		HeaderTitle: "Privacy Policy",
-		SessionUser: user,
-	}
-
-	tmpl, e := template.ParseFiles(
-		path.Join(be.config.GetWebRoot(), "templates", "header-main.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "privacy-policy.tmpl"),
-		path.Join(be.config.GetWebRoot(), "templates", "footer.tmpl"),
-	)
-
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = tmpl.ExecuteTemplate(w, "privacy-policy", data)
-		if err != nil {
-			log.Println(err)
-		}
-	}
+	renderInfoPage(w, r, "privacy-policy.tmpl", "privacy-policy", "Privacy Policy | CloudAdmin")
 }
 
 func TermsHandler(w http.ResponseWriter, r *http.Request) {
+	renderInfoPage(w, r, "terms-of-use.tmpl", "terms-of-use", "Terms of Use | CloudAdmin")
+}
+
+// renderInfoPage shows a page that doesn't need a signed-in user, like the
+// privacy policy, which the sign-in page links to.
+func renderInfoPage(w http.ResponseWriter, r *http.Request, file, name, title string) {
+	user, _ := GetSessionUser(r) // nil when signed out
+	data := PageResponse{SessionUser: user}
+	data.Head.Title = title
+	tmpl, err := parsePage(file)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
+		log.Println(err)
+	}
+}
+
+// ProfileHandler shows the signed-in user's account details.
+func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
 		return
 	}
-	data := PageResponse{}
-	data.Head.Title = "Terms of Use | Q2Admin CloudAdmin"
-	data.Head.Keywords = "terms"
-	data.Title = "Terms of Use"
-	data.SessionUser = user
-
-	tmpl, e := parsePage("terms-of-use.tmpl")
-	if e != nil {
-		log.Println(e)
-	} else {
-		err = tmpl.ExecuteTemplate(w, "terms-of-use", data)
-		if err != nil {
-			log.Println(err)
-		}
+	data := PageResponse{SessionUser: user, Frontends: FrontendsByIdentity(user.GetEmail())}
+	data.Head.Title = "Profile | CloudAdmin"
+	tmpl, err := parsePage("profile.tmpl")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := executeLocked(w, tmpl, "profile", data, data.Frontends...); err != nil {
+		log.Println(err)
 	}
 }
 

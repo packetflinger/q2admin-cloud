@@ -176,20 +176,22 @@ func samplePage() PageResponse {
 
 func TestPagesRender(t *testing.T) {
 	pages := map[string]string{ // file -> template name
-		"dashboard.tmpl":     "dashboard",
-		"servers.tmpl":       "my-servers",
-		"server-add.tmpl":    "server-add",
-		"server-view.tmpl":   "server-view",
-		"player-view.tmpl":   "player-view",
-		"terminal.tmpl":      "terminal",
-		"search.tmpl":        "search",
-		"player.tmpl":        "player",
-		"rule-list.tmpl":     "rule-list",
-		"rule-view.tmpl":     "rule",
-		"rule-add.tmpl":      "rule-add",
-		"rule-edit.tmpl":     "rule-edit",
-		"generate-keys.tmpl": "keygen",
-		"terms-of-use.tmpl":  "terms-of-use",
+		"dashboard.tmpl":      "dashboard",
+		"servers.tmpl":        "my-servers",
+		"server-add.tmpl":     "server-add",
+		"server-view.tmpl":    "server-view",
+		"player-view.tmpl":    "player-view",
+		"terminal.tmpl":       "terminal",
+		"search.tmpl":         "search",
+		"player.tmpl":         "player",
+		"rule-list.tmpl":      "rule-list",
+		"rule-view.tmpl":      "rule",
+		"rule-add.tmpl":       "rule-add",
+		"rule-edit.tmpl":      "rule-edit",
+		"generate-keys.tmpl":  "keygen",
+		"terms-of-use.tmpl":   "terms-of-use",
+		"privacy-policy.tmpl": "privacy-policy",
+		"profile.tmpl":        "profile",
 	}
 	for file, name := range pages {
 		t.Run(name, func(t *testing.T) {
@@ -453,5 +455,25 @@ func TestKeysPage(t *testing.T) {
 	data.KeyPair = nil
 	if out := renderPage(t, "generate-keys.tmpl", "keygen", data); strings.Contains(out, "Copy the private key now") {
 		t.Error("key warning shown with no key pair")
+	}
+}
+
+func TestInfoPagesRenderSignedOut(t *testing.T) {
+	for file, name := range map[string]string{"privacy-policy.tmpl": "privacy-policy", "terms-of-use.tmpl": "terms-of-use"} {
+		if out := renderPage(t, file, name, PageResponse{}); strings.Contains(out, "Account menu") {
+			t.Errorf("%s shows an account menu with nobody signed in", name)
+		}
+	}
+}
+
+func TestSignInPage(t *testing.T) {
+	tmpl := template.Must(template.ParseFiles("../api/website/templates/new/sign-in.tmpl"))
+	var out bytes.Buffer
+	data := PageResponse{AuthProviders: []AuthProvider{{URL: "/auth/google", Icon: "/g.svg", Alt: "Google", Enabled: true}, {Alt: "Off"}}}
+	if err := tmpl.Execute(&out, data); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `href="/auth/google"`) || strings.Contains(out.String(), "Off") {
+		t.Error("sign-in page should list only enabled providers")
 	}
 }
