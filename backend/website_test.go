@@ -183,3 +183,22 @@ func TestPagesRender(t *testing.T) {
 		})
 	}
 }
+
+func TestSummarize(t *testing.T) {
+	data := samplePage()
+	offline := &frontend.Frontend{Name: "down", Players: []frontend.Player{{ConnectTime: 5}}}
+	got := summarize(append(data.Frontends, offline))
+	want := FrontendSummary{Servers: 2, Online: 1, Players: 1, Rules: 1}
+	if got != want {
+		t.Errorf("summarize() = %+v, want %+v", got, want)
+	}
+}
+
+func TestDashboardEmptyState(t *testing.T) {
+	data := samplePage()
+	data.Frontends = nil
+	out := renderPage(t, "dashboard.tmpl", "dashboard", data)
+	if !strings.Contains(out, "Add your first server") {
+		t.Error("empty dashboard should prompt to add a server")
+	}
+}

@@ -1,19 +1,79 @@
 {{define "dashboard"}}
 {{template "header" .}}
-
-<div class="container">
-    <h1>Dashboard</h1>
-    <p>{{.SessionUser.GetEmail}}</p>
-    <h3>My Servers <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addServerModal">Add</button></h3>
-    <p id="my-servers">
-        <img src="/static/img/loading.svg" style="width:32px; height: 32px;">
-        <ul>
-        {{range .Frontends}}
-            <li><a href="/sv/{{.UUID}}/{{.Name}}">{{.Name}}</a></li>
-        {{end}}
-        </ul>
-    </p>
+{{$sum := summarize .Frontends}}
+<div class="q2a-page-head">
+	<div>
+		<h1>Dashboard</h1>
+		<div class="text-body-secondary small">{{.SessionUser.GetEmail}}</div>
+	</div>
+	<a class="btn btn-primary btn-sm" href="/add-server"><i class="bi bi-plus-lg me-1"></i>Add server</a>
 </div>
 
+<div class="row g-3 mb-4">
+	<div class="col-6 col-lg-3">
+		<div class="q2a-panel q2a-stat">
+			<div class="q2a-stat-label">Servers</div>
+			<div class="q2a-stat-value">{{$sum.Servers}}</div>
+		</div>
+	</div>
+	<div class="col-6 col-lg-3">
+		<div class="q2a-panel q2a-stat">
+			<div class="q2a-stat-label">Online</div>
+			<div class="q2a-stat-value">{{$sum.Online}}<span class="fs-6 text-body-secondary"> / {{$sum.Servers}}</span></div>
+		</div>
+	</div>
+	<div class="col-6 col-lg-3">
+		<div class="q2a-panel q2a-stat">
+			<div class="q2a-stat-label">Players online</div>
+			<div class="q2a-stat-value">{{$sum.Players}}</div>
+		</div>
+	</div>
+	<div class="col-6 col-lg-3">
+		<div class="q2a-panel q2a-stat">
+			<div class="q2a-stat-label">Rules</div>
+			<div class="q2a-stat-value">{{$sum.Rules}}</div>
+		</div>
+	</div>
+</div>
+
+<div class="q2a-panel">
+	<div class="q2a-panel-head">Servers</div>
+	{{if .Frontends}}
+	<div class="table-responsive">
+		<table class="table table-hover align-middle">
+			<thead>
+				<tr>
+					<th>Server</th>
+					<th class="d-none d-md-table-cell">Address</th>
+					<th>Map</th>
+					<th class="text-end">Players</th>
+					<th class="d-none d-sm-table-cell">Connected</th>
+				</tr>
+			</thead>
+			<tbody>
+			{{range .Frontends}}
+				{{$up := and .Connected .Trusted}}
+				<tr>
+					<td>
+						<span class="q2a-dot {{if $up}}online{{end}} me-2" title="{{if $up}}online{{else}}offline{{end}}"></span><span class="visually-hidden">{{if $up}}online{{else}}offline{{end}}</span>
+						<a href="/sv/{{.UUID}}/{{.Name}}" class="fw-semibold text-decoration-none">{{.Name}}</a>
+						{{if not .Enabled}}<span class="badge text-bg-secondary ms-1">disabled</span>{{end}}
+					</td>
+					<td class="d-none d-md-table-cell q2a-mono">{{.IPAddress}}:{{.Port}}</td>
+					<td class="q2a-mono">{{if $up}}{{.CurrentMap}}{{else}}<span class="text-body-secondary">-</span>{{end}}</td>
+					<td class="text-end">{{if $up}}{{online .}}<span class="text-body-secondary">/{{.MaxPlayers}}</span>{{else}}<span class="text-body-secondary">-</span>{{end}}</td>
+					<td class="d-none d-sm-table-cell text-body-secondary">{{if $up}}{{ago .ConnectTime}}{{else}}offline{{end}}</td>
+				</tr>
+			{{end}}
+			</tbody>
+		</table>
+	</div>
+	{{else}}
+	<div class="q2a-empty">
+		<p>You don't have any servers yet.</p>
+		<a class="btn btn-primary btn-sm" href="/add-server">Add your first server</a>
+	</div>
+	{{end}}
+</div>
 {{template "footer" .}}
 {{end}}

@@ -50,6 +50,8 @@ var (
 		"ago":        util.TimeAgo,
 		"dmflags":    dmflags,
 		"datetime":   util.TimeDateString,
+		"online":     playersOnline,
+		"summarize":  summarize,
 	}
 )
 
@@ -298,6 +300,37 @@ func (s *Backend) RunHTTPServer(ip string, port int, creds []*pb.OAuth, secret [
 	log.Fatal(httpsrv.ListenAndServe())
 }
 
+// playersOnline counts fe's occupied player slots. PlayerCount isn't used
+// because it isn't reset when a frontend reconnects.
+func playersOnline(fe *frontend.Frontend) int {
+	n := 0
+	for _, p := range fe.Players {
+		if p.ConnectTime > 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// FrontendSummary is the dashboard's totals across a user's frontends.
+type FrontendSummary struct {
+	Servers, Online, Players, Rules int
+}
+
+// summarize totals fes for the dashboard. Call it from a template rendered by
+// executeLocked so the frontends are locked.
+func summarize(fes []*frontend.Frontend) FrontendSummary {
+	s := FrontendSummary{Servers: len(fes)}
+	for _, fe := range fes {
+		if fe.Connected && fe.Trusted {
+			s.Online++
+			s.Players += playersOnline(fe)
+		}
+		s.Rules += len(fe.Rules)
+	}
+	return s
+}
+
 // parsePage loads a page template along with the shared header, footer and
 // template functions.
 func parsePage(file string) (*template.Template, error) {
@@ -370,6 +403,7 @@ func dashboardPage(user *pb.User) (PageResponse, error) {
 	out.SessionUser = user
 	out.Head.Title = "Dashboard | CloudAdmin"
 	out.Frontends = FrontendsByIdentity(user.GetEmail())
+	out.NavHighlight.Dashboard = "active"
 	return out, nil
 }
 
