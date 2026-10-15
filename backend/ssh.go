@@ -830,7 +830,7 @@ func MyFrontends(u *pb.User) []*frontend.Frontend {
 	if u == nil {
 		return fes
 	}
-	for _, c := range be.frontends {
+	for _, c := range be.Frontends() {
 		if c.Owner == u.Email {
 			fes = append(fes, c)
 		}
@@ -844,7 +844,7 @@ func MyDelegates(u *pb.User) []*frontend.Frontend {
 	if u == nil {
 		return fes
 	}
-	for _, f := range be.frontends {
+	for _, f := range be.Frontends() {
 		roles, ok := f.Users[u]
 		if !ok {
 			continue

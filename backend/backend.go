@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize/english"
@@ -47,15 +48,19 @@ type Config struct {
 
 // "This" admin server
 type Backend struct {
-	config     *pb.Config // global config
-	cf         Config
-	frontends  []*frontend.Frontend // managed quake 2 servers
-	maintCount int                  // total maintenance runs
-	privateKey *rsa.PrivateKey      // private to us
-	publicKey  *rsa.PublicKey       // known to clients
-	rpcCancel  context.CancelFunc   // call this to kill the RPC server
-	rpcStart   int64                // unix timestamp
-	rules      []*pb.Rule           // bans/mutes/etc
+	config    *pb.Config // global config
+	cf        Config
+	frontends []*frontend.Frontend // managed quake 2 servers, read via Frontends()
+	// Guards the frontends slice. Each frontend's Name and UUID are also
+	// written holding this (plus that frontend's lock) so lookups can match on
+	// them. Never acquire a frontend lock while holding this.
+	frontendsMu sync.Mutex
+	maintCount  int                // total maintenance runs
+	privateKey  *rsa.PrivateKey    // private to us
+	publicKey   *rsa.PublicKey     // known to clients
+	rpcCancel   context.CancelFunc // call this to kill the RPC server
+	rpcStart    int64              // unix timestamp
+	rules       []*pb.Rule         // bans/mutes/etc
 	//users      []Q2AUser
 	users []*pb.User // website users
 }
@@ -209,7 +214,9 @@ func (b *Backend) CreateFrontend(f *frontend.Frontend) error {
 	}
 	f.ID = int(id)
 	f.Data = &db
+	b.frontendsMu.Lock()
 	b.frontends = append(b.frontends, f)
+	b.frontendsMu.Unlock()
 	return nil
 }
 
@@ -226,14 +233,10 @@ func (b *Backend) DeleteFrontend(name string) error {
 	if err != nil {
 		return fmt.Errorf("error removing frontend %q from database: %v", name, err)
 	}
-	var frontends []*frontend.Frontend
-	for _, f := range b.frontends {
-		if f.Name == name {
-			continue
-		}
-		frontends = append(frontends, f)
-	}
-	be.frontends = frontends
+	// a new slice, so snapshots from Frontends() stay intact
+	b.frontendsMu.Lock()
+	defer b.frontendsMu.Unlock()
+	b.frontends = slices.DeleteFunc(slices.Clone(b.frontends), func(f *frontend.Frontend) bool { return f == fe })
 	return nil
 }
 
@@ -242,6 +245,8 @@ func (b *Backend) FindFrontend(lookup string) (*frontend.Frontend, error) {
 	if lookup == "" {
 		return nil, fmt.Errorf("empty uuid looking up client")
 	}
+	b.frontendsMu.Lock()
+	defer b.frontendsMu.Unlock()
 	for i := range b.frontends {
 		if b.frontends[i].UUID == lookup {
 			return b.frontends[i], nil
@@ -255,12 +260,23 @@ func (b *Backend) FindFrontendByName(name string) (*frontend.Frontend, error) {
 	if name == "" {
 		return nil, fmt.Errorf("empty name looking up client")
 	}
+	b.frontendsMu.Lock()
+	defer b.frontendsMu.Unlock()
 	for i := range b.frontends {
 		if b.frontends[i].Name == name {
 			return b.frontends[i], nil
 		}
 	}
 	return nil, fmt.Errorf("unknown client: %q", name)
+}
+
+// Frontends returns a snapshot of the managed frontends that's safe to range
+// over while frontends are added or deleted. Only appends and fresh slices
+// are ever stored, so a snapshot's elements never change underneath it.
+func (b *Backend) Frontends() []*frontend.Frontend {
+	b.frontendsMu.Lock()
+	defer b.frontendsMu.Unlock()
+	return b.frontends
 }
 
 // Get a pointer to a user based on their email
@@ -285,7 +301,7 @@ func FrontendsByContext(ctx *IdentityContext) []*frontend.Frontend {
 	if ctx == nil {
 		return cls
 	}
-	for _, cl := range be.frontends {
+	for _, cl := range be.Frontends() {
 		if cl.Owner == ctx.user.Email {
 			cls = append(cls, cl)
 			continue
@@ -306,7 +322,7 @@ func FrontendsByIdentity(ident string) []*frontend.Frontend {
 	if ident == "" {
 		return list
 	}
-	for _, cl := range be.frontends {
+	for _, cl := range be.Frontends() {
 		if strings.EqualFold(cl.Owner, ident) {
 			list = append(list, cl)
 		}
@@ -722,7 +738,7 @@ func (b *Backend) UserFrontends(u string) []*frontend.Frontend {
 	if u == "" {
 		return out
 	}
-	for _, f := range b.frontends {
+	for _, f := range b.Frontends() {
 		for k := range f.WebUsers {
 			if strings.EqualFold(k, u) {
 				out = append(out, f)
@@ -738,7 +754,7 @@ func Shutdown() {
 	be.Logf(LogLevelNormal, "Shutdown initiated...")
 	be.Logf(LogLevelNormal, "  Writing all player stats to database")
 	var err error
-	for _, f := range be.frontends {
+	for _, f := range be.Frontends() {
 		err = f.WritePlayers()
 		if err != nil {
 			be.Logf(LogLevelNormal, "    error writing players for %q: %v", f.Name, err)

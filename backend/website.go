@@ -417,7 +417,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 
 func WebsiteAPIGetConnectedServers(w http.ResponseWriter, r *http.Request) {
 	var activeservers []ActiveServer
-	for _, s := range be.frontends {
+	for _, s := range be.Frontends() {
 		if s.Connected {
 			srv := ActiveServer{UUID: s.UUID, Name: s.Name, Playercount: len(s.Players)}
 			activeservers = append(activeservers, srv)
@@ -1051,7 +1051,7 @@ func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
 
 	lookup := mux.Vars(r)["uuid"]
 	//fes := be.UserFrontends(user.GetEmail())
-	for _, f := range be.frontends {
+	for _, f := range be.Frontends() {
 		for j, r := range f.Rules {
 			if r.GetUuid() == lookup {
 				data.Frontend = f

@@ -52,7 +52,7 @@ func Invite(fe *frontend.Frontend) {
 	}
 
 	inv := fmt.Sprintf("%s invites you to play at %s (%s:%d)", p.Name, fe.Name, fe.IPAddress, fe.Port)
-	for _, s := range be.frontends {
+	for _, s := range be.Frontends() {
 		if s == fe {
 			if fe.Enabled && fe.AllowInvite { // already locked by our caller
 				SayEveryone(fe, PRINT_CHAT, inv)

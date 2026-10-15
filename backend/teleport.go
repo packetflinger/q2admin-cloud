@@ -35,7 +35,7 @@ Empty servers:
 func (s *Backend) teleportDestinations(self *frontend.Frontend) (*pb.TeleportReply, error) {
 	var reply pb.TeleportReply
 	var empty []string
-	for _, fe := range s.frontends {
+	for _, fe := range s.Frontends() {
 		// The caller holds its own frontend's lock. Waiting on another's could
 		// deadlock with that server listing destinations at the same time.
 		// shortcut: a server busy mid-packet is left out of this listing, cache
@@ -109,7 +109,7 @@ func Teleport(fe *frontend.Frontend) {
 		return
 	}
 
-	for _, f := range sv.frontends {
+	for _, f := range sv.Frontends() {
 		if strings.EqualFold(f.Name, target) {
 			notice := fmt.Sprintf("Teleporting %s to %s [%s:%d]\n", p.Name, f.Name, f.IPAddress, f.Port)
 			SayEveryone(fe, PRINT_CHAT, notice)

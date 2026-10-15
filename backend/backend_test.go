@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/packetflinger/q2admind/frontend"
@@ -97,5 +98,31 @@ func TestFrontendPointerSurvivesAppend(t *testing.T) {
 	after, _ := b.FindFrontendByName("fe1")
 	if after != before || !after.Connected {
 		t.Error("pointer from FindFrontendByName went stale after append")
+	}
+}
+
+func TestFrontendsSnapshotUnderConcurrentChanges(t *testing.T) {
+	b := &Backend{frontends: []*frontend.Frontend{{Name: "fe0"}}}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := range 100 {
+			f := &frontend.Frontend{Name: fmt.Sprint("x", i)}
+			b.frontendsMu.Lock()
+			b.frontends = append(b.frontends, f)
+			b.frontendsMu.Unlock()
+		}
+	}()
+	for range 100 {
+		for _, f := range b.Frontends() {
+			_ = f.Name
+		}
+		if _, err := b.FindFrontendByName("fe0"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	<-done
+	if n := len(b.Frontends()); n != 101 {
+		t.Errorf("len(Frontends()) = %d, want 101", n)
 	}
 }

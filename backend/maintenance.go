@@ -19,7 +19,7 @@ func (s *Backend) startMaintenance() {
 
 		s.Logf(LogLevelDeveloperPlus, "running maintenance")
 		// check time-based player rules
-		for _, cl := range be.frontends {
+		for _, cl := range be.Frontends() {
 			// network call, done before taking the lock
 			vars, err := cl.FetchServerVars()
 			cl.Mu.Lock()
