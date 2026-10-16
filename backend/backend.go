@@ -171,7 +171,6 @@ func (b *Backend) LoadConfig() (*pb.Config, error) {
 	var c pb.Config
 	qry := "SELECT * FROM config"
 	r := db.Handle.QueryRow(qry)
-	// auth_file and api_secret are added last by database.Open
 	err := r.Scan(&c.DebugMode, &c.VerboseLevel, &c.Address, &c.Port, &c.PrivateKey, &c.ApiEnabled, &c.ApiAddress, &c.ApiPort, &c.WebRoot, &c.MaintenanceTime, &c.RpcAddress, &c.RpcPort, &c.LogFile, &c.SshAddress, &c.SshPort, &c.SshHostkey, &c.AuthFile, &c.ApiSecret)
 	if err != nil {
 		return nil, fmt.Errorf("error scanning config from database: %v", err)
@@ -422,113 +421,6 @@ func (b *Backend) LoadFrontends() ([]*frontend.Frontend, error) {
 	})
 	return fes, delegates.Err()
 }
-
-/*
-// ParseFrontends will build a slice of Frontend structs based on the files on
-// disk. Each frontend is in its own directory in the client directory. The
-// clients directory is specified in the main server config. Only clients with
-// a valid "settings.pb" file and not disabled will be loaded.
-func (b *Backend) ParseFrontends() ([]frontend.Frontend, error) {
-	var frontends []frontend.Frontend
-	if b == nil {
-		return frontends, fmt.Errorf("null receiver")
-	}
-	// this essentially loops through each file in the directory
-	err := filepath.WalkDir(b.config.GetClientDirectory(), func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return fmt.Errorf("error walking client directory: %v", err)
-		}
-		if d.IsDir() {
-			info, err := d.Info()
-			if err != nil {
-				return err
-			}
-			// the parent folder itself
-			if info.Name() == b.config.GetClientDirectory() {
-				return nil
-			}
-			fe, err := b.UnmarshalFrontend(info.Name(), b.config.GetClientDirectory())
-			if err != nil {
-				return err
-			}
-			if fe.Enabled {
-				frontends = append(frontends, fe)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return frontends, nil
-}
-*/
-
-/*
-// Load a particular frontend from disk into memory. This happens for each
-// frontend at startup, when created from the web interface or ssh termainal.
-//
-// Returns a partially populated Frontend struct for use in the backend. It
-// still needs to be dynamically added to the backend's slice of frontends to
-// act on it.
-func (b *Backend) UnmarshalFrontend(name, path string) (frontend.Frontend, error) {
-	var fe frontend.Frontend
-	fe, err := frontend.LoadSettings(name, path)
-	if err != nil {
-		return fe, err
-	}
-	fe.Data = &db
-	fe.Server = b
-	fe.ID, err = fe.GetDatabaseID()
-	if err != nil {
-		log.Println(err)
-	}
-	fe.Invites = frontend.InviteBucket{
-		Tokens: MaxInviteTokens,
-		Max:    MaxInviteTokens,
-		Freq:   InviteTokenInterval,
-	}
-	fe.Maplist = maprotator.NewMapRotation("default", []string{
-		"q2dm7",
-		"tltf",
-		"q2rdm2",
-		"q2dm8",
-	})
-	return fe, nil
-}
-*/
-/*
-// Write the frontends proto to disk as text-format
-func MaterializeFrontends(outfile string, frontends []frontend.Frontend) error {
-	if outfile == "" {
-		return fmt.Errorf("empty output file name")
-	}
-	if len(frontends) == 0 {
-		return fmt.Errorf("no clients to write")
-	}
-	fespb := []*pb.Frontend{}
-	for _, c := range frontends {
-		p := c.ToProto()
-		fespb = append(fespb, p)
-	}
-	fes := pb.Frontends{
-		Frontend: fespb,
-	}
-	opt := prototext.MarshalOptions{
-		Multiline: true,
-		Indent:    "  ",
-	}
-	textpb, err := opt.Marshal(&fes)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(outfile, textpb, 0777)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-*/
 
 // SendError is a way of letting the client know there's a problem.
 func SendError(fe *frontend.Frontend, pl *frontend.Player, severity int, err string) {
