@@ -26,59 +26,31 @@ import (
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
-// All the config options pulled from the database on startup
-type Config struct {
-	Address         string
-	DebugMode       bool
-	LogFile         string
-	MaintenanceTime int
-	Port            int
-	PrivateKey      string // PEM-encoded
-	RpcAddress      string
-	RpcPort         int
-	SshAddress      string
-	SshHostKey      string
-	SshPort         int
-	VerboseLevel    int
-	WebEnable       bool
-	WebAddress      string
-	WebPort         int
-	WebRoot         string
-}
-
-// "This" admin server
 type Backend struct {
-	config    *pb.Config // global config
-	cf        Config
-	frontends []*frontend.Frontend // managed quake 2 servers, read via Frontends()
-	// Guards the frontends slice. Each frontend's Name and UUID are also
-	// written holding this (plus that frontend's lock) so lookups can match on
-	// them. Never acquire a frontend lock while holding this.
-	frontendsMu sync.Mutex
-	maintCount  int                // total maintenance runs
-	privateKey  *rsa.PrivateKey    // private to us
-	publicKey   *rsa.PublicKey     // known to clients
-	rpcCancel   context.CancelFunc // call this to kill the RPC server
-	rpcStart    int64              // unix timestamp
-	rules       []*pb.Rule         // bans/mutes/etc
-	//users      []Q2AUser
-	users []*pb.User // website users
+	config      *pb.Config           // global config
+	frontends   []*frontend.Frontend // managed quake 2 servers
+	frontendsMu sync.Mutex           // frontend slice lock
+	maintCount  int                  // total maintenance runs
+	privateKey  *rsa.PrivateKey      // private to us
+	publicKey   *rsa.PublicKey       // known to clients
+	rpcCancel   context.CancelFunc   // call this to kill the RPC server
+	rpcStart    int64                // unix timestamp
+	rules       []*pb.Rule           // bans/mutes/etc
+	users       []*pb.User           // website users
 }
 
 var (
 	be Backend // this server
 	db database.Database
-	cf Config
 )
 
 const (
-	challengeLength = 16  // bytes
-	versionRequired = 715 // git revision number
-
-	GreetingLength      = 306
-	InviteTokenInterval = 300 // seconds per token added
-	MaxInviteTokens     = 3
-	NetReadLength       = 5000
+	challengeLength     = 16         // bytes
+	versionRequired     = 715        // q2admin git revision number
+	GreetingLength      = 306        // for spot checking validity
+	InviteTokenInterval = 300        // seconds per token added
+	MaxInviteTokens     = 3          // for invite token bucket
+	NetReadLength       = 5000       // max input buffer len from client
 	ProtocolMagic       = 1128346193 // "Q2AC"
 	StifleMax           = 300        // 5 minutes
 	TeleportWidth       = 80         // max chars per line for teleport replies
