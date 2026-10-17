@@ -693,7 +693,7 @@ func (b *Backend) Logln(level int, args ...any) {
 }
 
 // Start the cloud admin server backend
-func Startup(configFile, databaseFile string, foreground bool) {
+func Startup(databaseFile string, foreground bool) {
 	var err error
 	db, err = database.Open(databaseFile)
 	if err != nil {
