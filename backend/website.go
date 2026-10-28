@@ -1159,6 +1159,7 @@ func ConsoleStreamHandler(w http.ResponseWriter, r *http.Request) {
 	_ = rc.SetWriteDeadline(time.Time{}) // the server's WriteTimeout would cut the stream off
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no") // tell nginx not to buffer this response
 
 	stream := make(chan string, 64) // ConsoleBroadcast drops messages when this is full
 	fe.AddTerminal(&stream)

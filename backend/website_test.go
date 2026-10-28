@@ -352,6 +352,9 @@ func TestConsoleStreamAndCommand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if res.Header.Get("X-Accel-Buffering") != "no" {
+		t.Error("stream should tell nginx not to buffer it")
+	}
 	lines := bufio.NewScanner(res.Body)
 	lines.Scan() // ": connected", so the subscription exists
 
