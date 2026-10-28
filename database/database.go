@@ -148,7 +148,8 @@ var columnAdditions = []struct{ table, column, decl string }{
 	{"rule", "vpn", "INTEGER DEFAULT 0"},
 	{"config", "auth_file", "TEXT DEFAULT 'config/oauth.pb'"}, // OAuth sign-in providers
 	{"config", "api_secret", "TEXT DEFAULT ''"},
-	{"user", "name", "TEXT DEFAULT ''"}, // what the user is shown as, set on their profile               // signs session cookies; generated on first start
+	{"user", "name", "TEXT DEFAULT ''"},           // what the user is shown as, set on their profile
+	{"rule", "server_group", "INTEGER DEFAULT 0"}, // set for a group's rules, instead of frontend               // signs session cookies; generated on first start
 }
 
 // addColumnIfMissing adds column to table, unless the table doesn't exist or

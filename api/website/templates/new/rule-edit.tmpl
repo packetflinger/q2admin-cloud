@@ -1,17 +1,17 @@
 {{define "rule-edit"}}
 {{template "header" .}}
-{{$fe := .Frontend}}
-{{$base := printf "/sv/%s/%s" $fe.UUID $fe.Name}}
+{{$home := .RuleHome}}
 {{with .Rule}}
 {{$editing := .GetId}}
 <div class="q2a-page-head">
 	<div class="min-w-0">
-		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item"><a href="{{$base}}">{{$fe.Name}}</a></li><li class="breadcrumb-item"><a href="{{$base}}/rules">Rules</a></li><li class="breadcrumb-item active" aria-current="page">{{if $editing}}Edit{{else}}New{{end}}</li></ol></nav>
-		<h1>{{if $editing}}Edit rule{{else}}New rule for {{$fe.Name}}{{end}}</h1>
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{$home.RootURL}}">{{$home.Root}}</a></li><li class="breadcrumb-item"><a href="{{$home.URL}}">{{$home.Name}}</a></li><li class="breadcrumb-item"><a href="{{$home.RulesURL}}">Rules</a></li><li class="breadcrumb-item active" aria-current="page">{{if $editing}}Edit{{else}}New{{end}}</li></ol></nav>
+		<h1>{{if $editing}}Edit rule{{else}}New rule for {{$home.Name}}{{end}}</h1>
+		{{if eq $home.Kind "group"}}<div class="text-body-secondary small">Applies to every server in the group, including servers added later.</div>{{end}}
 	</div>
 </div>
 
-<form method="post" action="{{if $editing}}/rules/{{.GetUuid}}/edit{{else}}{{$base}}/rules/add{{end}}">
+<form method="post" action="{{if $editing}}/rules/{{.GetUuid}}/edit{{else}}{{$home.AddURL}}{{end}}">
 	{{if $.FormError}}<div class="alert alert-danger" role="alert">{{$.FormError}}</div>{{end}}
 	<div class="row g-3">
 		<div class="col-12 col-xl-6">
@@ -102,7 +102,7 @@
 		</div>
 	</div>
 	<div class="d-flex gap-2 justify-content-end mt-3">
-		<a class="btn btn-outline-secondary" href="{{if $editing}}/rules/{{.GetUuid}}/view{{else}}{{$base}}/rules{{end}}">Cancel</a>
+		<a class="btn btn-outline-secondary" href="{{if $editing}}/rules/{{.GetUuid}}/view{{else}}{{$home.RulesURL}}{{end}}">Cancel</a>
 		<button class="btn btn-primary" type="submit">{{if $editing}}Save rule{{else}}Create rule{{end}}</button>
 	</div>
 </form>

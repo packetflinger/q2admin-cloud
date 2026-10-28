@@ -14,32 +14,7 @@
 
 <div class="q2a-panel">
 	{{if .Rules}}
-	<div class="table-responsive">
-		<table class="table table-hover align-middle">
-			<thead>
-				<tr>
-					<th>Type</th>
-					<th>Description</th>
-					<th class="d-none d-md-table-cell">Matches</th>
-					<th class="d-none d-lg-table-cell">Expires</th>
-					<th class="d-none d-sm-table-cell">ID</th>
-				</tr>
-			</thead>
-			<tbody>
-			{{range .Rules}}
-				<tr>
-					<td class="text-nowrap"><span class="badge text-bg-secondary">{{.GetType}}</span>{{if .GetDisabled}} <span class="badge text-bg-warning">off</span>{{end}}</td>
-					<td><a href="/rules/{{.GetUuid}}/view" class="text-decoration-none">{{with .GetDescription}}{{join . " "}}{{else}}<span class="text-body-secondary">no description</span>{{end}}</a></td>
-					<td class="d-none d-md-table-cell q2a-mono small text-break">
-						{{range .GetAddress}}{{.}} {{end}}{{range .GetName}}name:{{.}} {{end}}{{range .GetHostname}}host:{{.}} {{end}}{{range .GetClient}}client:{{.}} {{end}}{{if .GetVpn}}vpn{{end}}
-					</td>
-					<td class="d-none d-lg-table-cell text-body-secondary text-nowrap">{{with .GetExpirationTime}}{{datetime .}}{{else}}never{{end}}</td>
-					<td class="d-none d-sm-table-cell q2a-mono">{{printf "%.8s" .GetUuid}}</td>
-				</tr>
-			{{end}}
-			</tbody>
-		</table>
-	</div>
+	{{template "rule-table" .Rules}}
 	{{else}}
 	<div class="q2a-empty">
 		<p>No rules for {{$fe.Name}} yet.</p>
@@ -47,5 +22,14 @@
 	</div>
 	{{end}}
 </div>
+{{if .GroupRules}}
+<div class="q2a-panel mt-3">
+	<div class="q2a-panel-head">
+		<span>From groups</span>
+		<span class="small fw-normal text-body-secondary">Set on a group {{$fe.Name}} is in</span>
+	</div>
+	{{template "rule-table" .GroupRules}}
+</div>
+{{end}}
 {{template "footer" .}}
 {{end}}

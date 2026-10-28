@@ -19,7 +19,6 @@ func TestDelegation(t *testing.T) {
 	stranger := &pb.User{Email: "stranger@example.com"}
 	fe, _, _ := groupTestSetup(t, owner.Email) // fe1, connected, ID 1
 	fe.Data = &db
-	createRuleTable(t, &db)
 	for _, q := range []string{ // what the server page's stats and search read
 		`CREATE TABLE frontend (id INTEGER, uuid TEXT, name TEXT)`,
 		`CREATE TABLE player_stat (id INTEGER PRIMARY KEY, player INTEGER, frags INTEGER, deaths INTEGER, suicides INTEGER, kdr INTEGER, play_time INTEGER)`,
@@ -119,9 +118,6 @@ func TestLoadFrontendsReadsDelegates(t *testing.T) {
 			description TEXT DEFAULT '', allow_teleport INTEGER DEFAULT 0, allow_invite INTEGER DEFAULT 0, ip_address TEXT DEFAULT '',
 			port INTEGER DEFAULT 27910, public_key_data TEXT DEFAULT '', verified INTEGER DEFAULT 0, invite_tokens INTEGER DEFAULT 3,
 			invite_token_frequency INTEGER DEFAULT 300, delete_protection INTEGER DEFAULT 0)`,
-		`CREATE TABLE rule (id INTEGER, frontend INTEGER, uuid TEXT, rule_type INTEGER, creation_time INTEGER, expiration_time INTEGER,
-			delay INTEGER, stifle_length INTEGER, disabled INTEGER, scope TEXT, timespec_before TEXT, timespec_after TEXT, timespec_every TEXT,
-			timespec_playtime TEXT, addresses TEXT, names TEXT, hostnames TEXT, clients TEXT, userinfo TEXT, message TEXT, description TEXT, vpn INTEGER)`,
 		`INSERT INTO frontend (id, uuid, name, owner) VALUES (5, 'u5', 'five', 'owner@example.com'), (6, 'u6', 'six', 'owner@example.com')`,
 		`INSERT INTO frontend_delegate VALUES (5, 'a@example.com'), (5, 'b@example.com')`,
 	} {

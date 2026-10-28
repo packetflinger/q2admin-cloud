@@ -7,7 +7,7 @@
 		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/groups">Groups</a></li><li class="breadcrumb-item active" aria-current="page">{{$g.Name}}</li></ol></nav>
 		<h1 class="text-truncate">{{$g.Name}} <span class="text-body-secondary fs-6">{{(summarize $g.Members).Online}} of {{len $g.Members}} online</span></h1>
 	</div>
-	<form method="post" action="{{$action}}" data-q2a-confirm="Delete the group {{$g.Name}}? Its servers aren't changed.">
+	<form method="post" action="{{$action}}" data-q2a-confirm="Delete the group {{$g.Name}} and its rules? Its servers aren't otherwise changed.">
 		<button class="btn btn-sm btn-outline-danger" type="submit" name="action" value="delete"><i class="bi bi-trash me-1"></i>Delete group</button>
 	</form>
 </div>
@@ -54,6 +54,15 @@
 				</table>
 			</div>
 			{{else}}<div class="q2a-empty">No servers in this group yet.</div>{{end}}
+		</div>
+		<div class="q2a-panel mt-3" id="rules">
+			<div class="q2a-panel-head">
+				<span>Rules</span>
+				<a class="btn btn-sm btn-primary" href="/groups/{{$g.Name}}/rules/add"><i class="bi bi-plus-lg me-1"></i>New rule</a>
+			</div>
+			{{if .Rules}}
+			{{template "rule-table" .Rules}}
+			{{else}}<div class="q2a-empty">No group rules yet. A rule here applies to every server in the group, including servers added later.</div>{{end}}
 		</div>
 	</div>
 	<div class="col-12 col-xl-4">

@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -24,6 +25,7 @@ func groupTestSetup(t *testing.T, owner string) (up, down, theirs *frontend.Fron
 	savedDB, savedFEs, savedConfig := db, be.frontends, be.config
 	t.Cleanup(func() { d.Handle.Close(); db, be.frontends, be.config = savedDB, savedFEs, savedConfig })
 	db = d
+	createRuleTable(t, &db) // group rules live here
 	be.config = &pb.Config{}
 	up = connectedFrontend(t, owner)
 	up.ID = 1
@@ -168,5 +170,92 @@ func TestGroupPages(t *testing.T) {
 	post("/groups/east/action", url.Values{"action": {"delete"}})
 	if groups, _ := MyGroups(user.Email); len(groups) != 0 {
 		t.Error("group not deleted")
+	}
+}
+
+func TestGroupRules(t *testing.T) {
+	user := &pb.User{Email: "admin@example.com"}
+	up, down, _ := groupTestSetup(t, user.Email)
+	for _, fe := range []*frontend.Frontend{up, down} {
+		fe.Data = &db
+	}
+	db.Handle.Exec(`CREATE TABLE frontend (id INTEGER, uuid TEXT, name TEXT);
+		CREATE TABLE player_stat (id INTEGER PRIMARY KEY, player INTEGER, frags INTEGER, deaths INTEGER, suicides INTEGER, kdr INTEGER, play_time INTEGER)`)
+	CreateGroup(user.Email, "east")
+	SetGroupMember(user.Email, "east", up, true)
+	srv := httptest.NewServer(LoadWebsiteRoutes())
+	defer srv.Close()
+	client := signedInClient(t, srv, user)
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	post := func(path string, form url.Values) string {
+		t.Helper()
+		res, err := client.PostForm(srv.URL+path, form)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.Header.Get("Location")
+	}
+	get := func(path string) (int, string) {
+		t.Helper()
+		res, err := client.Get(srv.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		body, _ := io.ReadAll(res.Body)
+		return res.StatusCode, string(body)
+	}
+
+	loc := post("/groups/east/rules/add", url.Values{"type": {"ban"}, "description": {"group ban"}, "addresses": {"10.0.0.0/8"}, "expires": {"never"}})
+	if !strings.HasPrefix(loc, "/rules/") {
+		t.Fatalf("creating a group rule redirected to %q", loc)
+	}
+	ruleURL := strings.TrimSuffix(loc, "?notice=rulesaved")
+	id := strings.TrimSuffix(strings.TrimPrefix(ruleURL, "/rules/"), "/view")
+
+	applies := func(fe *frontend.Frontend) bool {
+		rules, err := fe.FetchGroupRules()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(rules) == 1 && rules[0].GetUuid() == id
+	}
+	if !applies(up) || applies(down) {
+		t.Error("the group rule should apply to the group's server only")
+	}
+	if own, _ := up.FetchRules(); len(own) != 0 {
+		t.Errorf("a group rule showed up as the server's own rule: %v", own)
+	}
+	if _, body := get("/sv/fe1-uuid/fe1/rules"); !strings.Contains(body, "From groups") || !strings.Contains(body, "group ban") {
+		t.Error("the server's rule list should show the group rule")
+	}
+	if code, body := get(ruleURL); code != 200 || !strings.Contains(body, "every server in the group") {
+		t.Errorf("group rule page: status %d", code)
+	}
+	post("/rules/"+id+"/edit", url.Values{"type": {"mute"}, "names": {"^x"}, "expires": {"never"}})
+	if rules, _ := up.FetchGroupRules(); len(rules) != 1 || rules[0].GetType() != pb.RuleType_MUTE {
+		t.Errorf("edit not saved: %v", rules)
+	}
+
+	SetGroupMember(user.Email, "east", up, false)
+	if applies(up) {
+		t.Error("the group rule still applies after the server left the group")
+	}
+	SetGroupMember(user.Email, "east", up, true)
+
+	if loc := post("/rules/"+id+"/delete", nil); loc != "/groups/east?notice=ruledeleted#rules" {
+		t.Errorf("deleting a group rule redirected to %q", loc)
+	}
+	if applies(up) {
+		t.Error("deleted group rule still applies")
+	}
+
+	post("/groups/east/rules/add", url.Values{"type": {"ban"}, "addresses": {"10.0.0.0/8"}, "expires": {"never"}})
+	DeleteGroup(user.Email, "east")
+	var n int
+	db.Handle.QueryRow("SELECT COUNT(*) FROM rule WHERE server_group != 0").Scan(&n)
+	if n != 0 {
+		t.Errorf("%d group rules left after deleting the group", n)
 	}
 }

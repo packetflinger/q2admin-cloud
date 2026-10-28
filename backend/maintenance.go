@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"slices"
 	"time"
 
 	pb "github.com/packetflinger/q2admind/proto"
@@ -22,8 +23,12 @@ func (s *Backend) startMaintenance() {
 		var samples []statsSample
 		// check time-based player rules
 		for _, cl := range be.Frontends() {
-			// network call, done before taking the lock
+			// network call and database read, done before taking the lock
 			vars, err := cl.FetchServerVars()
+			groupRules, rulesErr := cl.FetchGroupRules()
+			if rulesErr != nil {
+				be.Logf(LogLevelNormal, "[%s] error loading group rules: %v", cl.Name, rulesErr)
+			}
 			cl.Mu.Lock()
 			if !cl.Connected && !cl.Trusted {
 				cl.Mu.Unlock()
@@ -37,7 +42,7 @@ func (s *Backend) startMaintenance() {
 				}
 
 				var matches []*pb.Rule
-				for _, r := range cl.Rules {
+				for _, r := range slices.Concat(cl.Rules, groupRules) {
 					ts := r.GetTimespec()
 					if len(ts.GetPlayTime()) > 0 {
 						match := CheckRule(p, r, time.Now())

@@ -29,7 +29,7 @@ func TestOpenAddsRuleColumns(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := d.Handle.Exec(`INSERT INTO rule (uuid, rule_type, description, vpn) VALUES ('x', 1, 'why', 1)`); err != nil {
+		if _, err := d.Handle.Exec(`INSERT INTO rule (uuid, rule_type, description, vpn, server_group) VALUES ('x', 1, 'why', 1, 2)`); err != nil {
 			t.Fatalf("new columns missing: %v", err)
 		}
 		d.Handle.Close()

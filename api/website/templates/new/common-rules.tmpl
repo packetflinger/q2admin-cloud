@@ -1,0 +1,29 @@
+{{/* A table of rules, linking to each rule's page. Used on server and group pages. */}}
+{{define "rule-table"}}
+<div class="table-responsive">
+	<table class="table table-hover align-middle">
+		<thead>
+			<tr>
+				<th>Type</th>
+				<th>Description</th>
+				<th class="d-none d-md-table-cell">Matches</th>
+				<th class="d-none d-lg-table-cell">Expires</th>
+				<th class="d-none d-sm-table-cell">ID</th>
+			</tr>
+		</thead>
+		<tbody>
+		{{range .}}
+			<tr>
+				<td class="text-nowrap"><span class="badge text-bg-secondary">{{.GetType}}</span>{{if .GetDisabled}} <span class="badge text-bg-warning">off</span>{{end}}</td>
+				<td><a href="/rules/{{.GetUuid}}/view" class="text-decoration-none">{{with .GetDescription}}{{join . " "}}{{else}}<span class="text-body-secondary">no description</span>{{end}}</a></td>
+				<td class="d-none d-md-table-cell q2a-mono small text-break">
+					{{range .GetAddress}}{{.}} {{end}}{{range .GetName}}name:{{.}} {{end}}{{range .GetHostname}}host:{{.}} {{end}}{{range .GetClient}}client:{{.}} {{end}}{{if .GetVpn}}vpn{{end}}
+				</td>
+				<td class="d-none d-lg-table-cell text-body-secondary text-nowrap">{{with .GetExpirationTime}}{{datetime .}}{{else}}never{{end}}</td>
+				<td class="d-none d-sm-table-cell q2a-mono">{{printf "%.8s" .GetUuid}}</td>
+			</tr>
+		{{end}}
+		</tbody>
+	</table>
+</div>
+{{end}}

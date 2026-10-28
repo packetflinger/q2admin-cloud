@@ -115,16 +115,57 @@ func (b *InviteBucket) InviteBucketAdd() {
 	}
 }
 
-// ruleColumns are the rule table columns FetchRules reads and saveRule
-// writes, in order. List fields are stored one entry per line; userinfo as
-// "property=value" lines.
+// ruleColumns are the rule table columns the rule queries read and write, in
+// order. A rule belongs to a frontend or to a server group, so one of frontend
+// and server_group is 0. List fields are stored one entry per line; userinfo
+// as "property=value" lines.
 const ruleColumns = `frontend, uuid, rule_type, creation_time, expiration_time, delay,
 	stifle_length, disabled, scope, timespec_before, timespec_after,
 	timespec_every, timespec_playtime, addresses, names, hostnames, clients,
-	userinfo, message, description, vpn`
+	userinfo, message, description, vpn, server_group`
 
-// FetchRules loads this frontend's rules from the database.
-func (fe *Frontend) FetchRules() ([]*pb.Rule, error) {
+// RuleSet is where a set of rules is stored: one frontend's (Frontend set) or
+// one server group's (Group set).
+type RuleSet struct {
+	DB       *database.Database
+	Frontend int
+	Group    int64
+}
+
+// rules is fe's own rule set.
+func (fe *Frontend) rules() RuleSet { return RuleSet{DB: fe.Data, Frontend: fe.ID} }
+
+// FetchRules loads this frontend's own rules from the database.
+func (fe *Frontend) FetchRules() ([]*pb.Rule, error) { return fe.rules().Fetch() }
+
+// FetchGroupRules loads the rules of every server group fe is in. They're read
+// fresh each time, so joining or leaving a group takes effect straight away.
+func (fe *Frontend) FetchGroupRules() ([]*pb.Rule, error) {
+	return queryRules(fe.Data, "server_group IN (SELECT group_id FROM server_group_member WHERE frontend_id = ?)", fe.ID)
+}
+
+// InsertRule saves a new rule for this frontend, filling in its database id.
+func (fe *Frontend) InsertRule(r *pb.Rule) error { return fe.rules().Insert(r) }
+
+// UpdateRule saves changes to one of this frontend's rules, matched by UUID.
+func (fe *Frontend) UpdateRule(r *pb.Rule) error { return fe.rules().Update(r) }
+
+// DeleteRule removes one of this frontend's rules from the database.
+func (fe *Frontend) DeleteRule(uuid string) error { return fe.rules().Delete(uuid) }
+
+// owner is the WHERE clause and argument matching this set's rules.
+func (s RuleSet) owner() (string, []any) {
+	return "frontend = ? AND server_group = ?", []any{s.Frontend, s.Group}
+}
+
+// Fetch loads the set's rules.
+func (s RuleSet) Fetch() ([]*pb.Rule, error) {
+	where, args := s.owner()
+	return queryRules(s.DB, where, args...)
+}
+
+// queryRules loads the rules matching a WHERE clause.
+func queryRules(d *database.Database, where string, args ...any) ([]*pb.Rule, error) {
 	var rules []*pb.Rule
 	qry := `SELECT id, frontend, COALESCE(uuid, ''), rule_type, COALESCE(creation_time, 0),
 		COALESCE(expiration_time, 0), COALESCE(delay, 0), COALESCE(stifle_length, 0),
@@ -133,8 +174,8 @@ func (fe *Frontend) FetchRules() ([]*pb.Rule, error) {
 		COALESCE(timespec_playtime, ''), COALESCE(addresses, ''), COALESCE(names, ''),
 		COALESCE(hostnames, ''), COALESCE(clients, ''), COALESCE(userinfo, ''),
 		COALESCE(message, ''), COALESCE(description, ''), COALESCE(vpn, 0)
-		FROM rule WHERE frontend = ?`
-	rows, err := fe.Data.Handle.Query(qry, fe.ID)
+		FROM rule WHERE ` + where
+	rows, err := d.Handle.Query(qry, args...)
 	if err != nil {
 		return rules, fmt.Errorf("error selecting rules: %v", err)
 	}
@@ -175,28 +216,29 @@ func splitLines(s string) []string {
 	return out
 }
 
-// ruleValues returns r's values in ruleColumns order.
-func (fe *Frontend) ruleValues(r *pb.Rule) []any {
+// values returns r's values in ruleColumns order, owned by this set.
+func (s RuleSet) values(r *pb.Rule) []any {
 	ts := r.GetTimespec()
 	var userinfo []string
 	for _, ui := range r.GetUserInfo() {
 		userinfo = append(userinfo, ui.GetProperty()+"="+ui.GetValue())
 	}
 	join := func(l []string) string { return strings.Join(l, "\n") }
-	return []any{fe.ID, r.GetUuid(), r.GetType(), r.GetCreationTime(), r.GetExpirationTime(),
+	return []any{s.Frontend, r.GetUuid(), r.GetType(), r.GetCreationTime(), r.GetExpirationTime(),
 		r.GetDelay(), r.GetStifleLength(), r.GetDisabled(), r.GetScope(), ts.GetBefore(),
 		ts.GetAfter(), ts.GetEvery(), ts.GetPlayTime(), join(r.GetAddress()), join(r.GetName()),
 		join(r.GetHostname()), join(r.GetClient()), join(userinfo), join(r.GetMessage()),
-		join(r.GetDescription()), r.GetVpn()}
+		join(r.GetDescription()), r.GetVpn(), s.Group}
 }
 
-// InsertRule saves a new rule for this frontend, filling in its database id.
-func (fe *Frontend) InsertRule(r *pb.Rule) error {
+// Insert saves a new rule in the set, filling in its database id.
+func (s RuleSet) Insert(r *pb.Rule) error {
 	if r.CreationTime == 0 {
 		r.CreationTime = time.Now().Unix()
 	}
-	qry := "INSERT INTO rule (" + ruleColumns + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-	res, err := fe.Data.Handle.Exec(qry, fe.ruleValues(r)...)
+	cols := strings.Count(ruleColumns, ",") + 1
+	qry := "INSERT INTO rule (" + ruleColumns + ") VALUES (" + strings.TrimSuffix(strings.Repeat("?,", cols), ",") + ")"
+	res, err := s.DB.Handle.Exec(qry, s.values(r)...)
 	if err != nil {
 		return fmt.Errorf("error inserting rule: %v", err)
 	}
@@ -205,24 +247,25 @@ func (fe *Frontend) InsertRule(r *pb.Rule) error {
 		return fmt.Errorf("error getting new rule id: %v", err)
 	}
 	r.Id = int32(id)
-	r.FrontendId = int32(fe.ID)
+	r.FrontendId = int32(s.Frontend)
 	return nil
 }
 
-// UpdateRule saves changes to one of this frontend's rules, matched by UUID.
-func (fe *Frontend) UpdateRule(r *pb.Rule) error {
+// Update saves changes to one of the set's rules, matched by UUID.
+func (s RuleSet) Update(r *pb.Rule) error {
 	cols := strings.Fields(strings.ReplaceAll(ruleColumns, ",", " "))
-	qry := "UPDATE rule SET " + strings.Join(cols, " = ?, ") + " = ? WHERE uuid = ? AND frontend = ?"
-	args := append(fe.ruleValues(r), r.GetUuid(), fe.ID)
-	if _, err := fe.Data.Handle.Exec(qry, args...); err != nil {
+	where, args := s.owner()
+	qry := "UPDATE rule SET " + strings.Join(cols, " = ?, ") + " = ? WHERE uuid = ? AND " + where
+	if _, err := s.DB.Handle.Exec(qry, append(append(s.values(r), r.GetUuid()), args...)...); err != nil {
 		return fmt.Errorf("error updating rule %q: %v", r.GetUuid(), err)
 	}
 	return nil
 }
 
-// DeleteRule removes one of this frontend's rules from the database.
-func (fe *Frontend) DeleteRule(uuid string) error {
-	if _, err := fe.Data.Handle.Exec("DELETE FROM rule WHERE uuid = ? AND frontend = ?", uuid, fe.ID); err != nil {
+// Delete removes one of the set's rules.
+func (s RuleSet) Delete(uuid string) error {
+	where, args := s.owner()
+	if _, err := s.DB.Handle.Exec("DELETE FROM rule WHERE uuid = ? AND "+where, append([]any{uuid}, args...)...); err != nil {
 		return fmt.Errorf("error deleting rule %q: %v", uuid, err)
 	}
 	return nil

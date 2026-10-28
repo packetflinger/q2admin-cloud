@@ -123,6 +123,8 @@ type PageResponse struct {
 	Groups        []*ServerGroup
 	Group         *ServerGroup
 	Stats         *Stats
+	RuleHome      *RuleHome  // what the rule being shown belongs to
+	GroupRules    []*pb.Rule // rules from groups that also apply to Frontend
 	CanEdit       bool       // the user owns Frontend, so can change its settings
 	Rule          *pb.Rule   // the rule to view/edit
 	Rules         []*pb.Rule // a list of rules (srv level)
@@ -386,11 +388,13 @@ func summarize(fes []*frontend.Frontend) FrontendSummary {
 }
 
 // parsePage loads a page template along with the shared header, footer,
-// stats widgets and template functions, from the files built into the binary.
+// stats widgets, rules table and template functions, from the files built
+// into the binary.
 func parsePage(file string) (*template.Template, error) {
 	return template.New(file).Funcs(funcMap).ParseFS(website.Files,
 		"templates/new/common-header.tmpl",
 		"templates/new/common-stats.tmpl",
+		"templates/new/common-rules.tmpl",
 		"templates/new/"+file,
 		"templates/new/common-footer.tmpl",
 	)
@@ -581,7 +585,7 @@ var notices = map[string]*Notice{
 	"nouser":       {"danger", "Nobody is registered with that email address. They need to sign in once first."},
 	"selfdelegate": {"warning", "You already own this server."},
 	"groupcreated": {"success", "Group created. Add some servers to it."},
-	"groupdeleted": {"success", "Group deleted. Its servers weren't changed."},
+	"groupdeleted": {"success", "Group deleted, with its rules. Its servers weren't otherwise changed."},
 	"groupadd":     {"success", "Server added to the group."},
 	"groupremove":  {"success", "Server removed from the group."},
 }
@@ -1402,10 +1406,51 @@ func RuleListHandler(w http.ResponseWriter, r *http.Request) {
 	data := PageResponse{SessionUser: user, Frontend: fe, Notice: notices[r.URL.Query().Get("notice")]}
 	data.Head.Title = "Rules | CloudAdmin"
 	data.NavHighlight.Servers = "active"
+	groupRules, err := fe.FetchGroupRules()
+	if err != nil {
+		log.Println(err)
+	}
+	data.GroupRules = SortRules(groupRules)
 	fe.Mu.Lock()
 	data.Rules = SortRules(fe.Rules) // a sorted copy, fe.Rules keeps its order
+	data.RuleHome = serverHome(fe)
 	fe.Mu.Unlock()
-	renderRulePage(w, "rule-list.tmpl", "rule-list", data, fe)
+	renderRulePage(w, "rule-list.tmpl", "rule-list", data, data.RuleHome)
+}
+
+// RuleHome is what a rule belongs to: a server or a server group. The rule
+// pages use it for their links.
+type RuleHome struct {
+	Kind     string // "server" or "group"
+	Name     string
+	URL      string // the server's or group's page
+	RulesURL string // where its rules are listed
+	AddURL   string // the new-rule form
+	Root     string // the list it's in, "Servers" or "Groups"
+	RootURL  string
+	fe       *frontend.Frontend
+	group    *ServerGroup
+}
+
+// serverHome is the RuleHome for fe. Call it holding fe.Mu.
+func serverHome(fe *frontend.Frontend) *RuleHome {
+	base := path.Join("/sv", fe.UUID, fe.Name)
+	return &RuleHome{Kind: "server", Name: fe.Name, URL: base, RulesURL: base + "/rules", AddURL: base + "/rules/add",
+		Root: "Servers", RootURL: "/my-servers", fe: fe}
+}
+
+func groupHome(g *ServerGroup) *RuleHome {
+	base := "/groups/" + g.Name
+	return &RuleHome{Kind: "group", Name: g.Name, URL: base, RulesURL: base + "#rules", AddURL: base + "/rules/add",
+		Root: "Groups", RootURL: "/groups", group: g}
+}
+
+// set is where the home's rules are stored.
+func (h *RuleHome) set() frontend.RuleSet {
+	if h.group != nil {
+		return frontend.RuleSet{DB: &db, Group: h.group.ID}
+	}
+	return frontend.RuleSet{DB: h.fe.Data, Frontend: h.fe.ID}
 }
 
 // RuleViewHandler shows one of the user's rules.
@@ -1415,15 +1460,14 @@ func RuleViewHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe, rule := findMyRule(user, mux.Vars(r)["uuid"])
+	home, rule := findMyRule(user, mux.Vars(r)["uuid"])
 	if rule == nil {
 		http.NotFound(w, r)
 		return
 	}
-	data := PageResponse{SessionUser: user, Frontend: fe, Rule: rule, Notice: notices[r.URL.Query().Get("notice")]}
+	data := PageResponse{SessionUser: user, Rule: rule, RuleHome: home, Notice: notices[r.URL.Query().Get("notice")]}
 	data.Head.Title = "Rule | CloudAdmin"
-	data.NavHighlight.Servers = "active"
-	renderRulePage(w, "rule-view.tmpl", "rule", data, fe)
+	renderRulePage(w, "rule-view.tmpl", "rule", data, home)
 }
 
 // RuleAddHandler shows the new-rule form for a frontend and creates the rule.
@@ -1437,29 +1481,59 @@ func RuleAddHandler(w http.ResponseWriter, r *http.Request) {
 	if fe == nil {
 		return
 	}
-	data := PageResponse{SessionUser: user, Frontend: fe, Rule: &pb.Rule{Type: pb.RuleType_BAN, StifleLength: 60}}
-	data.Head.Title = "New rule | CloudAdmin"
-	data.NavHighlight.Servers = "active"
+	fe.Mu.Lock()
+	home := serverHome(fe)
+	fe.Mu.Unlock()
+	ruleForm(w, r, user, home, newRule(), func(rule *pb.Rule) error {
+		fe.Mu.Lock()
+		defer fe.Mu.Unlock()
+		if err := fe.InsertRule(rule); err != nil {
+			return err
+		}
+		fe.Rules = append(fe.Rules, rule)
+		return nil
+	})
+}
+
+// GroupRuleAddHandler shows the new-rule form for one of the user's groups and
+// creates the rule, which then applies to every server in the group.
+func GroupRuleAddHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := GetSessionUser(r)
+	if err != nil {
+		RedirectToSignon(w, r)
+		return
+	}
+	g, err := MyGroup(user.GetEmail(), mux.Vars(r)["group"])
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	home := groupHome(g)
+	ruleForm(w, r, user, home, newRule(), home.set().Insert)
+}
+
+// newRule is a new rule as the form first shows it.
+func newRule() *pb.Rule {
+	return &pb.Rule{Uuid: uuid.NewString(), Scope: "local", Type: pb.RuleType_BAN, StifleLength: 60}
+}
+
+// ruleForm shows the new or edit rule form for rule; on POST it fills rule
+// in from the form and saves it with save, then shows the saved rule.
+func ruleForm(w http.ResponseWriter, r *http.Request, user *pb.User, home *RuleHome, rule *pb.Rule, save func(*pb.Rule) error) {
+	data := PageResponse{SessionUser: user, Rule: rule, RuleHome: home}
+	data.Head.Title = "Rule | CloudAdmin"
 	if r.Method == http.MethodPost {
-		rule := &pb.Rule{Uuid: uuid.NewString(), Scope: "local"}
 		if err := ruleFromForm(r, rule); err != nil {
-			data.Rule, data.FormError = rule, err.Error()
-		} else {
-			fe.Mu.Lock()
-			err := fe.InsertRule(rule)
-			if err == nil {
-				fe.Rules = append(fe.Rules, rule)
-			}
-			fe.Mu.Unlock()
-			if err == nil {
-				http.Redirect(w, r, "/rules/"+rule.Uuid+"/view?notice=rulesaved", http.StatusSeeOther)
-				return
-			}
+			data.FormError = err.Error()
+		} else if err := save(rule); err != nil {
 			log.Println(err)
-			data.Rule, data.FormError = rule, "unable to save the rule, try again"
+			data.FormError = "unable to save the rule, try again"
+		} else {
+			http.Redirect(w, r, "/rules/"+rule.Uuid+"/view?notice=rulesaved", http.StatusSeeOther)
+			return
 		}
 	}
-	renderRulePage(w, "rule-edit.tmpl", "rule-edit", data, fe)
+	renderRulePage(w, "rule-edit.tmpl", "rule-edit", data, home)
 }
 
 // RuleEditHandler shows the edit form for one of the user's rules and saves it.
@@ -1469,40 +1543,32 @@ func RuleEditHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe, rule := findMyRule(user, mux.Vars(r)["uuid"])
+	home, rule := findMyRule(user, mux.Vars(r)["uuid"])
 	if rule == nil {
 		http.NotFound(w, r)
 		return
 	}
-	data := PageResponse{SessionUser: user, Frontend: fe, Rule: rule}
-	data.Head.Title = "Edit rule | CloudAdmin"
-	data.NavHighlight.Servers = "active"
-	if r.Method == http.MethodPost {
-		fe.Mu.Lock()
-		edited := proto.Clone(rule).(*pb.Rule) // fe.Rules is only changed once saved
-		fe.Mu.Unlock()
-		if err := ruleFromForm(r, edited); err != nil {
-			data.Rule, data.FormError = edited, err.Error()
-		} else {
-			fe.Mu.Lock()
-			err := fe.UpdateRule(edited)
-			if err == nil {
-				for i := range fe.Rules {
-					if fe.Rules[i] == rule {
-						fe.Rules[i] = edited
-					}
-				}
-			}
-			fe.Mu.Unlock()
-			if err == nil {
-				http.Redirect(w, r, "/rules/"+edited.Uuid+"/view?notice=rulesaved", http.StatusSeeOther)
-				return
-			}
-			log.Println(err)
-			data.Rule, data.FormError = edited, "unable to save the rule, try again"
-		}
+	fe := home.fe
+	if fe == nil { // a group's rule: read fresh from the database, nothing to keep in sync
+		ruleForm(w, r, user, home, rule, home.set().Update)
+		return
 	}
-	renderRulePage(w, "rule-edit.tmpl", "rule-edit", data, fe)
+	fe.Mu.Lock()
+	edited := proto.Clone(rule).(*pb.Rule) // fe.Rules is only changed once saved
+	fe.Mu.Unlock()
+	ruleForm(w, r, user, home, edited, func(edited *pb.Rule) error {
+		fe.Mu.Lock()
+		defer fe.Mu.Unlock()
+		if err := fe.UpdateRule(edited); err != nil {
+			return err
+		}
+		for i := range fe.Rules {
+			if fe.Rules[i] == rule {
+				fe.Rules[i] = edited
+			}
+		}
+		return nil
+	})
 }
 
 // RuleDeleteHandler removes one of the user's rules.
@@ -1512,44 +1578,76 @@ func RuleDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		RedirectToSignon(w, r)
 		return
 	}
-	fe, rule := findMyRule(user, mux.Vars(r)["uuid"])
+	home, rule := findMyRule(user, mux.Vars(r)["uuid"])
 	if rule == nil {
 		http.NotFound(w, r)
 		return
 	}
-	fe.Mu.Lock()
-	defer fe.Mu.Unlock()
-	if err := fe.DeleteRule(rule.GetUuid()); err != nil {
+	if fe := home.fe; fe != nil {
+		fe.Mu.Lock()
+		defer fe.Mu.Unlock()
+	}
+	if err := home.set().Delete(rule.GetUuid()); err != nil {
 		log.Println(err)
 		http.Error(w, "500 - unable to delete the rule", http.StatusInternalServerError)
 		return
 	}
-	fe.Rules = slices.DeleteFunc(slices.Clone(fe.Rules), func(x *pb.Rule) bool { return x == rule })
-	http.Redirect(w, r, path.Join("/sv", fe.UUID, fe.Name, "rules")+"?notice=ruledeleted", http.StatusSeeOther)
+	if fe := home.fe; fe != nil {
+		fe.Rules = slices.DeleteFunc(slices.Clone(fe.Rules), func(x *pb.Rule) bool { return x == rule })
+	}
+	back := home.URL + "?notice=ruledeleted#rules"
+	if home.fe != nil {
+		back = home.RulesURL + "?notice=ruledeleted"
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
-// findMyRule finds the rule with this UUID among the user's frontends.
-func findMyRule(user *pb.User, id string) (*frontend.Frontend, *pb.Rule) {
+// findMyRule finds the rule with this UUID among the user's servers, then
+// among their groups' rules.
+func findMyRule(user *pb.User, id string) (*RuleHome, *pb.Rule) {
 	for _, fe := range FrontendsByIdentity(user.GetEmail()) {
 		fe.Mu.Lock()
 		for _, rule := range fe.Rules {
 			if rule.GetUuid() == id {
+				home := serverHome(fe)
 				fe.Mu.Unlock()
-				return fe, rule
+				return home, rule
 			}
 		}
 		fe.Mu.Unlock()
 	}
+	groups, err := MyGroups(user.GetEmail())
+	if err != nil {
+		log.Println(err)
+	}
+	for _, g := range groups {
+		rules, err := frontend.RuleSet{DB: &db, Group: g.ID}.Fetch()
+		if err != nil {
+			log.Println(err)
+		}
+		for _, rule := range rules {
+			if rule.GetUuid() == id {
+				return groupHome(g), rule
+			}
+		}
+	}
 	return nil, nil
 }
 
-func renderRulePage(w http.ResponseWriter, file, name string, data PageResponse, fe *frontend.Frontend) {
+// renderRulePage renders a rule page, holding the server's lock for a server's
+// rule since the page shows its rules.
+func renderRulePage(w http.ResponseWriter, file, name string, data PageResponse, home *RuleHome) {
+	if home.Kind == "server" {
+		data.NavHighlight.Servers = "active"
+	} else {
+		data.NavHighlight.Groups = "active"
+	}
 	tmpl, err := parsePage(file)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	if err := executeLocked(w, tmpl, name, data, fe); err != nil {
+	if err := executeLocked(w, tmpl, name, data, home.fe); err != nil {
 		log.Println(err)
 	}
 }

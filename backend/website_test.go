@@ -177,6 +177,7 @@ func samplePage() PageResponse {
 		},
 	}
 	data.Head.Title = "Test"
+	data.RuleHome = serverHome(fe)
 	avg := 1.5
 	data.Stats = &Stats{
 		Span: "24h", Times: []int64{100, 200}, Players: []*float64{nil, &avg}, Kills: []int{0, 3},
@@ -518,7 +519,7 @@ func createRuleTable(t *testing.T, d *database.Database) {
 		"stifle_length" INTEGER DEFAULT 60, "disabled" INTEGER DEFAULT 1, "scope" TEXT DEFAULT 'local',
 		"timespec_before" TEXT, "timespec_after" TEXT, "timespec_every" TEXT, "timespec_playtime" TEXT,
 		"addresses" TEXT, "names" TEXT, "hostnames" TEXT, "clients" TEXT, "userinfo" TEXT, "message" TEXT,
-		"description" TEXT, "vpn" INTEGER DEFAULT 0, PRIMARY KEY("id" AUTOINCREMENT))`)
+		"description" TEXT, "vpn" INTEGER DEFAULT 0, "server_group" INTEGER DEFAULT 0, PRIMARY KEY("id" AUTOINCREMENT))`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -532,6 +533,9 @@ func TestRulePages(t *testing.T) {
 	fe := connectedFrontend(t, user.Email)
 	fe.Data = ruleDB(t)
 	fe.ID = 3
+	savedDB := db
+	db = *fe.Data // rule lookups also search the user's groups
+	defer func() { db = savedDB }()
 	fe.Players = []frontend.Player{{ClientID: 0, ConnectTime: 1, Name: "alpha", IP: "192.0.2.7"}}
 	otherFE := &frontend.Frontend{Name: "theirs", UUID: "theirs-uuid", Owner: "other@example.com",
 		Rules: []*pb.Rule{{Uuid: "their-rule", Type: pb.RuleType_BAN, Address: []string{"10.0.0.0/8"}}}}

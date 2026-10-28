@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -265,7 +266,11 @@ func ParseConnect(fe *frontend.Frontend) {
 		// add a slight delay when processing rules
 		time.Sleep(1 * time.Second)
 
-		match, rules := CheckRules(p, append(fe.Rules, be.rules...))
+		groupRules, err := fe.FetchGroupRules()
+		if err != nil {
+			be.Logf(LogLevelNormal, "[%s] error loading group rules: %v\n", fe.Name, err)
+		}
+		match, rules := CheckRules(p, slices.Concat(fe.Rules, groupRules, be.rules))
 		if match {
 			p.Rules = rules
 			ApplyMatchedRules(p, rules)

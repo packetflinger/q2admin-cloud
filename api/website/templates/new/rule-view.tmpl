@@ -1,11 +1,10 @@
 {{define "rule"}}
 {{template "header" .}}
-{{$fe := .Frontend}}
-{{$base := printf "/sv/%s/%s" $fe.UUID $fe.Name}}
+{{$home := .RuleHome}}
 {{with .Rule}}
 <div class="q2a-page-head">
 	<div class="min-w-0">
-		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item"><a href="{{$base}}">{{$fe.Name}}</a></li><li class="breadcrumb-item"><a href="{{$base}}/rules">Rules</a></li><li class="breadcrumb-item active q2a-mono" aria-current="page">{{printf "%.8s" .GetUuid}}</li></ol></nav>
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{$home.RootURL}}">{{$home.Root}}</a></li><li class="breadcrumb-item"><a href="{{$home.URL}}">{{$home.Name}}</a></li><li class="breadcrumb-item"><a href="{{$home.RulesURL}}">Rules</a></li><li class="breadcrumb-item active q2a-mono" aria-current="page">{{printf "%.8s" .GetUuid}}</li></ol></nav>
 		<h1 class="text-truncate">
 			<span class="badge text-bg-secondary align-middle fs-6">{{.GetType}}</span>
 			{{with .GetDescription}}{{join . " "}}{{else}}Rule{{end}}
@@ -44,7 +43,7 @@
 			<div class="q2a-panel-head">Details</div>
 			<div class="q2a-panel-body">
 				<dl class="q2a-kv">
-					<dt>Server</dt><dd><a href="{{$base}}">{{$fe.Name}}</a></dd>
+					<dt>Applies to</dt><dd>{{if eq $home.Kind "group"}}every server in the group <a href="{{$home.URL}}">{{$home.Name}}</a>{{else}}<a href="{{$home.URL}}">{{$home.Name}}</a>{{end}}</dd>
 					<dt>Created</dt><dd>{{with .GetCreationTime}}{{datetime .}}{{else}}-{{end}}</dd>
 					<dt>Expires</dt><dd>{{with .GetExpirationTime}}{{datetime .}}{{else}}never{{end}}</dd>
 					{{if eq .GetType.String "STIFLE"}}<dt>Stifle length</dt><dd>{{.GetStifleLength}} seconds</dd>{{end}}

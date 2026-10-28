@@ -93,7 +93,8 @@ func CreateGroup(owner, name string) error {
 	return nil
 }
 
-// DeleteGroup removes one of owner's groups. Its servers aren't affected.
+// DeleteGroup removes one of owner's groups and its rules. Its servers aren't
+// otherwise affected.
 func DeleteGroup(owner, name string) error {
 	g, err := MyGroup(owner, name)
 	if err != nil {
@@ -106,6 +107,9 @@ func DeleteGroup(owner, name string) error {
 	defer tx.Rollback()
 	if _, err := tx.Exec("DELETE FROM server_group_member WHERE group_id = ?", g.ID); err != nil {
 		return fmt.Errorf("error deleting group members: %v", err)
+	}
+	if _, err := tx.Exec("DELETE FROM rule WHERE server_group = ?", g.ID); err != nil {
+		return fmt.Errorf("error deleting group rules: %v", err)
 	}
 	if _, err := tx.Exec("DELETE FROM server_group WHERE id = ?", g.ID); err != nil {
 		return fmt.Errorf("error deleting group: %v", err)
@@ -318,6 +322,10 @@ func GroupViewHandler(w http.ResponseWriter, r *http.Request) {
 		offline, _ := strconv.Atoi(q.Get("offline"))
 		data.Notice = &Notice{"success", fmt.Sprintf("Command sent to %d server(s). %d offline server(s) skipped.", sent, offline)}
 	}
+	if data.Rules, err = (frontend.RuleSet{DB: &db, Group: g.ID}).Fetch(); err != nil {
+		log.Println(err)
+	}
+	data.Rules = SortRules(data.Rules)
 	data.Head.Title = g.Name + " | CloudAdmin"
 	data.NavHighlight.Groups = "active"
 	data.Frontends = FrontendsByIdentity(user.GetEmail()) // for the add-server list
