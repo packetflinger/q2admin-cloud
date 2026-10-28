@@ -47,7 +47,7 @@ var (
 
 const (
 	challengeLength     = 16         // bytes
-	versionRequired     = 715        // q2admin git revision number
+	versionRequired     = 1299       // q2admin git revision number
 	GreetingLength      = 306        // for spot checking validity
 	InviteTokenInterval = 300        // seconds per token added
 	MaxInviteTokens     = 3          // for invite token bucket
