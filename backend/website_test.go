@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/packetflinger/libq2/message"
+	"github.com/packetflinger/q2admind/api/website"
 	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/database"
 	"html/template"
@@ -16,7 +17,6 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -120,7 +120,7 @@ func TestExecuteLocked(t *testing.T) {
 func renderPage(t *testing.T, file, name string, data PageResponse) string {
 	t.Helper()
 	saved := be.config
-	be.config = &pb.Config{WebRoot: "../api/website"}
+	be.config = &pb.Config{}
 	defer func() { be.config = saved }()
 	tmpl, err := parsePage(file)
 	if err != nil {
@@ -482,7 +482,7 @@ func TestInfoPagesRenderSignedOut(t *testing.T) {
 }
 
 func TestSignInPage(t *testing.T) {
-	tmpl := template.Must(template.ParseFiles("../api/website/templates/new/sign-in.tmpl"))
+	tmpl := template.Must(template.ParseFS(website.Files, "templates/new/sign-in.tmpl"))
 	var out bytes.Buffer
 	data := PageResponse{AuthProviders: []AuthProvider{{URL: "/auth/google", Icon: "/g.svg", Name: providerName("GOOGLE"), Enabled: true}, {Name: "Off"}}}
 	if err := tmpl.Execute(&out, data); err != nil {
@@ -526,7 +526,7 @@ func createRuleTable(t *testing.T, d *database.Database) {
 
 func TestRulePages(t *testing.T) {
 	savedConfig := be.config
-	be.config = &pb.Config{WebRoot: "../api/website"}
+	be.config = &pb.Config{}
 	defer func() { be.config = savedConfig }()
 	user := &pb.User{Email: "admin@example.com"}
 	fe := connectedFrontend(t, user.Email)
@@ -613,10 +613,6 @@ func TestRulePages(t *testing.T) {
 }
 
 func TestStaticFilesRevalidate(t *testing.T) {
-	if err := os.Chdir(".."); err != nil { // static files are served relative to the repo root
-		t.Fatal(err)
-	}
-	defer os.Chdir("backend")
 	srv := httptest.NewServer(LoadWebsiteRoutes())
 	defer srv.Close()
 	res, err := http.Get(srv.URL + "/static/css/q2a.css")

@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/packetflinger/q2admind/api/website"
 	"html/template"
 	"io"
 	"log"
@@ -385,14 +386,13 @@ func summarize(fes []*frontend.Frontend) FrontendSummary {
 }
 
 // parsePage loads a page template along with the shared header, footer,
-// stats widgets and template functions.
+// stats widgets and template functions, from the files built into the binary.
 func parsePage(file string) (*template.Template, error) {
-	dir := path.Join(be.config.GetWebRoot(), "templates", "new")
-	return template.New(file).Funcs(funcMap).ParseFiles(
-		path.Join(dir, "common-header.tmpl"),
-		path.Join(dir, "common-stats.tmpl"),
-		path.Join(dir, file),
-		path.Join(dir, "common-footer.tmpl"),
+	return template.New(file).Funcs(funcMap).ParseFS(website.Files,
+		"templates/new/common-header.tmpl",
+		"templates/new/common-stats.tmpl",
+		"templates/new/"+file,
+		"templates/new/common-footer.tmpl",
 	)
 }
 
@@ -697,8 +697,7 @@ func WebsiteHandlerSignin(w http.ResponseWriter, r *http.Request) {
 		MockLogin(w, r, AuthBypass)
 		return
 	}
-	infile := path.Join(be.config.GetWebRoot(), "templates", "new", "sign-in.tmpl")
-	tmpl, e := template.ParseFiles(infile)
+	tmpl, e := template.ParseFS(website.Files, "templates/new/sign-in.tmpl")
 
 	var page PageResponse
 	for i := range Website.Creds {

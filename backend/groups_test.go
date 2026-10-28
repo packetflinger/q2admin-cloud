@@ -24,7 +24,7 @@ func groupTestSetup(t *testing.T, owner string) (up, down, theirs *frontend.Fron
 	savedDB, savedFEs, savedConfig := db, be.frontends, be.config
 	t.Cleanup(func() { d.Handle.Close(); db, be.frontends, be.config = savedDB, savedFEs, savedConfig })
 	db = d
-	be.config = &pb.Config{WebRoot: "../api/website"}
+	be.config = &pb.Config{}
 	up = connectedFrontend(t, owner)
 	up.ID = 1
 	down = &frontend.Frontend{ID: 2, Name: "fe2", UUID: "fe2-uuid", Owner: owner}

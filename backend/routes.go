@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"github.com/packetflinger/q2admind/api/website"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -137,7 +138,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.RuleAdd, RuleAddHandler).Methods("GET", "POST")
 	r.HandleFunc(Routes.ServerKeys, ServerKeysHandler)
 
-	static := http.FileServer(http.Dir("./api/website"))
+	static := http.FileServer(http.FS(website.Files)) // /static/x is static/x in the embedded files
 	r.PathPrefix(Routes.Static).Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// revalidate every time so CSS/JS changes show up without a hard refresh
 		w.Header().Set("Cache-Control", "no-cache")
