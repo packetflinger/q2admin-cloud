@@ -161,8 +161,9 @@ func ShareGroup(owner, name, email string) (shared, skipped int, err error) {
 }
 
 // SendGroupCommand runs cmd on the console of every connected server in one
-// of owner's groups, as the web console does for one server. who is recorded
-// in each server's log and shown to its console watchers.
+// of owner's groups, as the web console does for one server. who (the
+// sender's display name) is shown to each server's console watchers; the
+// owner's email goes in each server's log.
 func SendGroupCommand(owner, name, cmd, who string) (sent, offline int, err error) {
 	if err := validConsoleCommand(cmd); err != nil {
 		return 0, 0, err
@@ -178,7 +179,7 @@ func SendGroupCommand(owner, name, cmd, who string) (sent, offline int, err erro
 			fe.ConsoleBroadcast(fmt.Sprintf("[%s via group %s] > %s", who, name, cmd)) // before its output
 			ConsoleCommand(fe, cmd)
 			SendMessages(fe)
-			fe.Log.Printf("group %s [%s]: %s\n", name, who, cmd)
+			fe.Log.Printf("group %s [%s]: %s\n", name, owner, cmd) // the full email, for the record
 			sent++
 		} else {
 			offline++
@@ -253,7 +254,7 @@ func sshGroupCommand(owner string, c CmdArgs) string {
 		err = SetGroupMember(owner, c.argv[1], fe, sub == "add")
 	case "cmd":
 		cmd := strings.Join(c.argv[2:], " ")
-		sent, offline, err := SendGroupCommand(owner, c.argv[1], cmd, owner)
+		sent, offline, err := SendGroupCommand(owner, c.argv[1], cmd, displayNameFor(owner))
 		if err != nil {
 			return err.Error()
 		}
@@ -355,7 +356,7 @@ func GroupActionHandler(w http.ResponseWriter, r *http.Request) {
 		err = shareErr
 		back += fmt.Sprintf("?shared=%d&skipped=%d", shared, skipped)
 	case "command":
-		sent, offline, cmdErr := SendGroupCommand(owner, name, strings.TrimSpace(r.PostFormValue("cmd")), owner)
+		sent, offline, cmdErr := SendGroupCommand(owner, name, strings.TrimSpace(r.PostFormValue("cmd")), DisplayName(user))
 		err = cmdErr
 		back += fmt.Sprintf("?sent=%d&offline=%d", sent, offline)
 	default:

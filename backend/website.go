@@ -26,6 +26,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
@@ -70,7 +72,8 @@ var (
 				Slices          []Slice
 			}{title, id, unit, slices}
 		},
-		"inGroup": func(g *ServerGroup, fe *frontend.Frontend) bool { return slices.Contains(g.Members, fe) },
+		"displayName": DisplayName,
+		"inGroup":     func(g *ServerGroup, fe *frontend.Frontend) bool { return slices.Contains(g.Members, fe) },
 	}
 )
 
@@ -401,6 +404,42 @@ func providerName(t string) string {
 	return t[:1] + strings.ToLower(t[1:])
 }
 
+// DisplayName is how a user is shown to others, such as in console echoes:
+// the name they set on their profile, or the part of their email before the @.
+func DisplayName(u *pb.User) string {
+	if u.GetName() != "" {
+		return u.GetName()
+	}
+	local, _, _ := strings.Cut(u.GetEmail(), "@")
+	return local
+}
+
+// displayNameFor is DisplayName for the user with this email.
+func displayNameFor(email string) string {
+	u, _ := be.GetUserByEmail(email)
+	if u == nil {
+		u = &pb.User{Email: email}
+	}
+	return DisplayName(u)
+}
+
+// SetUserName saves the name u is shown as; empty clears it. Names go into
+// console lines and logs, so they're one line of up to 32 characters.
+// shortcut: users aren't locked, so a page rendering u while it's renamed
+// could race; add a users lock if renames become frequent.
+func SetUserName(u *pb.User, name string) error {
+	name = strings.TrimSpace(name)
+	if utf8.RuneCountInString(name) > 32 || strings.ContainsFunc(name, unicode.IsControl) {
+		return errors.New("names are up to 32 characters on one line")
+	}
+	if _, err := db.Handle.Exec("UPDATE user SET name = ? WHERE email = ?", name, u.GetEmail()); err != nil {
+		log.Printf("error saving %q's name: %v\n", u.GetEmail(), err)
+		return errors.New("unable to save your name, try again")
+	}
+	u.Name = name
+	return nil
+}
+
 // executeLocked renders a page while holding the given frontends' locks, then
 // writes it after unlocking so a slow client can't stall a game server. Pass
 // frontends in Frontends() order: their relative order never changes, which
@@ -535,6 +574,7 @@ var notices = map[string]*Notice{
 	"banned":       {"success", "Player banned and kicked. The ban rule is on the Rules tab."},
 	"blackholed":   {"success", "Blackhole command sent for the player's address."},
 	"rulesaved":    {"success", "Rule saved."},
+	"namesaved":    {"success", "Name saved."},
 	"ruledeleted":  {"success", "Rule deleted."},
 	"delegated":    {"success", "Access granted. The server now shows up in their dashboard."},
 	"undelegated":  {"success", "Access removed."},
@@ -861,14 +901,24 @@ func renderInfoPage(w http.ResponseWriter, r *http.Request, file, name, title st
 	}
 }
 
-// ProfileHandler shows the signed-in user's account details.
+// ProfileHandler shows the signed-in user's account details (GET), or sets
+// their name (POST).
 func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := GetSessionUser(r)
 	if err != nil {
 		RedirectToSignon(w, r)
 		return
 	}
-	data := PageResponse{SessionUser: user, Frontends: FrontendsByIdentity(user.GetEmail())}
+	data := PageResponse{SessionUser: user, Notice: notices[r.URL.Query().Get("notice")]}
+	if r.Method == http.MethodPost {
+		if err := SetUserName(user, r.PostFormValue("name")); err != nil {
+			data.FormError, data.Form = err.Error(), r.PostForm
+		} else {
+			http.Redirect(w, r, "/me?notice=namesaved", http.StatusSeeOther)
+			return
+		}
+	}
+	data.Frontends = FrontendsByIdentity(user.GetEmail())
 	data.Head.Title = "Profile | CloudAdmin"
 	tmpl, err := parsePage("profile.tmpl")
 	if err != nil {
@@ -1216,7 +1266,7 @@ func ConsoleCommandHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "the server is offline", http.StatusConflict)
 		return
 	}
-	fe.ConsoleBroadcast(fmt.Sprintf("[%s] > %s", user.GetEmail(), cmd)) // other watchers see it too, before its output
+	fe.ConsoleBroadcast(fmt.Sprintf("[%s] > %s", DisplayName(user), cmd)) // other watchers see it too, before its output
 	ConsoleCommand(fe, cmd)
 	SendMessages(fe)
 	fe.Log.Printf("web console [%s]: %s\n", user.GetEmail(), cmd)

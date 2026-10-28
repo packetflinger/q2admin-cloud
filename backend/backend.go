@@ -178,7 +178,8 @@ func (b *Backend) LoadUsers() ([]*pb.User, error) {
 	var nullID int
 	for r.Next() {
 		var u pb.User
-		err := r.Scan(&nullID, &u.Uuid, &u.Email, &u.Disabled, &u.AllowSsh, &u.PublicKey, &u.AllowRpc, &u.RpcPublicKey)
+		// name is added last by database.Open
+		err := r.Scan(&nullID, &u.Uuid, &u.Email, &u.Disabled, &u.AllowSsh, &u.PublicKey, &u.AllowRpc, &u.RpcPublicKey, &u.Name)
 		if err != nil {
 			return users, fmt.Errorf("error scanning users from database: %v", err)
 		}
