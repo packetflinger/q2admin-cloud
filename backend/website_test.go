@@ -626,3 +626,54 @@ func TestStaticFilesRevalidate(t *testing.T) {
 		t.Errorf("status %d, Cache-Control %q", res.StatusCode, res.Header.Get("Cache-Control"))
 	}
 }
+
+func TestLowerCommandName(t *testing.T) {
+	for in, want := range map[string]string{
+		"Say Hi There":     "say Hi There",
+		"STATUS":           "status",
+		"Sv_MaxClients 16": "sv_maxclients 16",
+		"say  Two  Spaces": "say  Two  Spaces",
+		"":                 "",
+	} {
+		if got := LowerCommandName(in); got != want {
+			t.Errorf("LowerCommandName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestConsoleCommandLowercasesName(t *testing.T) {
+	user := &pb.User{Email: "admin@example.com"}
+	fe := connectedFrontend(t, user.Email)
+	ours, theirs := net.Pipe() // capture what's sent to the frontend
+	t.Cleanup(func() { ours.Close(); theirs.Close() })
+	fe.Connection = &ours
+	sent := make(chan []byte, 1)
+	go func() {
+		frame, _ := ReadFrame(theirs)
+		sent <- frame
+		io.Copy(io.Discard, theirs)
+	}()
+	saved := be.frontends
+	be.frontends = []*frontend.Frontend{fe}
+	defer func() { be.frontends = saved }()
+	watch := make(chan string, 4)
+	fe.AddTerminal(&watch)
+	srv := httptest.NewServer(LoadWebsiteRoutes())
+	defer srv.Close()
+	client := signedInClient(t, srv, user)
+
+	res, err := client.PostForm(srv.URL+"/sv/fe1-uuid/fe1/console/command", url.Values{"cmd": {"Say Hi There"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNoContent {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	if frame := <-sent; !bytes.Contains(frame, []byte("say Hi There\n")) {
+		t.Errorf("frontend was sent %q, want the command lowercased and the text untouched", frame)
+	}
+	if echo := <-watch; !strings.HasSuffix(echo, "> say Hi There") {
+		t.Errorf("console watchers saw %q", echo)
+	}
+}

@@ -19,7 +19,7 @@
 	<div class="q2a-panel-body">
 		<div class="input-group">
 			<span class="input-group-text q2a-mono">&gt;</span>
-			<input type="text" class="form-control q2a-mono" name="cmd" maxlength="256" required placeholder="say Server restart in 5 minutes" aria-label="Console command">
+			<input type="text" class="form-control q2a-mono" name="cmd" maxlength="256" required placeholder="say Server restart in 5 minutes" aria-label="Console command" autocapitalize="off" autocorrect="off" spellcheck="false">
 			<button class="btn btn-primary" type="submit" name="action" value="command" {{if not $g.Members}}disabled{{end}}>Send to all</button>
 		</div>
 		<div class="form-text">Runs on each connected server's console, as if typed there. Output shows in each server's console.</div>

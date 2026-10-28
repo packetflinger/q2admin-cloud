@@ -106,16 +106,29 @@ func KickPlayer(cl *frontend.Frontend, p *frontend.Player, msg string) {
 	cl.ConsoleBroadcast(logMsg)
 }
 
-// Issue a command as if you were typing it into the console.
+// Issue a command as if you were typing it into the console. The command name
+// is lowercased (see LowerCommandName).
 func ConsoleCommand(cl *frontend.Frontend, cmd string) {
 	if cl == nil || cmd == "" {
 		return
 	}
+	cmd = LowerCommandName(cmd)
 	if !strings.HasSuffix(cmd, "\n") {
 		cmd += "\n"
 	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
+}
+
+// LowerCommandName lowercases a console command's first word, leaving its
+// arguments alone: "Say Hi There" becomes "say Hi There". Quake 2 command and
+// cvar names are all lowercase, and phone keyboards capitalize the first word.
+func LowerCommandName(cmd string) string {
+	name, args, found := strings.Cut(cmd, " ")
+	if !found {
+		return strings.ToLower(cmd)
+	}
+	return strings.ToLower(name) + " " + args
 }
 
 // Send a message to every player on the server

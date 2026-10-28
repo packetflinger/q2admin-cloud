@@ -167,6 +167,7 @@ func SendGroupCommand(owner, name, cmd, who string) (sent, offline int, err erro
 	if err := validConsoleCommand(cmd); err != nil {
 		return 0, 0, err
 	}
+	cmd = LowerCommandName(cmd) // so the echo shows what runs
 	g, err := MyGroup(owner, name)
 	if err != nil {
 		return 0, 0, err

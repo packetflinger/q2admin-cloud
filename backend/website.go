@@ -1205,7 +1205,7 @@ func ConsoleCommandHandler(w http.ResponseWriter, r *http.Request) {
 	if fe == nil {
 		return
 	}
-	cmd := strings.TrimSpace(r.PostFormValue("cmd"))
+	cmd := LowerCommandName(strings.TrimSpace(r.PostFormValue("cmd"))) // so the echo shows what runs
 	if err := validConsoleCommand(cmd); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
