@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"crypto/rsa"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -50,10 +51,25 @@ const (
 	GreetingLength      = 306        // for spot checking validity
 	InviteTokenInterval = 300        // seconds per token added
 	MaxInviteTokens     = 3          // for invite token bucket
-	NetReadLength       = 5000       // max input buffer len from client
 	ProtocolMagic       = 1128346193 // "Q2AC"
 	StifleMax           = 300        // 5 minutes
 	TeleportWidth       = 80         // max chars per line for teleport replies
+)
+
+// Framing. Everything sent between a frontend and us, in both directions and
+// from the very first byte, is a series of frames: a 4-byte little-endian
+// length, then that many payload bytes. The payload is one or more whole
+// commands. Once the connection is trusted and encryption is on, the payload
+// is the AES-128-CBC ciphertext of those commands; the length is never
+// encrypted and counts the ciphertext. Each frame is encrypted on its own and
+// a command never spans frames. An empty frame is allowed and ignored.
+//
+// TCP is a stream, so without the length a single Read() can return part of
+// a message or several at once. This has to match q2admin's g_cloud.h
+// (CLOUD_FRAME_HEADER).
+const (
+	FrameHeaderLength = 4
+	FrameMaxLength    = 0x55FF - FrameHeaderLength // q2admin's QUEUE_SIZE less the header
 )
 
 // Commands sent from a frontend to us
@@ -432,13 +448,12 @@ func SendError(fe *frontend.Frontend, pl *frontend.Player, severity int, err str
 func (b *Backend) HandleConnection(c net.Conn) {
 	defer c.Close()
 
-	input := make([]byte, NetReadLength)
-	count, err := c.Read(input)
+	input, err := ReadFrame(c)
 	if err != nil {
 		be.Logf(LogLevelDebug, "Frontend read error: %v\n", err)
 		return
 	}
-	msg := message.NewBuffer(input[:count])
+	msg := message.NewBuffer(input)
 	if msg.Length < 5 {
 		be.Logf(LogLevelDebug, "short read before greeting\n")
 		return
@@ -534,13 +549,13 @@ func (b *Backend) HandleConnection(c net.Conn) {
 	SendMessages(fe)
 
 	// read the client signature
-	count, err = c.Read(input)
+	input, err = ReadFrame(c)
 	if err != nil {
 		be.Logf(LogLevelNormal, "error reading client auth response: %v\n", err)
 		return
 	}
 
-	msg = message.NewBuffer(input[:count])
+	msg = message.NewBuffer(input)
 	verified, err := b.AuthenticateClient(&msg, fe)
 	if err != nil {
 		be.Logf(LogLevelNormal, "%v", err)
@@ -578,8 +593,7 @@ func (b *Backend) HandleConnection(c net.Conn) {
 	// - parse any messages received, react as necessary
 	// - send any responses
 	for {
-		input := make([]byte, NetReadLength)
-		size, err := c.Read(input)
+		payload, err := ReadFrame(c)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				be.Logf(LogLevelInfo, "[%s] disconnected\n", fe.Name)
@@ -590,24 +604,37 @@ func (b *Backend) HandleConnection(c net.Conn) {
 			fe.Log.Println("read error:", err)
 			break
 		}
+		if len(payload) == 0 {
+			continue
+		}
+		input := payload
 		if fe.Encrypted && fe.Trusted {
-			be.Logf(LogLevelDeveloperPlus, "encrypted packet received:\n%s", hex.Dump(input[:size]))
-			input, size = crypto.SymmetricDecrypt(fe.SymmetricKey, fe.InitVector, input[:size])
+			be.Logf(LogLevelDeveloperPlus, "encrypted packet received:\n%s", hex.Dump(payload))
+			// SymmetricDecrypt panics on a partial block, which would take
+			// the whole backend down, so check first.
+			if len(payload)%crypto.AESBlockLength != 0 {
+				be.Logf(LogLevelNormal, "[%s] encrypted frame isn't whole blocks (%d bytes), disconnecting.\n", fe.Name, len(payload))
+				fe.Log.Println("bad encrypted frame, disconnecting.")
+				break
+			}
+			var size int
+			input, size = crypto.SymmetricDecrypt(fe.SymmetricKey, fe.InitVector, payload)
 			if size == 0 {
 				be.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nIV: %s\n", hex.Dump(fe.SymmetricKey), hex.Dump(fe.InitVector))
 				// try again with the previous IV in case this message was sent
-				// prior to receiving our last.
-				input, size = crypto.SymmetricDecrypt(fe.SymmetricKey, fe.PreviousIV, input[:size])
+				// prior to receiving our last. Decrypt the frame itself, not
+				// the empty result of the failed attempt.
+				input, size = crypto.SymmetricDecrypt(fe.SymmetricKey, fe.PreviousIV, payload)
 				if size == 0 {
 					be.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nPrevIV: %s\n", hex.Dump(fe.SymmetricKey), hex.Dump(fe.PreviousIV))
 					be.Logf(LogLevelNormal, "[%s] error decrypting packet from frontend, disconnecting.\n", fe.Name)
 					fe.Log.Println("error decrypting packet, disconnecting.")
-					return
+					break
 				}
 			}
 		}
 		fe.Mu.Lock()
-		fe.Message = message.NewBuffer(input[:size])
+		fe.Message = message.NewBuffer(input)
 		ParseMessage(fe)
 		SendMessages(fe)
 		fe.Mu.Unlock()
@@ -623,22 +650,70 @@ func (b *Backend) HandleConnection(c net.Conn) {
 	fe.Mu.Unlock()
 }
 
-// Send all messages in the outgoing queue to the frontend. If the frontend
-// requested encrypted transit, encrypt using the session key generated during
-// the handshake.
+// ReadFrame reads one whole frame from r (see FrameHeaderLength) and returns
+// its payload, waiting for as many reads as it takes to arrive. A length over
+// FrameMaxLength is an error: there's no way to find the next frame after it,
+// so the connection can't continue. Returns io.EOF if r closes cleanly
+// between frames, io.ErrUnexpectedEOF if it closes partway through one.
+func ReadFrame(r io.Reader) ([]byte, error) {
+	var header [FrameHeaderLength]byte
+	if _, err := io.ReadFull(r, header[:]); err != nil {
+		return nil, err
+	}
+	length := binary.LittleEndian.Uint32(header[:])
+	if length > FrameMaxLength {
+		return nil, fmt.Errorf("frame too long (%d bytes)", length)
+	}
+	payload := make([]byte, length)
+	if _, err := io.ReadFull(r, payload); err != nil {
+		if errors.Is(err, io.EOF) {
+			err = io.ErrUnexpectedEOF
+		}
+		return nil, err
+	}
+	return payload, nil
+}
+
+// MakeFrame puts the 4-byte little-endian length in front of payload, ready
+// to send.
+func MakeFrame(payload []byte) []byte {
+	frame := make([]byte, FrameHeaderLength+len(payload))
+	binary.LittleEndian.PutUint32(frame, uint32(len(payload)))
+	copy(frame[FrameHeaderLength:], payload)
+	return frame
+}
+
+// Send all messages in the outgoing queue to the frontend as one frame. If the
+// frontend requested encrypted transit, encrypt using the session key
+// generated during the handshake. A frame too large for the frontend to
+// receive is dropped (and logged) rather than sent: q2admin would have to drop
+// the connection, since it couldn't find the next frame.
 func SendMessages(fe *frontend.Frontend) {
 	if fe == nil || fe.MessageOut.Size() == 0 {
 		return
 	}
-	fe.Server.(*Backend).Logf(LogLevelDeveloperPlus, "Sending to client:\n%s\n", hex.Dump(fe.MessageOut.Data))
-	if fe.Trusted && fe.Encrypted {
-		cipher := crypto.SymmetricEncrypt(fe.SymmetricKey, fe.InitVector, fe.MessageOut.Data[:fe.MessageOut.Index])
-		fe.MessageOut = message.NewBuffer(cipher)
-		fe.PreviousIV = fe.InitVector
-		fe.InitVector = cipher[:crypto.AESIVLength]
+	if fe.Connection == nil {
+		(&fe.MessageOut).Reset()
+		return
 	}
-	(*fe.Connection).Write(fe.MessageOut.Data)
+	srv := fe.Server.(*Backend)
+	srv.Logf(LogLevelDeveloperPlus, "Sending to client:\n%s\n", hex.Dump(fe.MessageOut.Data))
+	payload := fe.MessageOut.Data
+	if fe.Trusted && fe.Encrypted {
+		payload = crypto.SymmetricEncrypt(fe.SymmetricKey, fe.InitVector, payload)
+	}
 	(&fe.MessageOut).Reset()
+	if len(payload) > FrameMaxLength {
+		srv.Logf(LogLevelNormal, "[%s] outgoing frame too large (%d bytes), dropped\n", fe.Name, len(payload))
+		return
+	}
+	if fe.Trusted && fe.Encrypted {
+		fe.PreviousIV = fe.InitVector
+		fe.InitVector = payload[:crypto.AESIVLength]
+	}
+	if _, err := (*fe.Connection).Write(MakeFrame(payload)); err != nil {
+		srv.Logf(LogLevelDebug, "[%s] write error: %v\n", fe.Name, err)
+	}
 }
 
 // Gracefully shut everything down. Close database connection, write states to
