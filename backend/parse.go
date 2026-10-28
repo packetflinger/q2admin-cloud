@@ -273,6 +273,10 @@ func ParseConnect(fe *frontend.Frontend) {
 	}()
 }
 
+// ProxyCheckName is the name q2admin's proxy/bot detection briefly gives a
+// connecting player before changing it back. It has to match q2admin's.
+const ProxyCheckName = "pwsnskle"
+
 // A player disconnected from a q2 server
 func ParseDisconnect(fe *frontend.Frontend) {
 	if fe == nil {
@@ -470,6 +474,11 @@ func ParsePlayerUpdate(fe *frontend.Frontend) {
 	}
 
 	info := frontend.UserinfoMap(userinfo)
+	if info["name"] == ProxyCheckName {
+		// Keep the old name and hash, so the revert that follows matches
+		// what we already have, even if q2admin never sends it.
+		return
+	}
 	player.UserinfoMap = info
 	player.Name = info["name"]
 	player.FOV, _ = strconv.Atoi(info["fov"])

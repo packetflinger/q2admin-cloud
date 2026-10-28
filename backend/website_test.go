@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/packetflinger/libq2/message"
+	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/database"
 	"html/template"
 	"io"
@@ -747,5 +749,28 @@ func TestConsoleStatus(t *testing.T) {
 	fe.Connection = nil
 	if out := status(); !strings.Contains(out, "No UDP clients") || !strings.Contains(out, "not connected") {
 		t.Errorf("empty, disconnected status:\n%s", out)
+	}
+}
+
+func TestPlayerUpdateIgnoresProxyCheckName(t *testing.T) {
+	userinfo := func(name string) string { return `\name\` + name + `\skin\male/grunt\cl_cookie\abc` }
+	fe := &frontend.Frontend{MaxPlayers: 1}
+	fe.Players = []frontend.Player{{ClientID: 0, ConnectTime: 1, Name: "alpha", UserInfoHash: crypto.MD5Hash(userinfo("alpha"))}}
+	update := func(name string) {
+		fe.Message = message.NewBuffer(append([]byte{0}, append([]byte(userinfo(name)), 0)...))
+		ParsePlayerUpdate(fe)
+	}
+
+	update(ProxyCheckName)
+	if got := fe.Players[0].Name; got != "alpha" {
+		t.Errorf("after the proxy check rename, name = %q, want alpha", got)
+	}
+	update("alpha") // the revert, if q2admin sends it
+	if got := fe.Players[0].Name; got != "alpha" {
+		t.Errorf("after the revert, name = %q, want alpha", got)
+	}
+	update("bravo") // a real rename still works
+	if got := fe.Players[0].Name; got != "bravo" {
+		t.Errorf("after a real rename, name = %q, want bravo", got)
 	}
 }
