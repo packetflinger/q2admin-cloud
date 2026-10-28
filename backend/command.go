@@ -108,16 +108,24 @@ func KickPlayer(cl *frontend.Frontend, p *frontend.Player, msg string) {
 
 // Issue a command as if you were typing it into the console. The command name
 // is lowercased (see LowerCommandName).
+//
+// A "say" is also echoed to the console watchers as the "console: <text>"
+// chat line players get: the engine prints that itself, outside the game
+// library, so q2admin never sees it to send it back.
 func ConsoleCommand(cl *frontend.Frontend, cmd string) {
 	if cl == nil || cmd == "" {
 		return
 	}
-	cmd = LowerCommandName(cmd)
-	if !strings.HasSuffix(cmd, "\n") {
-		cmd += "\n"
+	cmd = LowerCommandName(strings.TrimSuffix(cmd, "\n"))
+	if name, text, _ := strings.Cut(cmd, " "); name == "say" && text != "" {
+		// like the engine, drop one pair of quotes around the text
+		if len(text) > 1 && strings.HasPrefix(text, `"`) && strings.HasSuffix(text, `"`) {
+			text = text[1 : len(text)-1]
+		}
+		cl.ConsoleBroadcast(Font([]int{ColorGreen, WeightBold}, "console: "+text))
 	}
 	(&cl.MessageOut).WriteByte(SCMDCommand)
-	(&cl.MessageOut).WriteString(cmd)
+	(&cl.MessageOut).WriteString(cmd + "\n")
 }
 
 // LowerCommandName lowercases a console command's first word, leaving its

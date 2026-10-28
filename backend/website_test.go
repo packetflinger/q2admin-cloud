@@ -674,6 +674,35 @@ func TestConsoleCommandLowercasesName(t *testing.T) {
 		t.Errorf("frontend was sent %q, want the command lowercased and the text untouched", frame)
 	}
 	if echo := <-watch; !strings.HasSuffix(echo, "> say Hi There") {
-		t.Errorf("console watchers saw %q", echo)
+		t.Errorf("console watchers saw %q first, want the command", echo)
+	}
+	if echo := <-watch; !strings.Contains(echo, "console: Hi There") {
+		t.Errorf("console watchers saw %q second, want the say echo", echo)
+	}
+}
+
+func TestConsoleCommandEchoesSay(t *testing.T) {
+	fe := &frontend.Frontend{}
+	watch := make(chan string, 4)
+	fe.AddTerminal(&watch)
+	for _, tc := range []struct{ cmd, echo string }{
+		{"say hi there", "console: hi there"},
+		{`Say "quoted text"`, "console: quoted text"},
+		{"say", ""},           // nothing to say
+		{"gamemap q2dm1", ""}, // only say echoes
+		{"sayteam hi", ""},
+	} {
+		ConsoleCommand(fe, tc.cmd)
+		got := ""
+		select {
+		case got = <-watch:
+		default:
+		}
+		if (tc.echo == "") != (got == "") || !strings.Contains(got, tc.echo) {
+			t.Errorf("ConsoleCommand(%q) echoed %q, want %q", tc.cmd, got, tc.echo)
+		}
+	}
+	if sent := string(fe.MessageOut.Data); !strings.Contains(sent, "say \"quoted text\"\n") {
+		t.Errorf("the command sent should keep its quotes, got %q", sent)
 	}
 }

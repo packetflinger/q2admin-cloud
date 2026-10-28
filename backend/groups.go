@@ -175,10 +175,10 @@ func SendGroupCommand(owner, name, cmd, who string) (sent, offline int, err erro
 	for _, fe := range g.Members { // one lock at a time, never nested
 		fe.Mu.Lock()
 		if fe.Connected && fe.Trusted {
+			fe.ConsoleBroadcast(fmt.Sprintf("[%s via group %s] > %s", who, name, cmd)) // before its output
 			ConsoleCommand(fe, cmd)
 			SendMessages(fe)
 			fe.Log.Printf("group %s [%s]: %s\n", name, who, cmd)
-			fe.ConsoleBroadcast(fmt.Sprintf("[%s via group %s] > %s", who, name, cmd))
 			sent++
 		} else {
 			offline++

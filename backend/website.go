@@ -1216,10 +1216,10 @@ func ConsoleCommandHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "the server is offline", http.StatusConflict)
 		return
 	}
+	fe.ConsoleBroadcast(fmt.Sprintf("[%s] > %s", user.GetEmail(), cmd)) // other watchers see it too, before its output
 	ConsoleCommand(fe, cmd)
 	SendMessages(fe)
 	fe.Log.Printf("web console [%s]: %s\n", user.GetEmail(), cmd)
-	fe.ConsoleBroadcast(fmt.Sprintf("[%s] > %s", user.GetEmail(), cmd)) // other watchers see it too
 	w.WriteHeader(http.StatusNoContent)
 }
 
