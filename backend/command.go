@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -109,15 +110,27 @@ func KickPlayer(cl *frontend.Frontend, p *frontend.Player, msg string) {
 // Issue a command as if you were typing it into the console. The command name
 // is lowercased (see LowerCommandName).
 //
-// A "say" is also echoed to the console watchers as the "console: <text>"
-// chat line players get: the engine prints that itself, outside the game
-// library, so q2admin never sees it to send it back.
+// The engine prints the results of some commands only on the server's own
+// console, outside the game library, so q2admin never sees them to send back.
+// For those the console watchers get our own version instead:
+//   - "say" is echoed as the "console: <text>" chat line players get
+//   - "status" isn't sent at all; the watchers get the SSH status report
 func ConsoleCommand(cl *frontend.Frontend, cmd string) {
 	if cl == nil || cmd == "" {
 		return
 	}
 	cmd = LowerCommandName(strings.TrimSuffix(cmd, "\n"))
-	if name, text, _ := strings.Cut(cmd, " "); name == "say" && text != "" {
+	name, text, _ := strings.Cut(cmd, " ")
+	if name == "status" {
+		var out bytes.Buffer
+		if err := statusTmpl.Execute(&out, cl); err != nil {
+			cl.ConsoleBroadcast("status: " + err.Error())
+			return
+		}
+		cl.ConsoleBroadcast(strings.Trim(out.String(), "\n"))
+		return
+	}
+	if name == "say" && text != "" {
 		// like the engine, drop one pair of quotes around the text
 		if len(text) > 1 && strings.HasPrefix(text, `"`) && strings.HasSuffix(text, `"`) {
 			text = text[1 : len(text)-1]

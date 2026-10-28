@@ -706,3 +706,46 @@ func TestConsoleCommandEchoesSay(t *testing.T) {
 		t.Errorf("the command sent should keep its quotes, got %q", sent)
 	}
 }
+
+func TestConsoleStatus(t *testing.T) {
+	conn, _ := net.Pipe()
+	defer conn.Close()
+	fe := &frontend.Frontend{IPAddress: "100.64.1.2", Port: 27910, Connection: &conn, CurrentMap: "q2dm1"}
+	fe.Players = []frontend.Player{
+		{ClientID: 0, ConnectTime: 1, Name: "alpha", IP: "192.0.2.1", Frags: 12},
+		{ClientID: 1}, // empty slot
+		{ClientID: 2, ConnectTime: 1, Name: "bravo", IP: "192.0.2.2", Frags: 3},
+	}
+	watch := make(chan string, 4)
+	fe.AddTerminal(&watch)
+	status := func() string {
+		t.Helper()
+		ConsoleCommand(fe, "Status")
+		select {
+		case s := <-watch:
+			return s
+		default:
+			t.Fatal("status printed nothing")
+			return ""
+		}
+	}
+
+	out := status()
+	for _, want := range []string{"q2dm1", "  0    12 alpha", "192.0.2.1\n", "  2     3 bravo", "192.0.2.2"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("status is missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Count(out, "\n  ") < 2 { // each player on their own line
+		t.Errorf("players should be on separate lines:\n%s", out)
+	}
+	if len(fe.MessageOut.Data) != 0 {
+		t.Errorf("status shouldn't be sent to the server, sent %q", fe.MessageOut.Data)
+	}
+
+	fe.Players = nil
+	fe.Connection = nil
+	if out := status(); !strings.Contains(out, "No UDP clients") || !strings.Contains(out, "not connected") {
+		t.Errorf("empty, disconnected status:\n%s", out)
+	}
+}

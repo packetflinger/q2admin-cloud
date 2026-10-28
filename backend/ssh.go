@@ -73,24 +73,22 @@ const (
 	statusTemplate = `
 {{ printf "Frontend Status" | underline }}:
 Frontend:      {{ .IPAddress }}:{{ .Port }}
-Peer:          {{ .Connection.RemoteAddr.String | magenta }}
+Peer:          {{ with .Connection }}{{ .RemoteAddr.String | magenta }}{{ else }}not connected{{ end }}
 Current map:   {{ .CurrentMap }}
 Previous map:  {{ .PreviousMap }}
 Invite Tokens: {{ .Invites.Tokens }}/{{ .Invites.Max }}
 Invites Used:  {{ .Invites.UseCount }}
 Teleports:     {{ .TeleportCount }}
 
-{{ if .PlayerCount }}
+{{ if online . -}}
 num score name            vpn address
 --- ----- --------------- --- ------------------------------
-{{ range .Players}}
-{{- if .IP -}}
-{{ printf "%3d" .ClientID}} {{ printf "%5d" .Frags}} {{ printf "%-15s" .Name }}  {{ .VPN | checkMark | red }}  {{ .IP -}}
-{{- end -}}
-{{ end }}
-{{ else }}
+{{ range .Players }}{{ if .ConnectTime -}}
+{{ printf "%3d" .ClientID }} {{ printf "%5d" .Frags }} {{ printf "%-15s" .Name }}  {{ .VPN | checkMark | red }}  {{ .IP }}
+{{ end }}{{ end -}}
+{{ else -}}
 No UDP clients
-{{ end }}
+{{ end -}}
 `
 
 	searchTemplate = `
@@ -159,6 +157,7 @@ var (
 		"underline": underline,
 		"checkMark": checkMark,
 		"connected": connectionIndicator,
+		"online":    playersOnline,
 		"now":       func() int64 { return time.Now().Unix() },
 		"ago":       util.TimeAgo,
 	}
