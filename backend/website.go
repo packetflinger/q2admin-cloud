@@ -1286,16 +1286,15 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	data.Head.Title = "Search | CloudAdmin"
 	data.ServerNames = myServerNames(user)
 	if data.SearchQuery != "" {
-		results, err := be.Search(r.Context(), data.SearchQuery)
+		var servers []string
+		for uuid := range data.ServerNames { // only the user's own servers
+			servers = append(servers, uuid)
+		}
+		data.SearchResults, err = SearchPlayers(r.Context(), data.SearchQuery, servers)
 		if err != nil {
 			log.Printf("error searching %q: %v\n", data.SearchQuery, err)
 			http.Error(w, "500 - search failed", http.StatusInternalServerError)
 			return
-		}
-		for _, res := range results {
-			if _, mine := data.ServerNames[res.ServerUUID]; mine { // only the user's own servers
-				data.SearchResults = append(data.SearchResults, frontend.SearchResult(res))
-			}
 		}
 	}
 	tmpl, err := parsePage("search.tmpl")
@@ -1333,9 +1332,10 @@ func ServerSearchHandler(w http.ResponseWriter, r *http.Request) {
 	data.Head.Title = "Search | CloudAdmin"
 	data.NavHighlight.Servers = "active"
 	if data.SearchQuery != "" {
-		f.Mu.Lock() // Search reads f.UUID
-		data.SearchResults, err = f.Search(r.Context(), data.SearchQuery)
+		f.Mu.Lock()
+		server := f.UUID
 		f.Mu.Unlock()
+		data.SearchResults, err = SearchPlayers(r.Context(), data.SearchQuery, []string{server})
 		if err != nil {
 			log.Printf("error searching %q: %v\n", data.SearchQuery, err)
 			http.Error(w, "500 - search failed", http.StatusInternalServerError)
