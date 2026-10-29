@@ -9,9 +9,11 @@ package backend
 
 import (
 	"bytes"
+	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/packetflinger/q2admind/api/website"
@@ -902,6 +904,22 @@ func renderInfoPage(w http.ResponseWriter, r *http.Request, file, name, title st
 	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
 		log.Println(err)
 	}
+}
+
+// PublicKeyHandler serves CloudAdmin's public key, which Quake 2 server admins
+// download for their q2admin config. It's encoded from the key loaded at
+// startup, so it always matches the private key in use.
+func PublicKeyHandler(w http.ResponseWriter, r *http.Request) {
+	der, err := x509.MarshalPKIXPublicKey(be.publicKey)
+	if err != nil {
+		log.Println("error encoding the public key:", err)
+		http.Error(w, "500 - public key unavailable", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/x-pem-file")
+	w.Header().Set("Content-Disposition", `attachment; filename="public.pem"`)
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Write(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der}))
 }
 
 // ProfileHandler shows the signed-in user's account details (GET), or sets

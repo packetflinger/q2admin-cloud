@@ -27,6 +27,7 @@ type WebRoutes struct {
 	ServerDelegates  string
 	Terms            string
 	Profile          string
+	PublicKey        string
 	Groups           string
 	Group            string
 	GroupAction      string
@@ -97,6 +98,7 @@ func LoadWebsiteRoutes() *mux.Router {
 
 	Routes.Terms = "/terms-of-use"
 	Routes.Profile = "/me"
+	Routes.PublicKey = "/public.pem"
 	Routes.Groups = "/groups"
 	Routes.Group = "/groups/{group}"
 	Routes.GroupAction = "/groups/{group}/action"
@@ -118,6 +120,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.Servers, ServersHandler)
 	r.HandleFunc(Routes.Terms, TermsHandler)
 	r.HandleFunc(Routes.Profile, ProfileHandler).Methods("GET", "POST")
+	r.HandleFunc(Routes.PublicKey, PublicKeyHandler).Methods("GET")
 	r.HandleFunc(Routes.Groups, GroupsHandler).Methods("GET", "POST")
 	r.HandleFunc(Routes.Group, GroupViewHandler)
 	r.HandleFunc(Routes.GroupAction, GroupActionHandler).Methods("POST")

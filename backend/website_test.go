@@ -914,3 +914,36 @@ func TestSearchPlayersGroupsByNameAndIP(t *testing.T) {
 		t.Error("searching no servers should find nothing")
 	}
 }
+
+func TestPublicKeyDownload(t *testing.T) {
+	priv, _, err := crypto.GenerateKeyPair(2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := crypto.LoadPrivateKey(priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := be.publicKey
+	be.publicKey = &key.PublicKey
+	defer func() { be.publicKey = saved }()
+	srv := httptest.NewServer(LoadWebsiteRoutes())
+	defer srv.Close()
+
+	res, err := http.Get(srv.URL + "/public.pem") // no sign-in needed
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != 200 || !strings.Contains(res.Header.Get("Content-Disposition"), "public.pem") {
+		t.Fatalf("status %d, Content-Disposition %q", res.StatusCode, res.Header.Get("Content-Disposition"))
+	}
+	got, err := crypto.LoadPublicKey(body) // what q2admin will load
+	if err != nil {
+		t.Fatalf("served key doesn't load: %v\n%s", err, body)
+	}
+	if !got.Equal(&key.PublicKey) {
+		t.Error("served key isn't the backend's public key")
+	}
+}
