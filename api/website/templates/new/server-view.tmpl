@@ -220,7 +220,10 @@
 				<div class="q2a-panel mb-3">
 					<div class="q2a-panel-head">Server ID</div>
 					<div class="q2a-panel-body">
-						<p class="q2a-mono text-break mb-2">{{$fe.UUID}}</p>
+						<div class="input-group input-group-sm mb-2">
+							<input id="serverid" type="text" class="form-control q2a-mono" value="{{$fe.UUID}}" readonly aria-label="Server ID">
+							<button class="btn btn-outline-secondary" type="button" data-q2a-copy="#serverid"><i class="bi bi-clipboard me-1"></i>Copy</button>
+						</div>
 						<p class="small text-body-secondary">Regenerate it if someone else knows it. The server disconnects until its q2admin config is updated.</p>
 						<button class="btn btn-sm btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#changeuuid">Generate new ID</button>
 					</div>
