@@ -451,6 +451,13 @@ func ParseCommand(fe *frontend.Frontend) {
 
 	case PCMDInvite:
 		Invite(fe)
+
+	case PCMDWhois:
+		// Not supported yet, but its client number and name still have to
+		// be read so the rest of the frame parses from the right place.
+		msg := &fe.Message
+		msg.ReadByte()
+		msg.ReadString()
 	}
 }
 
