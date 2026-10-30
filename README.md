@@ -10,7 +10,7 @@ A server for remote management of Quake 2 gameservers using the q2admin game mod
 Clients and servers mutually authenticate using asymmetric encryption keys. The server and client exchange public keys out-of-band ahead of making a connection, while setting up the connection in the web interface.
 
 ## Encryption
-The TCP connection between the server and clent can be encrypted via a flag in the client's q2admin config. If configured, the packets are encrypted using AES-128-CBC. Encryption keys are randomly generated and rotated periodically. Disabling encryption can save processor overhead, but should really only be done where client and server are on the same machine. Server can support both encrypted and non-encrypted clients simultaneously.
+The TCP connection between the server and clent can be encrypted via a flag in the client's q2admin config. If configured, the packets are encrypted and authenticated using AES-128-GCM. Encryption keys are randomly generated and rotated periodically. Disabling encryption can save processor overhead, but should really only be done where client and server are on the same machine. Server can support both encrypted and non-encrypted clients simultaneously.
 
 ## Configuration
 The main config file is named `config/config` but can be specified at the runtime via the `--config` flag. All configs are in text-based protocol buffer format. Example:

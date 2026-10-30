@@ -47,7 +47,7 @@ var (
 
 const (
 	challengeLength     = 16         // bytes
-	versionRequired     = 1299       // q2admin git revision number
+	versionRequired     = 1306       // q2admin git revision number
 	GreetingLength      = 306        // for spot checking validity
 	InviteTokenInterval = 300        // seconds per token added
 	MaxInviteTokens     = 3          // for invite token bucket
@@ -60,9 +60,10 @@ const (
 // from the very first byte, is a series of frames: a 4-byte little-endian
 // length, then that many payload bytes. The payload is one or more whole
 // commands. Once the connection is trusted and encryption is on, the payload
-// is the AES-128-CBC ciphertext of those commands; the length is never
-// encrypted and counts the ciphertext. Each frame is encrypted on its own and
-// a command never spans frames. An empty frame is allowed and ignored.
+// is those commands sealed with AES-128-GCM (see crypto.Stream): the
+// ciphertext followed by a 16-byte tag. The length is never encrypted and
+// counts the ciphertext and tag. Each frame is sealed on its own and a
+// command never spans frames. An empty frame is allowed and ignored.
 //
 // TCP is a stream, so without the length a single Read() can return part of
 // a message or several at once. This has to match q2admin's g_cloud.h
@@ -88,6 +89,7 @@ const (
 	CMDMap
 	CMDPing
 	CMDAuth
+	CMDKeyAck // the frontend switched to the key from our last SCMDKey
 )
 
 // Commands we send back to a frontend
@@ -343,23 +345,57 @@ func FrontendsByIdentity(ident string) []*frontend.Frontend {
 	return list
 }
 
-// Change symmetric keys. Generate new key and iv and immediately send them to
-// the client. This jumps ahead of the normal send buffer so that all messages
-// from this point on can be decrypted on the client.
+// RotateKeys replaces the AES session key. The new key goes to the frontend
+// in an SCMDKey, sealed with the old one, and everything we send after that
+// frame uses the new key. The frontend keeps using the old key for what it
+// sends until it has read the SCMDKey; it then sends CMDKeyAck in its last
+// frame under the old key, and we switch our receiving side when we parse
+// that (see ParseKeyAck). The same handover TLS 1.3 uses for KeyUpdate.
+// Frames can be in flight both ways while this happens, so each direction
+// switches at a point both ends agree on, rather than both at once.
 //
-// Called from Pong() every hour or so
+// Called from Pong() every hour or so, on the connection's goroutine with
+// fe.Mu held.
 func RotateKeys(fe *frontend.Frontend) {
-	if fe == nil || !fe.Encrypted {
+	if fe == nil || !fe.Encrypted || !fe.Trusted {
 		return
 	}
-	newkey := crypto.RandomBytes(crypto.AESBlockLength)
-	newIV := crypto.RandomBytes(crypto.AESIVLength)
-	blob := append(newkey, newIV...)
+	// still waiting for the frontend to ack the last one
+	if fe.NextRecv != nil {
+		return
+	}
+	newkey := crypto.RandomBytes(crypto.AESKeyLength)
+	send, err := crypto.NewStream(newkey, crypto.ToFrontend)
+	if err != nil {
+		be.Logf(LogLevelNormal, "[%s] key rotation: %v\n", fe.Name, err)
+		return
+	}
+	recv, err := crypto.NewStream(newkey, crypto.ToBackend)
+	if err != nil {
+		be.Logf(LogLevelNormal, "[%s] key rotation: %v\n", fe.Name, err)
+		return
+	}
 	(&fe.MessageOut).WriteByte(SCMDKey)
-	(&fe.MessageOut).WriteData(blob)
-	SendMessages(fe)
-	fe.SymmetricKey = newkey
-	fe.InitVector = newIV
+	(&fe.MessageOut).WriteData(newkey)
+	if sendMessages(fe, send) {
+		fe.NextRecv = recv
+	}
+}
+
+// ParseKeyAck handles CMDKeyAck: the frontend has switched to the key from
+// our last SCMDKey, and every frame it sends after this one is sealed with
+// it. This frame was opened with the old key, so the switch takes effect from
+// the next frame.
+//
+// Returns false if no rotation was waiting for an ack, which means the two
+// ends disagree about the keys and the connection can't continue.
+func ParseKeyAck(fe *frontend.Frontend) bool {
+	if fe == nil || fe.NextRecv == nil {
+		return false
+	}
+	fe.RecvStream = fe.NextRecv
+	fe.NextRecv = nil
+	return true
 }
 
 // Fetch all frontends from the database
@@ -527,12 +563,27 @@ func (b *Backend) HandleConnection(c net.Conn) {
 	fe.Challenge = crypto.RandomBytes(challengeLength)
 	blob := append(hash, fe.Challenge...)
 
-	// If client requests encrypted transit, generate session keys and append
+	// If client requests encrypted transit, generate the session key and
+	// append it. Nothing else is needed: GCM nonces come from counting frames
+	// (see crypto.Stream), so both ends start at zero.
 	if fe.Encrypted {
-		fe.SymmetricKey = crypto.RandomBytes(crypto.AESBlockLength)
-		fe.InitVector = crypto.RandomBytes(crypto.AESIVLength)
-		blob = append(blob, fe.SymmetricKey...)
-		blob = append(blob, fe.InitVector...)
+		key := crypto.RandomBytes(crypto.AESKeyLength)
+		send, err := crypto.NewStream(key, crypto.ToFrontend)
+		if err != nil {
+			be.Logf(LogLevelNormal, "[%s] session key: %v\n", fe.Name, err)
+			return
+		}
+		recv, err := crypto.NewStream(key, crypto.ToBackend)
+		if err != nil {
+			be.Logf(LogLevelNormal, "[%s] session key: %v\n", fe.Name, err)
+			return
+		}
+		fe.SendMu.Lock()
+		fe.SendStream = send
+		fe.SendMu.Unlock()
+		fe.RecvStream = recv
+		fe.NextRecv = nil
+		blob = append(blob, key...)
 	}
 
 	// Encrypt the whole blob with client's public key so only that client can
@@ -611,27 +662,14 @@ func (b *Backend) HandleConnection(c net.Conn) {
 		input := payload
 		if fe.Encrypted && fe.Trusted {
 			be.Logf(LogLevelDeveloperPlus, "encrypted packet received:\n%s", hex.Dump(payload))
-			// SymmetricDecrypt panics on a partial block, which would take
-			// the whole backend down, so check first.
-			if len(payload)%crypto.AESBlockLength != 0 {
-				be.Logf(LogLevelNormal, "[%s] encrypted frame isn't whole blocks (%d bytes), disconnecting.\n", fe.Name, len(payload))
-				fe.Log.Println("bad encrypted frame, disconnecting.")
+			input, err = fe.RecvStream.Open(payload)
+			if err != nil {
+				// The frame was altered, or the two ends' keys or frame
+				// counts no longer match. Either way nothing after it can
+				// be opened either.
+				be.Logf(LogLevelNormal, "[%s] %v, disconnecting.\n", fe.Name, err)
+				fe.Log.Println("bad encrypted frame, disconnecting:", err)
 				break
-			}
-			var size int
-			input, size = crypto.SymmetricDecrypt(fe.SymmetricKey, fe.InitVector, payload)
-			if size == 0 {
-				be.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nIV: %s\n", hex.Dump(fe.SymmetricKey), hex.Dump(fe.InitVector))
-				// try again with the previous IV in case this message was sent
-				// prior to receiving our last. Decrypt the frame itself, not
-				// the empty result of the failed attempt.
-				input, size = crypto.SymmetricDecrypt(fe.SymmetricKey, fe.PreviousIV, payload)
-				if size == 0 {
-					be.Logf(LogLevelDeveloperPlus, "unable to decrypt using KEY:\n%s\nPrevIV: %s\n", hex.Dump(fe.SymmetricKey), hex.Dump(fe.PreviousIV))
-					be.Logf(LogLevelNormal, "[%s] error decrypting packet from frontend, disconnecting.\n", fe.Name)
-					fe.Log.Println("error decrypting packet, disconnecting.")
-					break
-				}
 			}
 		}
 		fe.Mu.Lock()
@@ -645,7 +683,12 @@ func (b *Backend) HandleConnection(c net.Conn) {
 		be.Logln(LogLevelInfo, err)
 	}
 	fe.Mu.Lock()
+	fe.SendMu.Lock()
 	fe.Connection = nil
+	fe.SendStream = nil
+	fe.SendMu.Unlock()
+	fe.RecvStream = nil
+	fe.NextRecv = nil
 	fe.Connected = false
 	fe.Trusted = false
 	fe.Mu.Unlock()
@@ -685,36 +728,64 @@ func MakeFrame(payload []byte) []byte {
 }
 
 // Send all messages in the outgoing queue to the frontend as one frame. If the
-// frontend requested encrypted transit, encrypt using the session key
-// generated during the handshake. A frame too large for the frontend to
-// receive is dropped (and logged) rather than sent: q2admin would have to drop
-// the connection, since it couldn't find the next frame.
+// frontend requested encrypted transit, seal it with the session key (see
+// crypto.Stream). A frame too large for the frontend to receive is dropped
+// (and logged) rather than sent: q2admin would have to drop the connection,
+// since it couldn't find the next frame.
 func SendMessages(fe *frontend.Frontend) {
+	sendMessages(fe, nil)
+}
+
+// sendMessages sends the outgoing queue as one frame, like SendMessages. If
+// next isn't nil, frames after this one are sealed with it instead (a key
+// rotation). Returns whether the frame was written.
+//
+// fe.SendMu is held from sealing to writing. Frames are sent from several
+// goroutines, and the frontend counts frames to know each one's nonce, so
+// they have to reach the wire in the order they were sealed.
+func sendMessages(fe *frontend.Frontend, next *crypto.Stream) bool {
 	if fe == nil || fe.MessageOut.Size() == 0 {
-		return
+		return false
 	}
+	fe.SendMu.Lock()
+	defer fe.SendMu.Unlock()
 	if fe.Connection == nil {
 		(&fe.MessageOut).Reset()
-		return
+		return false
 	}
 	srv := fe.Server.(*Backend)
 	srv.Logf(LogLevelDeveloperPlus, "Sending to client:\n%s\n", hex.Dump(fe.MessageOut.Data))
 	payload := fe.MessageOut.Data
-	if fe.Trusted && fe.Encrypted {
-		payload = crypto.SymmetricEncrypt(fe.SymmetricKey, fe.InitVector, payload)
+	encrypt := fe.Trusted && fe.Encrypted
+	size := len(payload)
+	if encrypt {
+		size += crypto.GCMTagLength
+	}
+	// checked before sealing, so a dropped frame doesn't use up a nonce
+	if size > FrameMaxLength {
+		(&fe.MessageOut).Reset()
+		srv.Logf(LogLevelNormal, "[%s] outgoing frame too large (%d bytes), dropped\n", fe.Name, size)
+		return false
+	}
+	if encrypt {
+		sealed, err := fe.SendStream.Seal(payload)
+		if err != nil {
+			(&fe.MessageOut).Reset()
+			srv.Logf(LogLevelNormal, "[%s] %v, disconnecting\n", fe.Name, err)
+			(*fe.Connection).Close()
+			return false
+		}
+		payload = sealed
 	}
 	(&fe.MessageOut).Reset()
-	if len(payload) > FrameMaxLength {
-		srv.Logf(LogLevelNormal, "[%s] outgoing frame too large (%d bytes), dropped\n", fe.Name, len(payload))
-		return
-	}
-	if fe.Trusted && fe.Encrypted {
-		fe.PreviousIV = fe.InitVector
-		fe.InitVector = payload[:crypto.AESIVLength]
-	}
 	if _, err := (*fe.Connection).Write(MakeFrame(payload)); err != nil {
 		srv.Logf(LogLevelDebug, "[%s] write error: %v\n", fe.Name, err)
+		return false
 	}
+	if next != nil {
+		fe.SendStream = next
+	}
+	return true
 }
 
 // Gracefully shut everything down. Close database connection, write states to

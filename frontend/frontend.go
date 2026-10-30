@@ -20,6 +20,7 @@ import (
 
 	"github.com/packetflinger/libq2/message"
 	"github.com/packetflinger/libq2/state"
+	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/database"
 	"github.com/packetflinger/q2admind/maprotator"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -49,7 +50,6 @@ type Frontend struct {
 	Enabled       bool                // actually use it
 	Encrypted     bool                // are the messages AES encrypted?
 	ID            int                 // this is the database index, remove later
-	InitVector    []byte              // AES IV,
 	Invites       InviteBucket        // Invite throttling
 	Kills         map[string]int      // kills by weapon since the last stats sample
 	IPAddress     string              // used for teleporting
@@ -61,6 +61,7 @@ type Frontend struct {
 	MessageOut    message.Buffer      // outgoing byte stream
 	Mu            sync.Mutex          // guards state shared by the connection goroutine, SSH sessions and maintenance
 	Name          string              // the teleport name
+	NextRecv      *crypto.Stream      // after a key rotation, replaces RecvStream once q2admin acks it
 	Owner         string              // email addr
 	Delegates     []string            // emails of users the owner shared this frontend with
 	Path          string              // the fs path for this client
@@ -68,14 +69,15 @@ type Frontend struct {
 	PlayerCount   int                 // len(Players)
 	Players       []Player            // all the connected players
 	Port          int                 // used for teleporting
-	PreviousIV    []byte              // the next to last AES IV we used (just in case)
 	PreviousMap   string              // what was the last map?
 	PublicKey     *rsa.PublicKey      // supplied by owner via website
 	PublicKeyData string              // the contents of the `key` file
+	RecvStream    *crypto.Stream      // decrypts frames from q2admin (when Encrypted)
 	Rules         []*pb.Rule          // bans, mutes, etc
 	Server        any                 // pointer for circular reference back
+	SendMu        sync.Mutex          // serializes sends, so each frame gets the next nonce in wire order
+	SendStream    *crypto.Stream      // encrypts frames to q2admin (when Encrypted)
 	ServerVars    map[string]string   // public server cvars
-	SymmetricKey  []byte              // AES 128 CBC
 	TeleportCount int                 // how many times teleport was used
 	Terminals     []*chan string      // pointers to the console streams
 	Trusted       bool                // signature challenge verified

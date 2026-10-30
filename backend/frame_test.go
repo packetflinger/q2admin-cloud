@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"testing"
 	"testing/iotest"
 
@@ -130,29 +131,139 @@ func TestSendMessagesFrames(t *testing.T) {
 	}
 }
 
-func TestSendMessagesEncryptedFrames(t *testing.T) {
+// encryptedFrontend returns a trusted, encrypted frontend on a pipe, and the
+// stream the frontend's end would open our frames with.
+func encryptedFrontend(t *testing.T) (*frontend.Frontend, net.Conn, *crypto.Stream) {
+	t.Helper()
 	fe, peer := pipeFrontend(t)
 	fe.Trusted = true
 	fe.Encrypted = true
-	fe.SymmetricKey = crypto.RandomBytes(crypto.AESBlockLength)
-	fe.InitVector = crypto.RandomBytes(crypto.AESIVLength)
-	iv := fe.InitVector
-	fe.MessageOut.WriteByte(SCMDPong)
+	key := crypto.RandomBytes(crypto.AESKeyLength)
+	var err error
+	if fe.SendStream, err = crypto.NewStream(key, crypto.ToFrontend); err != nil {
+		t.Fatal(err)
+	}
+	if fe.RecvStream, err = crypto.NewStream(key, crypto.ToBackend); err != nil {
+		t.Fatal(err)
+	}
+	theirs, err := crypto.NewStream(key, crypto.ToFrontend)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fe, peer, theirs
+}
 
-	got := sendAndRead(t, fe, peer)
-	if len(got)%crypto.AESBlockLength != 0 {
-		t.Fatalf("encrypted payload is %d bytes, not whole blocks", len(got))
+func TestSendMessagesEncryptedFrames(t *testing.T) {
+	fe, peer, theirs := encryptedFrontend(t)
+	for i := 0; i < 3; i++ {
+		fe.MessageOut.WriteByte(SCMDPong)
+		got := sendAndRead(t, fe, peer)
+		if len(got) != 1+crypto.GCMTagLength {
+			t.Fatalf("frame %d: encrypted payload is %d bytes, want %d", i, len(got), 1+crypto.GCMTagLength)
+		}
+		plain, err := theirs.Open(got)
+		if err != nil {
+			t.Fatalf("frame %d: %v", i, err)
+		}
+		if !bytes.Equal(plain, []byte{SCMDPong}) {
+			t.Errorf("frame %d: decrypted payload = %v, want [%d]", i, plain, SCMDPong)
+		}
 	}
-	plain, size := crypto.SymmetricDecrypt(fe.SymmetricKey, iv, got)
-	if size != 1 || plain[0] != SCMDPong {
-		t.Errorf("decrypted payload = %v, want [%d]", plain[:size], SCMDPong)
+}
+
+// Frames are sent from several goroutines at once. The frontend works out
+// each frame's nonce by counting, so they have to arrive in the order they
+// were sealed or it can't open them.
+func TestSendMessagesConcurrentNonceOrder(t *testing.T) {
+	fe, peer, theirs := encryptedFrontend(t)
+	const senders, each = 8, 25
+	done := make(chan error)
+	go func() {
+		for i := 0; i < senders*each; i++ {
+			payload, err := ReadFrame(peer)
+			if err != nil {
+				done <- err
+				return
+			}
+			if _, err := theirs.Open(payload); err != nil {
+				done <- err
+				return
+			}
+		}
+		done <- nil
+	}()
+	var wg sync.WaitGroup
+	for g := 0; g < senders; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < each; i++ {
+				fe.Mu.Lock()
+				fe.MessageOut.WriteByte(SCMDPong)
+				SendMessages(fe)
+				fe.Mu.Unlock()
+			}
+		}()
 	}
-	// the next IV is the first ciphertext block, as q2admin expects
-	if !bytes.Equal(fe.InitVector, got[:crypto.AESIVLength]) {
-		t.Error("InitVector wasn't moved on to the first ciphertext block")
+	wg.Wait()
+	if err := <-done; err != nil {
+		t.Fatal(err)
 	}
-	if !bytes.Equal(fe.PreviousIV, iv) {
-		t.Error("PreviousIV isn't the IV the frame was encrypted with")
+}
+
+// After a rotation, our frames use the new key from the one after the
+// SCMDKey on, and theirs only once they've acked it.
+func TestRotateKeys(t *testing.T) {
+	fe, peer, theirs := encryptedFrontend(t)
+	oldRecv := fe.RecvStream
+
+	got := make(chan []byte)
+	go func() {
+		payload, err := ReadFrame(peer)
+		if err != nil {
+			t.Errorf("ReadFrame() error = %v", err)
+		}
+		got <- payload
+	}()
+	RotateKeys(fe)
+	plain, err := theirs.Open(<-got)
+	if err != nil {
+		t.Fatalf("SCMDKey frame: %v", err)
+	}
+	if len(plain) != 1+crypto.AESKeyLength || plain[0] != SCMDKey {
+		t.Fatalf("SCMDKey frame = %v", plain)
+	}
+	newKey := plain[1:]
+	if fe.RecvStream != oldRecv || fe.NextRecv == nil {
+		t.Fatal("receiving side switched before the ack")
+	}
+
+	// a second rotation before the ack would leave the ends unsure which
+	// key is which, so it waits
+	fe.MessageOut.WriteByte(SCMDPong)
+	RotateKeys(fe)
+	theirsNew, _ := crypto.NewStream(newKey, crypto.ToFrontend)
+	plain, err = theirsNew.Open(sendAndRead(t, fe, peer))
+	if err != nil {
+		t.Fatalf("frame after SCMDKey: %v", err)
+	}
+	if !bytes.Equal(plain, []byte{SCMDPong}) {
+		t.Errorf("frame after SCMDKey = %v, want only a pong (no second SCMDKey)", plain)
+	}
+
+	if !ParseKeyAck(fe) {
+		t.Fatal("ParseKeyAck() = false with a rotation waiting")
+	}
+	if fe.RecvStream == oldRecv || fe.NextRecv != nil {
+		t.Fatal("receiving side didn't switch on the ack")
+	}
+	frontSend, _ := crypto.NewStream(newKey, crypto.ToBackend)
+	sealed, _ := frontSend.Seal([]byte{CMDPing})
+	if _, err := fe.RecvStream.Open(sealed); err != nil {
+		t.Errorf("frame under the new key after the ack: %v", err)
+	}
+	if ParseKeyAck(fe) {
+		t.Error("ParseKeyAck() = true with no rotation waiting")
 	}
 }
 

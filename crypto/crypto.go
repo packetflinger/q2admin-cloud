@@ -8,7 +8,6 @@
 package crypto
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
@@ -16,24 +15,29 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"log"
+	"math"
 )
 
 const (
-	AESBlockLength = 16  // 128 bit
-	AESIVLength    = 16  // 128 bit
+	AESKeyLength   = 16  // 128 bit
+	GCMNonceLength = 12  // 96 bit, the size GCM is designed for
+	GCMTagLength   = 16  // 128 bit authentication tag on every frame
 	RSAKeyLength   = 256 // 2048 bits
 	DigestLength   = 32  // 256 bits
 )
 
-type EncryptionKey struct {
-	Key        []byte // 16 bytes (128 bit)
-	InitVector []byte // 16 bytes
-}
+// Directions, used as the fixed part of a GCM nonce. Both directions of a
+// connection share one key, so this is what keeps a nonce used by one side
+// from ever being used by the other. q2admin has the same values.
+const (
+	ToBackend  uint32 = 1 // frames sent by q2admin
+	ToFrontend uint32 = 2 // frames sent by us
+)
 
 // Get a hash of an input byte slice
 // Currently using SHA256, if that changes, update the DigestLength constant above!
@@ -130,15 +134,6 @@ func LoadPublicKey(pub []byte) (*rsa.PublicKey, error) {
 	return nil, errors.New("not a public key file")
 }
 
-// Manually add padding to a slice to get it to a specific
-// block size. The number of bytes required is the byte used
-// for the actual padding
-func PKCS5Padding(input []byte, blockSize int) []byte {
-	padding := (blockSize - len(input)%blockSize)
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(input, padtext...)
-}
-
 // Decrypt a block of ciphertext using our private key.
 //
 // This is used as part of authenticating clients. During the connection
@@ -208,52 +203,84 @@ func Sign(key *rsa.PrivateKey, plaintext []byte) []byte {
 	return signature
 }
 
-// Decrypt incoming messages using AES in CBC mode. Any errors encountered here
-// are considered fatal, so errors are not returned.
-func SymmetricDecrypt(key []byte, nonce []byte, ciphertext []byte) ([]byte, int) {
-	if len(key) != len(nonce) {
-		log.Panicf("crypto error: key and IV different lengths - %d, %d", len(key), len(nonce))
-	}
-	if len(ciphertext)%len(key) != 0 {
-		log.Panicf("crypto error: key must match block length - %d, %d", len(key), len(ciphertext))
-	}
-	if len(ciphertext) == 0 {
-		return []byte{}, 0
-	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		log.Panicln("error creating new cipher:", err)
-	}
-
-	plaintext := make([]byte, len(ciphertext))
-	cbc := cipher.NewCBCDecrypter(block, nonce)
-	cbc.CryptBlocks(plaintext, ciphertext)
-
-	// The last byte value is the number of bytes padded.
-	padding := int(plaintext[len(plaintext)-1])
-
-	// Padding bit should never exceed message length, that would spill over
-	// into a new block.
-	if padding > len(plaintext) {
-		return []byte{}, 0
-	}
-	unpadded := plaintext[:len(plaintext)-padding]
-	return unpadded, len(unpadded)
+// Stream encrypts or decrypts the frames going one way over a connection,
+// using AES-128-GCM. Every frame is sealed with its own nonce and carries a
+// 16-byte tag, so a frame that was altered, replayed, reordered or decrypted
+// with the wrong key fails to open instead of turning into garbage.
+//
+// Nonces follow NIST SP 800-38D section 8.2.1 (the "deterministic
+// construction"), the same scheme TLS 1.3 and SSH use: 4 bytes saying which
+// direction the frame goes, then a 64-bit count of the frames already sent
+// that way with this key, both big-endian. Nothing about the nonce is sent;
+// TCP delivers frames in order, so both ends count them. A nonce can never
+// repeat under one key, which is the one thing GCM needs: the direction
+// keeps the two sides apart, and the count only goes up. A new key (the
+// handshake, or a rotation) starts the count again at zero.
+//
+// A Stream isn't safe for concurrent use.
+type Stream struct {
+	aead      cipher.AEAD
+	direction uint32
+	count     uint64
 }
 
-// Encrypt outgoing messages using AES
-func SymmetricEncrypt(key []byte, nonce []byte, plaintext []byte) []byte {
+// NewStream returns a Stream for frames going in direction (ToBackend or
+// ToFrontend), encrypted with key.
+func NewStream(key []byte, direction uint32) (*Stream, error) {
+	if len(key) != AESKeyLength {
+		return nil, fmt.Errorf("AES key is %d bytes, want %d", len(key), AESKeyLength)
+	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	return &Stream{aead: aead, direction: direction}, nil
+}
 
-	plaintext = PKCS5Padding(plaintext, AESBlockLength)
-	ciphertext := make([]byte, len(plaintext))
-	cbc := cipher.NewCBCEncrypter(block, nonce)
-	cbc.CryptBlocks(ciphertext, plaintext)
+// nonce returns the nonce for the next frame, or an error if the count has
+// run out (it never will in practice: 2^64 frames).
+func (s *Stream) nonce() ([]byte, error) {
+	if s.count == math.MaxUint64 {
+		return nil, errors.New("GCM frame count exhausted, a new key is needed")
+	}
+	n := make([]byte, GCMNonceLength)
+	binary.BigEndian.PutUint32(n[0:4], s.direction)
+	binary.BigEndian.PutUint64(n[4:], s.count)
+	return n, nil
+}
 
-	return ciphertext
+// Seal encrypts one frame's payload and returns the ciphertext with the tag
+// on the end (GCMTagLength bytes longer than plaintext).
+func (s *Stream) Seal(plaintext []byte) ([]byte, error) {
+	n, err := s.nonce()
+	if err != nil {
+		return nil, err
+	}
+	s.count++
+	return s.aead.Seal(nil, n, plaintext, nil), nil
+}
+
+// Open decrypts one frame's payload. Any error means the frame can't be
+// trusted, and since the count is now out of step with the sender's, the
+// connection can't continue.
+func (s *Stream) Open(ciphertext []byte) ([]byte, error) {
+	if len(ciphertext) < GCMTagLength {
+		return nil, fmt.Errorf("encrypted frame too short (%d bytes)", len(ciphertext))
+	}
+	n, err := s.nonce()
+	if err != nil {
+		return nil, err
+	}
+	plaintext, err := s.aead.Open(nil, n, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("frame %d failed authentication", s.count)
+	}
+	s.count++
+	return plaintext, nil
 }
 
 // Use a public key to decrypt a signature and compare it to hash of the content

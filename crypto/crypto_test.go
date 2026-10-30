@@ -1,8 +1,8 @@
 package crypto
 
 import (
+	"bytes"
 	"fmt"
-	"reflect"
 	"testing"
 )
 
@@ -51,49 +51,158 @@ func TestLoadPrivateKey(t *testing.T) {
 	}
 }
 
-func TestSymmetricEncryption(t *testing.T) {
-	key := RandomBytes(16)
-	iv := RandomBytes(16)
-
-	tests := []struct {
-		desc      string
-		plaintext string
-	}{
-		{desc: "test1", plaintext: "hi there"},
-		{desc: "test2", plaintext: "armor 20"},
-		{desc: "test3", plaintext: "My hyperblaster is jammed!"},
+func TestStreamRoundTrip(t *testing.T) {
+	key := RandomBytes(AESKeyLength)
+	send, err := NewStream(key, ToFrontend)
+	if err != nil {
+		t.Fatal(err)
 	}
+	recv, err := NewStream(key, ToFrontend)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, msg := range []string{"hi there", "", "My hyperblaster is jammed!"} {
+		ct, err := send.Seal([]byte(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ct) != len(msg)+GCMTagLength {
+			t.Errorf("ciphertext is %d bytes, want %d", len(ct), len(msg)+GCMTagLength)
+		}
+		got, err := recv.Open(ct)
+		if err != nil {
+			t.Fatalf("Open(%q): %v", msg, err)
+		}
+		if string(got) != msg {
+			t.Errorf("got %q, want %q", got, msg)
+		}
+	}
+}
 
+// The same plaintext must never encrypt the same way twice, or an observer
+// learns when messages repeat.
+func TestStreamNoncesChange(t *testing.T) {
+	s, _ := NewStream(RandomBytes(AESKeyLength), ToFrontend)
+	a, _ := s.Seal([]byte("status"))
+	b, _ := s.Seal([]byte("status"))
+	if bytes.Equal(a, b) {
+		t.Error("two frames with the same plaintext encrypted identically")
+	}
+}
+
+// Anything that would have made CBC hand back garbage has to fail outright.
+func TestStreamRejects(t *testing.T) {
+	key := RandomBytes(AESKeyLength)
+	seal := func(s *Stream, msg string) []byte {
+		ct, err := s.Seal([]byte(msg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ct
+	}
+	tests := []struct {
+		desc string
+		run  func() error
+	}{
+		{"wrong key", func() error {
+			s, _ := NewStream(key, ToFrontend)
+			r, _ := NewStream(RandomBytes(AESKeyLength), ToFrontend)
+			_, err := r.Open(seal(s, "map q2dm1"))
+			return err
+		}},
+		{"other direction", func() error {
+			s, _ := NewStream(key, ToBackend)
+			r, _ := NewStream(key, ToFrontend)
+			_, err := r.Open(seal(s, "map q2dm1"))
+			return err
+		}},
+		{"out of order", func() error {
+			s, _ := NewStream(key, ToFrontend)
+			r, _ := NewStream(key, ToFrontend)
+			seal(s, "first")
+			_, err := r.Open(seal(s, "second"))
+			return err
+		}},
+		{"replayed", func() error {
+			s, _ := NewStream(key, ToFrontend)
+			r, _ := NewStream(key, ToFrontend)
+			ct := seal(s, "kick 3")
+			if _, err := r.Open(ct); err != nil {
+				return nil // wrong failure, the check below reports it
+			}
+			_, err := r.Open(ct)
+			return err
+		}},
+		{"tampered", func() error {
+			s, _ := NewStream(key, ToFrontend)
+			r, _ := NewStream(key, ToFrontend)
+			ct := seal(s, "map q2dm1")
+			ct[0] ^= 1
+			_, err := r.Open(ct)
+			return err
+		}},
+		{"too short", func() error {
+			r, _ := NewStream(key, ToFrontend)
+			_, err := r.Open(make([]byte, GCMTagLength-1))
+			return err
+		}},
+	}
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			cipher := SymmetricEncrypt(key, iv, []byte(tc.plaintext))
-			plain, _ := SymmetricDecrypt(key, iv, cipher)
-			if !reflect.DeepEqual(plain, []byte(tc.plaintext)) {
-				t.Error("got:", plain, "want:", []byte(tc.plaintext))
+			if tc.run() == nil {
+				t.Error("frame opened, want an error")
 			}
 		})
 	}
 }
 
-func TestSymmetricDecrypt(t *testing.T) {
-	tests := []struct {
-		name   string
-		cipher string
-		key    string
-		iv     string
-		want   string
-	}{
-		{
-			name:   "test1",
-			cipher: "d3 91 59 06 33 0b fa 8e  c3 76 c9 dc 07 3c a8 95",
-			key:    "",
-		},
+// q2admin's test_gcm_vectors (tests/test_cloud.c) checks its OpenSSL code
+// produces these same bytes. If both pass, the two ends seal frames
+// identically.
+func TestStreamVectors(t *testing.T) {
+	key := make([]byte, AESKeyLength)
+	for i := range key {
+		key[i] = byte(i*7 + 1)
 	}
-
+	tests := []struct {
+		direction uint32
+		want      []byte
+	}{
+		{ToBackend, []byte{
+			0x0e, 0x50, 0xb9, 0xc6, 0xd4, 0x47, 0x63, 0x97, 0x35, 0xbc, 0xed,
+			0xdc, 0xe5, 0x4f, 0x8f, 0x92, 0xdc, 0xb6, 0x78, 0xcf, 0xa4,
+		}},
+		{ToFrontend, []byte{
+			0x16, 0x21, 0x99, 0xa0, 0x16, 0x5b, 0x30, 0xe8, 0x2d, 0x28, 0x7f,
+			0x8f, 0x55, 0xbe, 0x06, 0x7d, 0xa6, 0xc6, 0x97, 0xf5, 0x9d,
+		}},
+	}
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		s, err := NewStream(key, tc.direction)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.count = 5
+		got, err := s.Seal([]byte("q2dm1"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, tc.want) {
+			t.Errorf("direction %d: sealed = % x, want % x", tc.direction, got, tc.want)
+		}
+	}
+}
 
-		})
+// Pins the nonce layout, which q2admin has to build the same way.
+func TestStreamNonceLayout(t *testing.T) {
+	s := &Stream{direction: ToBackend, count: 0x0102030405060708}
+	n, err := s.nonce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []byte{0, 0, 0, 1, 1, 2, 3, 4, 5, 6, 7, 8}
+	if !bytes.Equal(n, want) {
+		t.Errorf("nonce = % x, want % x", n, want)
 	}
 }
 

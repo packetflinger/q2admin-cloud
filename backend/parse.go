@@ -60,6 +60,16 @@ func ParseMessage(fe *frontend.Frontend) {
 
 		case CMDCommand:
 			ParseCommand(fe)
+
+		case CMDKeyAck:
+			if !ParseKeyAck(fe) {
+				be.Logf(LogLevelNormal, "[%s] key ack without a key rotation, disconnecting\n", fe.Name)
+				fe.Log.Println("key ack without a key rotation, disconnecting")
+				if fe.Connection != nil {
+					(*fe.Connection).Close()
+				}
+				return
+			}
 		}
 	}
 }
@@ -270,6 +280,10 @@ func ParseConnect(fe *frontend.Frontend) {
 		if err != nil {
 			be.Logf(LogLevelNormal, "[%s] error loading group rules: %v\n", fe.Name, err)
 		}
+		// This runs on its own goroutine, alongside the connection's, which
+		// also reads and writes the player and the outgoing queue.
+		fe.Mu.Lock()
+		defer fe.Mu.Unlock()
 		match, rules := CheckRules(p, slices.Concat(fe.Rules, groupRules, be.rules))
 		if match {
 			p.Rules = rules
