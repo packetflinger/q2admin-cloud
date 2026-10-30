@@ -34,7 +34,7 @@
 	<tbody>
 		<tr><td>Player name, IP address and the hostname your IP resolves to</td><td>Identify players, and apply bans and other rules</td></tr>
 		<tr><td>Game client and version, and your userinfo settings (for example skin and field of view)</td><td>Rules, troubleshooting and client statistics</td></tr>
-		<tr><td>A random player ID that the server saves in your game's config file (<span class="q2a-mono">cl_cookie</span>)</td><td>Recognize returning players when their name or IP changes</td></tr>
+		<tr><td>A player ID from your game's config file (<span class="q2a-mono">cl_cookie</span>), if your client sends one</td><td>Recognize returning players when their name or IP changes</td></tr>
 		<tr><td>When you joined, how long you played, frags, deaths and the weapons used</td><td>Player and server statistics</td></tr>
 		<tr><td>Chat and other messages shown in the server console</td><td>The server's log and live console, for moderation</td></tr>
 	</tbody>
@@ -72,7 +72,7 @@
 
 <h2 class="h5 mt-4">Your choices</h2>
 <p>You can ask us to show you, correct or delete the information we hold about you, whether you're a website user or a player. Players: tell us your player name and, if you can, the IP address or server you used, so we can find your records. Email <a href="mailto:{{$contact}}">{{$contact}}</a> and we'll respond within 30 days. Depending on where you live, for example in the EU, UK or California, you may have further rights under local law. We'll honor them, and you can complain to your local data protection authority.</p>
-<p>You can stop the player ID being saved by removing <span class="q2a-mono">cl_cookie</span> from your game's config. A server may give you a new one the next time you join.</p>
+<p>You can stop sending a player ID by removing <span class="q2a-mono">cl_cookie</span> from your game's config.</p>
 
 <h2 class="h5 mt-4">Children</h2>
 <p>The website isn't meant for children under 13. Game servers record whoever connects, so if you believe we hold a child's information, contact us and we'll delete it.</p>

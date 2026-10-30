@@ -2,12 +2,10 @@ package backend
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"math"
 	"strings"
 
-	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/frontend"
 )
 
@@ -183,37 +181,4 @@ func SayPlayer(cl *frontend.Frontend, p *frontend.Player, level int, text string
 	(&cl.MessageOut).WriteByte(p.ClientID)
 	(&cl.MessageOut).WriteByte(level)
 	(&cl.MessageOut).WriteString(text)
-}
-
-// Setup a new cookie on a player
-//
-// Player cookies are a dirty and not terribly effective way of uniquely
-// identifying players. Original Q2 made no effort to ID players other than
-// their client number. Every player in the game can have the same name, skin,
-// etc. The player's IP address was the only way to really differentiate them
-// from other players. Now in the age of VPNs, an malicious player can get
-// banned, and reconnect on a VPN with different IP, different name, etc, and
-// continue being abusive.
-//
-// The idea of a player cookie is a persistent unique identifier. PlayerX can
-// reconnect with a different name on a different IP with a different client
-// and still be identified. This is great for tracking statistics and
-// disciplinary actions (muting/banning shitheads).
-func SetupPlayerCookie(cl *frontend.Frontend, p *frontend.Player) {
-	value := hex.EncodeToString(crypto.RandomBytes(12)) // random ID
-
-	// "modern" clients (q2pro, r1q2) support seta for archive vars
-	a := fmt.Sprintf("seta cl_cookie %s", value)
-
-	// ancient clients (3.2[01]) require old format "set name value a"
-	//a_old := fmt.Sprintf("set cl_cookie %s a", value)
-
-	u := "setu cl_cookie $cl_cookie"
-
-	// tell player to write the var to local .cfg file for persistence
-	StuffPlayer(cl, p, a)
-
-	// tell player to add var to their userinfo string. This will
-	// trigger a ClientUserinfoChanged() call on the game server
-	StuffPlayer(cl, p, u)
 }

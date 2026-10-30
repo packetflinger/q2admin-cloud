@@ -518,8 +518,4 @@ func ParsePlayerUpdate(fe *frontend.Frontend) {
 	player.FOV, _ = strconv.Atoi(info["fov"])
 	player.Cookie = info["cl_cookie"]
 	player.UserInfoHash = hash
-
-	if player.Cookie == "" {
-		SetupPlayerCookie(fe, player)
-	}
 }
