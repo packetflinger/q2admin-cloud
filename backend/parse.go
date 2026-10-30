@@ -462,6 +462,9 @@ func ParsePlayerUpdate(fe *frontend.Frontend) {
 	msg := &fe.Message
 	clientnum := msg.ReadByte()
 	userinfo := msg.ReadString()
+	// Always read this, even if it's unused, or the rest of the frame would
+	// be parsed from the wrong place.
+	clientVersion := msg.ReadString()
 	hash := crypto.MD5Hash(userinfo)
 
 	player, err := fe.FindPlayer(int(clientnum))
@@ -471,6 +474,11 @@ func ParsePlayerUpdate(fe *frontend.Frontend) {
 		// client version and VPN checks. It's a (usually losing) race
 		// condition, just swallow the error.
 		return
+	}
+
+	// q2admin learns the version after the join message, so it can arrive here
+	if clientVersion != "" {
+		player.Version = clientVersion
 	}
 
 	// nothing we care about changed
