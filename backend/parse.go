@@ -163,7 +163,10 @@ func ParseFrag(fe *frontend.Frontend) {
 	}
 	victim.Deaths++
 	fe.Log.Println("FRAG", aName, ">", victim.Name)
-	fe.ConsoleBroadcast("FRAG " + aName + " > " + victim.Name)
+	if attacker != nil {
+		aName = playerLink(fe, attacker, attacker.Name, 0)
+	}
+	fe.ConsoleBroadcast("FRAG " + aName + " > " + playerLink(fe, victim, victim.Name, 0))
 }
 
 // Received a ping from a client, send a pong to show we're alive
@@ -201,7 +204,7 @@ func ParsePrint(fe *frontend.Frontend) {
 	switch level {
 	case PRINT_CHAT:
 		fe.Log.Println("CHAT", stripped)
-		fe.ConsoleBroadcast(Font([]int{ColorGreen, WeightBold}, stripped))
+		fe.ConsoleBroadcast(Font([]int{ColorGreen, WeightBold}, linkChatName(fe, stripped)))
 	case PRINT_HIGH:
 		fe.Log.Println("PRINT", stripped)
 		fe.ConsoleBroadcast(Font([]int{ColorBlack, bgcolor(ColorLightGray)}, stripped))
@@ -269,9 +272,9 @@ func ParseConnect(fe *frontend.Frontend) {
 			p.Hostname = ptr[0] // just take the first address
 		}
 
-		msg := fmt.Sprintf("%-20s[%d] %-20q %s", "CONNECT:", p.ClientID, p.Name, p.IP)
-		fe.Log.Printf("%s", msg)
-		fe.ConsoleBroadcast(msg)
+		line := func(name string) string { return fmt.Sprintf("%-20s[%d] %s %s", "CONNECT:", p.ClientID, name, p.IP) }
+		fe.Log.Printf("%s", line(fmt.Sprintf("%-20q", p.Name)))
+		fe.ConsoleBroadcast(line(playerLink(fe, p, strconv.Quote(p.Name), 20)))
 
 		// add a slight delay when processing rules
 		time.Sleep(1 * time.Second)
@@ -315,9 +318,11 @@ func ParseDisconnect(fe *frontend.Frontend) {
 		return
 	}
 
-	msg := fmt.Sprintf("%-20s[%d] %-20q %s", "DISCONNECT:", pl.ClientID, pl.Name, pl.IP)
-	fe.Log.Printf("%s", msg)
-	fe.ConsoleBroadcast(msg)
+	line := func(name string) string {
+		return fmt.Sprintf("%-20s[%d] %s %s", "DISCONNECT:", pl.ClientID, name, pl.IP)
+	}
+	fe.Log.Printf("%s", line(fmt.Sprintf("%-20q", pl.Name)))
+	fe.ConsoleBroadcast(line(playerLink(fe, pl, strconv.Quote(pl.Name), 20)))
 	fe.RemovePlayer(clientnum)
 }
 
@@ -349,27 +354,21 @@ func ParseObituary(fe *frontend.Frontend, obit string) {
 	if death.Victim == nil {
 		return
 	}
-	var logObit string
-	// single-sided frag
+	// the obituary line, with each player's name shown by name()
+	deathLine := func(name func(*frontend.Player) string) string {
+		if death.Murderer == nil { // single-sided frag
+			return fmt.Sprintf("DEATH: %s[%d] (%s)", name(death.Victim), death.Victim.ClientID, death.MeansToString())
+		}
+		return fmt.Sprintf("DEATH: %s[%d] -> %s[%d] (%s)", name(death.Murderer), death.Murderer.ClientID,
+			name(death.Victim), death.Victim.ClientID, death.MeansToString())
+	}
 	if death.Murderer == nil {
-		logObit = fmt.Sprintf("DEATH: %s[%d] (%s)",
-			death.Victim.Name,
-			death.Victim.ClientID,
-			death.MeansToString(),
-		)
 		cid := death.Victim.ClientID
 		fe.Players[cid].Deaths++
 		fe.Players[cid].Suicides++
 		fe.Players[cid].Frags--
 		fe.Players[cid].KDR = fe.CalculateKDR(cid)
 	} else {
-		logObit = fmt.Sprintf("DEATH: %s[%d] -> %s[%d] (%s)",
-			death.Murderer.Name,
-			death.Murderer.ClientID,
-			death.Victim.Name,
-			death.Victim.ClientID,
-			death.MeansToString(),
-		)
 		if fe.Kills == nil {
 			fe.Kills = map[string]int{}
 		}
@@ -381,8 +380,8 @@ func ParseObituary(fe *frontend.Frontend, obit string) {
 		fe.Players[cidV].KDR = fe.CalculateKDR(cidV)
 		fe.Players[cidM].KDR = fe.CalculateKDR(cidM)
 	}
-	fe.Log.Printf("%s", logObit)
-	fe.ConsoleBroadcast(logObit)
+	fe.Log.Printf("%s", deathLine(func(p *frontend.Player) string { return p.Name }))
+	fe.ConsoleBroadcast(deathLine(func(p *frontend.Player) string { return playerLink(fe, p, p.Name, 0) }))
 }
 
 // Client sent a playerlist message.

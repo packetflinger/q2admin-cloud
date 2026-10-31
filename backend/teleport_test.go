@@ -135,7 +135,7 @@ func TestTeleportTellsBothConsoles(t *testing.T) {
 		want  string
 	}{
 		// each server name links to that server's web console
-		{fromWatch, "claire [3] teleported to \x1b]8;;/sv/to-uuid/pf-tdm-dc/console\x1b\\pf-tdm-dc\x1b]8;;\x1b\\"},
+		{fromWatch, "\x1b]8;;/sv/from-uuid/pf-dev/player/3\x1b\\claire\x1b]8;;\x1b\\ [3] teleported to \x1b]8;;/sv/to-uuid/pf-tdm-dc/console\x1b\\pf-tdm-dc\x1b]8;;\x1b\\"},
 		{toWatch, "claire teleported from \x1b]8;;/sv/from-uuid/pf-dev/console\x1b\\pf-dev\x1b]8;;\x1b\\"},
 	} {
 		select {

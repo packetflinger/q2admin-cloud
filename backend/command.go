@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"path"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/packetflinger/q2admind/frontend"
 )
@@ -28,26 +31,61 @@ func StuffPlayer(cl *frontend.Frontend, p *frontend.Player, cmd string) {
 	(&cl.MessageOut).WriteString(stuffcmd)
 }
 
+// osc8 is text as a terminal hyperlink to url, for console messages. Terminals
+// without hyperlink support just show the text; the web console only follows
+// links to paths on its own site.
+func osc8(url, text string) string {
+	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
+}
+
+// consoleLink is fe's name linked to its web console. The console page checks
+// the viewer's access.
+func consoleLink(fe *frontend.Frontend) string {
+	return osc8(path.Join("/sv", fe.UUID, fe.Name, "console"), fe.Name)
+}
+
+// playerLink is text (usually p's name) linked to p's player page on fe, then
+// padded with spaces to width visible characters so columns still line up.
+// The link is to the player's client slot, so it shows whoever is in that slot
+// when it's opened.
+func playerLink(fe *frontend.Frontend, p *frontend.Player, text string, width int) string {
+	url := path.Join("/sv", fe.UUID, fe.Name, "player", strconv.Itoa(p.ClientID))
+	return osc8(url, text) + strings.Repeat(" ", max(width-utf8.RuneCountInString(text), 0))
+}
+
+// linkChatName links the speaker's name at the start of a chat line ("name:
+// text") when exactly one player has that name; otherwise the line is left as
+// it is.
+func linkChatName(fe *frontend.Frontend, line string) string {
+	players, err := fe.GetPlayerFromPrint(line)
+	if err != nil || len(players) != 1 || !strings.HasPrefix(line, players[0].Name+": ") {
+		return line
+	}
+	p := players[0]
+	return playerLink(fe, p, p.Name, 0) + line[len(p.Name):]
+}
+
 // Prevent the player from talking.
 //
 // Specify the length of silence using the seconds arg. Using zero or a
 // negative number of seconds makes it permanent.
 func MutePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
-	var cmd, logMsg string
+	var cmd string
 	if cl == nil || p == nil {
 		return
 	}
+	length := "perm"
 	if seconds > 0 {
 		cmd = fmt.Sprintf("sv !mute CL %d %d\n", p.ClientID, seconds)
-		logMsg = fmt.Sprintf("MUTE[%d] %-20s [%d]\n", seconds, p.Name, p.ClientID)
+		length = strconv.Itoa(seconds)
 	} else {
 		cmd = fmt.Sprintf("sv !mute CL %d PERM\n", p.ClientID)
-		logMsg = fmt.Sprintf("MUTE[perm] %-20s [%d]\n", p.Name, p.ClientID)
 	}
+	line := func(name string) string { return fmt.Sprintf("MUTE[%s] %s [%d]\n", length, name, p.ClientID) }
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
-	cl.Log.Printf("%s", logMsg)
-	cl.ConsoleBroadcast(logMsg)
+	cl.Log.Printf("%s", line(fmt.Sprintf("%-20s", p.Name)))
+	cl.ConsoleBroadcast(line(playerLink(cl, p, p.Name, 20)))
 }
 
 // Throttle the player's talking.
@@ -77,9 +115,9 @@ func StiflePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 	(&cl.MessageOut).WriteByte(PRINT_HIGH)
 	(&cl.MessageOut).WriteString(msg)
 
-	logMsg := fmt.Sprintf("STIFLE[%d] %-20s [%d]\n", seconds, p.Name, p.ClientID)
-	cl.Log.Printf("%s", logMsg)
-	cl.ConsoleBroadcast(logMsg)
+	line := func(name string) string { return fmt.Sprintf("STIFLE[%d] %s [%d]\n", seconds, name, p.ClientID) }
+	cl.Log.Printf("%s", line(fmt.Sprintf("%-20s", p.Name)))
+	cl.ConsoleBroadcast(line(playerLink(cl, p, p.Name, 20)))
 }
 
 // Instruct a client to kick a player. The target player will receive a direct
@@ -100,9 +138,9 @@ func KickPlayer(cl *frontend.Frontend, p *frontend.Player, msg string) {
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(fmt.Sprintf("kick %d\n", p.ClientID))
 
-	logMsg := fmt.Sprintf("KICK %-20s [%d] %q\n", p.Name, p.ClientID, msg)
-	cl.Log.Println(logMsg)
-	cl.ConsoleBroadcast(logMsg)
+	line := func(name string) string { return fmt.Sprintf("KICK %s [%d] %q\n", name, p.ClientID, msg) }
+	cl.Log.Println(line(fmt.Sprintf("%-20s", p.Name)))
+	cl.ConsoleBroadcast(line(playerLink(cl, p, p.Name, 20)))
 }
 
 // Issue a command as if you were typing it into the console. The command name
