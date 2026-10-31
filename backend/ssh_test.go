@@ -164,22 +164,22 @@ func TestPauseExpires(t *testing.T) {
 		io.Writer
 	}{strings.NewReader(""), &out}
 	st := &SSHTerminal{terminal: term.NewTerminal(rw, "> ")}
-	stream := make(chan string)
+	stream := make(chan frontend.ConsoleLine)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		linkFrontendToTerminal(ctx, &frontend.Frontend{Name: "fe1"}, st, &stream)
+		linkFrontendToTerminal(ctx, &frontend.Frontend{Name: "fe1"}, st, &stream, nil)
 		close(done)
 	}()
 
 	st.mu.Lock()
 	st.paused = time.Now().Unix() + PauseLength
 	st.mu.Unlock()
-	stream <- "held"
+	stream <- frontend.ConsoleLine{Text: "held"}
 	st.mu.Lock()
 	st.paused = time.Now().Unix() - 1 // expire it
 	st.mu.Unlock()
-	stream <- "after"
+	stream <- frontend.ConsoleLine{Text: "after"}
 	cancel()
 	<-done
 
@@ -209,5 +209,30 @@ func TestAddRuleWizardRejectsBadCIDR(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "Invalid CIDR address") {
 		t.Error("bare IP was not rejected")
+	}
+}
+
+func TestSSHConsoleShowsBacklog(t *testing.T) {
+	var out bytes.Buffer
+	st := &SSHTerminal{terminal: term.NewTerminal(struct {
+		io.Reader
+		io.Writer
+	}{strings.NewReader(""), &out}, "> ")}
+	fe := &frontend.Frontend{Name: "fe1"}
+	when := time.Date(2026, 1, 2, 13, 14, 15, 0, time.Local).Unix()
+	backlog := []frontend.ConsoleLine{{Seq: 1, Time: when, Text: "earlier"}}
+	stream := make(chan frontend.ConsoleLine)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		linkFrontendToTerminal(ctx, fe, st, &stream, backlog)
+		close(done)
+	}()
+	stream <- frontend.ConsoleLine{Seq: 2, Time: time.Now().Unix(), Text: "live"}
+	cancel()
+	<-done
+	got := out.String()
+	if !strings.Contains(got, "13:14:15 earlier") || strings.Index(got, "earlier") > strings.Index(got, "live") {
+		t.Errorf("the backlog should come first, with its own time:\n%s", got)
 	}
 }

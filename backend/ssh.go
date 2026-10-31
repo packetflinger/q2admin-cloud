@@ -343,10 +343,10 @@ func sessionHandler(s ssh.Session) {
 				cancel = stop
 
 				// buffered: ConsoleBroadcast drops messages when this is full
-				newterm := make(chan string, 64)
-				fe.AddTerminal(&newterm)
+				newterm := make(chan frontend.ConsoleLine, 64)
+				backlog := fe.AddTerminal(&newterm, 0)
 
-				go linkFrontendToTerminal(ctx, activeFE, &sshterm, &newterm)
+				go linkFrontendToTerminal(ctx, activeFE, &sshterm, &newterm, backlog)
 
 				sshterm.SetPrompt(fmt.Sprintf("%s/%s", TopLevelPrompt, fe.Name), true)
 			}
@@ -715,31 +715,34 @@ func sessionHandler(s ssh.Session) {
 //
 // The context arg is a "withCancel" context, so the calling func can terminate
 // this go routine even when it's blocking waiting for input if needed.
-func linkFrontendToTerminal(ctx context.Context, fe *frontend.Frontend, t *SSHTerminal, stream *chan string) {
+func linkFrontendToTerminal(ctx context.Context, fe *frontend.Frontend, t *SSHTerminal, stream *chan frontend.ConsoleLine, backlog []frontend.ConsoleLine) {
 	if fe == nil || t == nil {
 		return
 	}
-	var now, msg string
-	msg = fmt.Sprintf("* connecting to %s's console stream *", fe.Name)
-	t.Println(yellow(msg))
+	t.Println(yellow(fmt.Sprintf("* connecting to %s's console stream *", fe.Name)))
 
+	show := func(line frontend.ConsoleLine) {
+		msg := fmt.Sprintf("%s %s\n", time.Unix(line.Time, 0).Format("15:04:05"), line.Text)
+		t.mu.Lock()
+		paused := t.paused
+		if paused > 0 && time.Now().Unix() < paused {
+			t.buffer = append(t.buffer, msg)
+			t.mu.Unlock()
+			return
+		}
+		t.mu.Unlock()
+		if paused > 0 { // pause expired
+			t.unpause()
+		}
+		t.Println(msg)
+	}
+	for _, line := range backlog { // recent history first
+		show(line)
+	}
 	for {
 		select {
-		case srvmsg := <-*stream:
-			now = time.Now().Format("15:04:05")
-			msg = fmt.Sprintf("%s %s\n", now, srvmsg)
-			t.mu.Lock()
-			paused := t.paused
-			if paused > 0 && time.Now().Unix() < paused {
-				t.buffer = append(t.buffer, msg)
-				t.mu.Unlock()
-				continue
-			}
-			t.mu.Unlock()
-			if paused > 0 { // pause expired
-				t.unpause()
-			}
-			t.Println(msg)
+		case line := <-*stream:
+			show(line)
 		case <-ctx.Done(): // cancel() called from SSH thread
 			fe.TerminalDisconnected(stream)
 			return

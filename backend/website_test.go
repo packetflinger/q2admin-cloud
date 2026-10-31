@@ -379,8 +379,8 @@ func TestConsoleStreamAndCommand(t *testing.T) {
 	}
 	for lines.Scan() {
 		if data, ok := strings.CutPrefix(lines.Text(), "data: "); ok {
-			var msg string
-			if err := json.Unmarshal([]byte(data), &msg); err != nil || !strings.Contains(msg, "> status") {
+			var msg struct{ M string }
+			if err := json.Unmarshal([]byte(data), &msg); err != nil || !strings.Contains(msg.M, "> status") {
 				t.Errorf("stream got %q (%v), want the echoed command", data, err)
 			}
 			break
@@ -660,8 +660,8 @@ func TestConsoleCommandLowercasesName(t *testing.T) {
 	saved := be.frontends
 	be.frontends = []*frontend.Frontend{fe}
 	defer func() { be.frontends = saved }()
-	watch := make(chan string, 4)
-	fe.AddTerminal(&watch)
+	watch := make(chan frontend.ConsoleLine, 4)
+	fe.AddTerminal(&watch, 0)
 	srv := httptest.NewServer(LoadWebsiteRoutes())
 	defer srv.Close()
 	client := signedInClient(t, srv, user)
@@ -677,18 +677,18 @@ func TestConsoleCommandLowercasesName(t *testing.T) {
 	if frame := <-sent; !bytes.Contains(frame, []byte("say Hi There\n")) {
 		t.Errorf("frontend was sent %q, want the command lowercased and the text untouched", frame)
 	}
-	if echo := <-watch; !strings.HasSuffix(echo, "> say Hi There") {
+	if echo := (<-watch).Text; !strings.HasSuffix(echo, "> say Hi There") {
 		t.Errorf("console watchers saw %q first, want the command", echo)
 	}
-	if echo := <-watch; !strings.Contains(echo, "console: Hi There") {
+	if echo := (<-watch).Text; !strings.Contains(echo, "console: Hi There") {
 		t.Errorf("console watchers saw %q second, want the say echo", echo)
 	}
 }
 
 func TestConsoleCommandEchoesSay(t *testing.T) {
 	fe := &frontend.Frontend{}
-	watch := make(chan string, 4)
-	fe.AddTerminal(&watch)
+	watch := make(chan frontend.ConsoleLine, 4)
+	fe.AddTerminal(&watch, 0)
 	for _, tc := range []struct{ cmd, echo string }{
 		{"say hi there", "console: hi there"},
 		{`Say "quoted text"`, "console: quoted text"},
@@ -699,7 +699,8 @@ func TestConsoleCommandEchoesSay(t *testing.T) {
 		ConsoleCommand(fe, tc.cmd)
 		got := ""
 		select {
-		case got = <-watch:
+		case line := <-watch:
+			got = line.Text
 		default:
 		}
 		if (tc.echo == "") != (got == "") || !strings.Contains(got, tc.echo) {
@@ -720,14 +721,14 @@ func TestConsoleStatus(t *testing.T) {
 		{ClientID: 1}, // empty slot
 		{ClientID: 2, ConnectTime: 1, Name: "bravo", IP: "192.0.2.2", Frags: 3},
 	}
-	watch := make(chan string, 4)
-	fe.AddTerminal(&watch)
+	watch := make(chan frontend.ConsoleLine, 4)
+	fe.AddTerminal(&watch, 0)
 	status := func() string {
 		t.Helper()
 		ConsoleCommand(fe, "Status")
 		select {
-		case s := <-watch:
-			return s
+		case line := <-watch:
+			return line.Text
 		default:
 			t.Fatal("status printed nothing")
 			return ""
@@ -799,8 +800,8 @@ func TestProfileNameAndConsoleEcho(t *testing.T) {
 		INSERT INTO user (email) VALUES ('joe@example.com')`); err != nil {
 		t.Fatal(err)
 	}
-	watch := make(chan string, 8)
-	fe.AddTerminal(&watch)
+	watch := make(chan frontend.ConsoleLine, 8)
+	fe.AddTerminal(&watch, 0)
 	srv := httptest.NewServer(LoadWebsiteRoutes())
 	defer srv.Close()
 	client := signedInClient(t, srv, user)
@@ -817,7 +818,7 @@ func TestProfileNameAndConsoleEcho(t *testing.T) {
 	echo := func() string {
 		t.Helper()
 		post("/sv/fe1-uuid/fe1/console/command", url.Values{"cmd": {"status"}})
-		return <-watch
+		return (<-watch).Text
 	}
 
 	if got := echo(); !strings.HasPrefix(got, "[joe] > status") {
@@ -945,5 +946,65 @@ func TestPublicKeyDownload(t *testing.T) {
 	}
 	if !got.Equal(&key.PublicKey) {
 		t.Error("served key isn't the backend's public key")
+	}
+}
+
+func TestConsoleStreamReplaysBacklog(t *testing.T) {
+	user := &pb.User{Email: "admin@example.com"}
+	fe := connectedFrontend(t, user.Email)
+	saved := be.frontends
+	be.frontends = []*frontend.Frontend{fe}
+	defer func() { be.frontends = saved }()
+	srv := httptest.NewServer(LoadWebsiteRoutes())
+	defer srv.Close()
+	client := signedInClient(t, srv, user)
+	for _, s := range []string{"one", "two", "three"} {
+		fe.ConsoleBroadcast(s)
+	}
+
+	// open reads a stream, sending lastID if it isn't empty, until it has n
+	// lines, and returns their ids and texts
+	open := func(lastID string, n int, live string) (ids, texts []string) {
+		t.Helper()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		req, _ := http.NewRequestWithContext(ctx, "GET", srv.URL+"/sv/fe1-uuid/fe1/console/stream", nil)
+		if lastID != "" {
+			req.Header.Set("Last-Event-ID", lastID)
+		}
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		lines := bufio.NewScanner(res.Body)
+		lines.Scan() // ": connected", so the subscription exists
+		if live != "" {
+			fe.ConsoleBroadcast(live)
+		}
+		for len(texts) < n && lines.Scan() {
+			if id, ok := strings.CutPrefix(lines.Text(), "id: "); ok {
+				ids = append(ids, id)
+			}
+			if data, ok := strings.CutPrefix(lines.Text(), "data: "); ok {
+				var line struct {
+					T int64
+					M string
+				}
+				if err := json.Unmarshal([]byte(data), &line); err != nil || line.T == 0 {
+					t.Fatalf("bad line %q: %v", data, err)
+				}
+				texts = append(texts, line.M)
+			}
+		}
+		return ids, texts
+	}
+
+	ids, texts := open("", 4, "four")
+	if strings.Join(texts, ",") != "one,two,three,four" || len(ids) != 4 {
+		t.Fatalf("a new console got ids %v, lines %v; want the backlog then the live line", ids, texts)
+	}
+	if _, texts := open(ids[1], 2, ""); strings.Join(texts, ",") != "three,four" {
+		t.Errorf("resuming after id %s gave %v, want only what came after", ids[1], texts)
 	}
 }

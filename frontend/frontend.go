@@ -3,6 +3,7 @@
 package frontend
 
 import (
+	"cmp"
 	"crypto/rsa"
 	"database/sql"
 	"errors"
@@ -28,9 +29,21 @@ import (
 	pb "github.com/packetflinger/q2admind/proto"
 )
 
-// terminalsMu guards every Frontend's Terminals. It's package-level because
-// Frontend values are copied around and can't hold a mutex.
+// terminalsMu guards every Frontend's Terminals and console backlog. It's
+// package-level because Frontend values are copied around and can't hold a
+// mutex.
 var terminalsMu sync.Mutex
+
+// ConsoleBacklog is how many recent console lines each frontend keeps, so a
+// console opened later (web or SSH) starts with recent history.
+const ConsoleBacklog = 500
+
+// ConsoleLine is one line of a frontend's console.
+type ConsoleLine struct {
+	Seq  uint64 `json:"-"` // counts up per frontend from 1, for resuming a stream
+	Time int64  `json:"t"` // unix seconds
+	Text string `json:"m"`
+}
 
 // This struct is partially populated by parsing a config file
 // on disk during init and the rest is filled in when the game
@@ -79,7 +92,9 @@ type Frontend struct {
 	SendStream    *crypto.Stream      // encrypts frames to q2admin (when Encrypted)
 	ServerVars    map[string]string   // public server cvars
 	TeleportCount int                 // how many times teleport was used
-	Terminals     []*chan string      // pointers to the console streams
+	Terminals     []*chan ConsoleLine // pointers to the console streams
+	console       []ConsoleLine       // the last ConsoleBacklog lines, oldest first
+	consoleSeq    uint64              // Seq of the newest console line
 	Trusted       bool                // signature challenge verified
 	UUID          string              // random identifier
 	Verified      bool                // client owner proved they're the owner
@@ -417,40 +432,54 @@ func (fe *Frontend) PlayersByName(name string) ([]*Player, error) {
 	return players, nil
 }
 
-// ConsoleBroadcast sends text to everything watching this frontend's console:
-// SSH sessions and web console streams.
+// ConsoleBroadcast sends text to everything watching this frontend's console,
+// SSH sessions and web console streams, and keeps it in the backlog.
 func (fe *Frontend) ConsoleBroadcast(text string) {
 	if fe == nil || text == "" {
 		return
 	}
 	terminalsMu.Lock()
 	defer terminalsMu.Unlock()
+	fe.consoleSeq++
+	line := ConsoleLine{Seq: fe.consoleSeq, Time: time.Now().Unix(), Text: text}
+	fe.console = append(fe.console, line)
+	if len(fe.console) > ConsoleBacklog {
+		fe.console = slices.Clone(fe.console[len(fe.console)-ConsoleBacklog:])
+	}
 	for i := range fe.Terminals {
 		select {
-		case *fe.Terminals[i] <- text:
-			// log.Printf("Sending %q to ssh client %d\n", text, i)
-		default:
-			// log.Println("doing nothing")
+		case *fe.Terminals[i] <- line:
+		default: // a watcher that's this far behind misses the line
 		}
 	}
 }
 
-// AddTerminal subscribes t to this frontend's console stream.
-func (fe *Frontend) AddTerminal(t *chan string) {
+// AddTerminal subscribes t to this frontend's console stream and returns the
+// backlog lines after sequence number after (0 for all of it), to show before
+// the live lines. Subscribing and reading the backlog happen together, so no
+// line is missed or repeated between them.
+func (fe *Frontend) AddTerminal(t *chan ConsoleLine, after uint64) []ConsoleLine {
 	terminalsMu.Lock()
 	defer terminalsMu.Unlock()
 	fe.Terminals = append(fe.Terminals, t)
+	if after > fe.consoleSeq { // from before a restart, when numbering began again
+		after = 0
+	}
+	i, _ := slices.BinarySearchFunc(fe.console, after+1, func(l ConsoleLine, seq uint64) int {
+		return cmp.Compare(l.Seq, seq)
+	})
+	return slices.Clone(fe.console[i:])
 }
 
 // The terminal goroutine will call this when disconnecting to unsubscribe from
 // the console stream. The channel isn't closed, nothing ranges over it.
-func (fe *Frontend) TerminalDisconnected(t *chan string) {
+func (fe *Frontend) TerminalDisconnected(t *chan ConsoleLine) {
 	if fe == nil {
 		return
 	}
 	terminalsMu.Lock()
 	defer terminalsMu.Unlock()
-	fe.Terminals = slices.DeleteFunc(fe.Terminals, func(c *chan string) bool { return c == t })
+	fe.Terminals = slices.DeleteFunc(fe.Terminals, func(c *chan ConsoleLine) bool { return c == t })
 }
 
 // Query the frontend for all the server vars

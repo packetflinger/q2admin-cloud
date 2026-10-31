@@ -32,7 +32,7 @@
 	fit.fit();
 	window.addEventListener("resize", () => fit.fit());
 
-	const time = () => new Date().toLocaleTimeString([], { hour12: false });
+	const time = (unix) => new Date(unix * 1000).toLocaleTimeString([], { hour12: false });
 	const setStatus = (text, cls) => {
 		status.textContent = text;
 		status.className = "badge " + cls;
@@ -42,7 +42,11 @@
 	const events = new EventSource(el.dataset.stream);
 	events.onopen = () => setStatus("live", "text-bg-success");
 	events.onerror = () => setStatus("reconnecting...", "text-bg-warning");
-	events.onmessage = (e) => term.writeln(`\x1b[90m${time()}\x1b[0m ${JSON.parse(e.data).trimEnd()}`);
+	// each line carries the time it happened, so replayed history shows its real time
+	events.onmessage = (e) => {
+		const line = JSON.parse(e.data);
+		term.writeln(`\x1b[90m${time(line.t)}\x1b[0m ${line.m.trimEnd()}`);
+	};
 
 	const history = [];
 	let pos = 0;

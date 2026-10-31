@@ -1232,13 +1232,23 @@ func ConsoleStreamHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no") // tell nginx not to buffer this response
 
-	stream := make(chan string, 64) // ConsoleBroadcast drops messages when this is full
-	fe.AddTerminal(&stream)
+	stream := make(chan frontend.ConsoleLine, 64) // ConsoleBroadcast drops messages when this is full
+	// a reconnecting browser sends the id of the last line it got, so it's
+	// only sent what it missed; a newly opened console gets the whole backlog
+	after, _ := strconv.ParseUint(r.Header.Get("Last-Event-ID"), 10, 64)
+	backlog := fe.AddTerminal(&stream, after)
 	defer fe.TerminalDisconnected(&stream)
 	keepalive := time.NewTicker(25 * time.Second)
 	defer keepalive.Stop()
 
+	send := func(line frontend.ConsoleLine) {
+		data, _ := json.Marshal(line) // one line, whatever the text contains
+		fmt.Fprintf(w, "id: %d\ndata: %s\n\n", line.Seq, data)
+	}
 	fmt.Fprint(w, ": connected\n\n")
+	for _, line := range backlog {
+		send(line)
+	}
 	for {
 		if err := rc.Flush(); err != nil {
 			return
@@ -1248,9 +1258,8 @@ func ConsoleStreamHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-keepalive.C:
 			fmt.Fprint(w, ": keepalive\n\n")
-		case msg := <-stream:
-			data, _ := json.Marshal(msg) // one line, whatever msg contains
-			fmt.Fprintf(w, "data: %s\n\n", data)
+		case line := <-stream:
+			send(line)
 		}
 	}
 }

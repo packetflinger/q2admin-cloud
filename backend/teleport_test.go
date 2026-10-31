@@ -123,15 +123,15 @@ func TestTeleportTellsBothConsoles(t *testing.T) {
 	saved := be.frontends
 	be.frontends = []*frontend.Frontend{from, to}
 	defer func() { be.frontends = saved }()
-	fromWatch, toWatch := make(chan string, 4), make(chan string, 4)
-	from.AddTerminal(&fromWatch)
-	to.AddTerminal(&toWatch)
+	fromWatch, toWatch := make(chan frontend.ConsoleLine, 4), make(chan frontend.ConsoleLine, 4)
+	from.AddTerminal(&fromWatch, 0)
+	to.AddTerminal(&toWatch, 0)
 
 	from.Message = message.NewBuffer(append([]byte{3}, append([]byte("pf-tdm-dc"), 0)...))
 	Teleport(from)
 
 	for _, tc := range []struct {
-		watch chan string
+		watch chan frontend.ConsoleLine
 		want  string
 	}{
 		// each server name links to that server's web console
@@ -139,7 +139,8 @@ func TestTeleportTellsBothConsoles(t *testing.T) {
 		{toWatch, "claire teleported from \x1b]8;;/sv/from-uuid/pf-dev/console\x1b\\pf-dev\x1b]8;;\x1b\\"},
 	} {
 		select {
-		case got := <-tc.watch:
+		case line := <-tc.watch:
+			got := line.Text
 			if !strings.Contains(got, tc.want) || !strings.Contains(got, fmt.Sprint(ColorBrightCyan)) {
 				t.Errorf("console got %q, want %q in cyan", got, tc.want)
 			}
