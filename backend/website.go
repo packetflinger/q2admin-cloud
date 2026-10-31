@@ -48,6 +48,9 @@ import (
 
 const (
 	CookieName = "q2asess"
+	// How long a website sign-in lasts, independent of the OAuth provider's
+	// access token (Google's expire after an hour).
+	SessionLength = 24 * time.Hour
 	AuthBypass = "" // for testing, skips auth
 )
 

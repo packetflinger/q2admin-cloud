@@ -242,7 +242,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		pic := fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", profile.ID, profile.Avatar)
 		id := uuid.NewString()
-		ttl := int64(time.Second * 86400) // 1 day from now
+		ttl := int64(SessionLength.Seconds())
 		signedJWT, err := CreateSessionToken(user, id, ttl, Website.Secret)
 		if err != nil {
 			log.Println(err)
@@ -251,7 +251,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 		session := pb.Session{
 			Id:         id,
 			Creation:   time.Now().Unix(),
-			Expiration: token.Expiry.Unix(),
+			Expiration: time.Now().Unix() + ttl,
 			AuthToken:  token.AccessToken,
 			Avatar:     pic,
 			Name:       alias,
@@ -262,7 +262,7 @@ func ProcessDiscordLogin(w http.ResponseWriter, r *http.Request) {
 			Name:     CookieName,
 			Value:    signedJWT,
 			SameSite: http.SameSiteLaxMode,
-			Expires:  token.Expiry,
+			Expires:  time.Now().Add(SessionLength),
 			Path:     "/",
 		}
 		http.SetCookie(w, &cookie)
@@ -288,7 +288,7 @@ func MockLogin(w http.ResponseWriter, r *http.Request, email string) {
 		alias = user.Name
 	}
 	id := uuid.NewString()
-	ttl := int64(86400) // 1 day from now
+	ttl := int64(SessionLength.Seconds())
 	signedJWT, err := CreateSessionToken(user, id, ttl, Website.Secret)
 	if err != nil {
 		log.Println(err)
@@ -308,7 +308,7 @@ func MockLogin(w http.ResponseWriter, r *http.Request, email string) {
 		Name:     CookieName,
 		Value:    signedJWT,
 		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Now().Add(12 * time.Hour),
+		Expires:  time.Now().Add(SessionLength),
 		Path:     "/",
 	}
 	http.SetCookie(w, &cookie)
@@ -396,7 +396,7 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 		alias = user.Name
 	}
 	id := uuid.NewString()
-	ttl := int64(86400) // 1 day from now
+	ttl := int64(SessionLength.Seconds())
 	signedJWT, err := CreateSessionToken(user, id, ttl, Website.Secret)
 	if err != nil {
 		log.Println(err)
@@ -405,7 +405,7 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	session := pb.Session{
 		Id:         id,
 		Creation:   time.Now().Unix(),
-		Expiration: token.Expiry.Unix(),
+		Expiration: time.Now().Unix() + ttl,
 		AuthToken:  token.AccessToken,
 		Avatar:     profile.Picture,
 		Name:       alias,
@@ -416,7 +416,7 @@ func ProcessGoogleLogin(w http.ResponseWriter, r *http.Request) {
 		Name:     CookieName,
 		Value:    signedJWT,
 		SameSite: http.SameSiteLaxMode,
-		Expires:  token.Expiry,
+		Expires:  time.Now().Add(SessionLength),
 		Path:     "/",
 	}
 	http.SetCookie(w, &cookie)
