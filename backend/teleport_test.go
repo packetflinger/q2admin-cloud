@@ -117,9 +117,9 @@ func TestChunkLines(t *testing.T) {
 }
 
 func TestTeleportTellsBothConsoles(t *testing.T) {
-	from := &frontend.Frontend{Name: "pf-dev", AllowTeleport: true, Server: &be, Log: log.New(io.Discard, "", 0)}
+	from := &frontend.Frontend{Name: "pf-dev", UUID: "from-uuid", AllowTeleport: true, Server: &be, Log: log.New(io.Discard, "", 0)}
 	from.Players = []frontend.Player{{}, {}, {}, {ClientID: 3, ConnectTime: 1, Name: "claire"}}
-	to := &frontend.Frontend{Name: "pf-tdm-dc", IPAddress: "100.64.1.2", Port: 27910}
+	to := &frontend.Frontend{Name: "pf-tdm-dc", UUID: "to-uuid", IPAddress: "100.64.1.2", Port: 27910}
 	saved := be.frontends
 	be.frontends = []*frontend.Frontend{from, to}
 	defer func() { be.frontends = saved }()
@@ -134,8 +134,9 @@ func TestTeleportTellsBothConsoles(t *testing.T) {
 		watch chan string
 		want  string
 	}{
-		{fromWatch, "claire [3] teleported to pf-tdm-dc"},
-		{toWatch, "claire teleported from pf-dev"},
+		// each server name links to that server's web console
+		{fromWatch, "claire [3] teleported to \x1b]8;;/sv/to-uuid/pf-tdm-dc/console\x1b\\pf-tdm-dc\x1b]8;;\x1b\\"},
+		{toWatch, "claire teleported from \x1b]8;;/sv/from-uuid/pf-dev/console\x1b\\pf-dev\x1b]8;;\x1b\\"},
 	} {
 		select {
 		case got := <-tc.watch:

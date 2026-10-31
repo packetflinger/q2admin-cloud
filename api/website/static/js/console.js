@@ -13,6 +13,18 @@
 		fontSize: window.innerWidth < 576 ? 12 : 14,
 		scrollback: 5000,
 		theme: { background: "#0b0d12" },
+		// Server names in console messages link to that server's console.
+		// Messages can contain player-chosen text, so only follow paths on
+		// this site; anything else stays plain text.
+		linkHandler: {
+			activate: (event, uri) => {
+				if (!/^\/(?!\/)/.test(uri)) return;
+				if (event.ctrlKey || event.metaKey) window.open(uri, "_blank", "noopener");
+				else window.location.href = uri;
+			},
+			hover: (event, uri) => { el.title = uri; },
+			leave: () => { el.title = ""; },
+		},
 	});
 	const fit = new FitAddon.FitAddon();
 	term.loadAddon(fit);

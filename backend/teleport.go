@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"path"
 	"strings"
 	"text/template"
 	"time"
@@ -44,6 +45,14 @@ var teleTmpl = template.Must(template.New("teleout").Funcs(template.FuncMap{
 	"wrap":          wrapList,
 	"playersColumn": func() int { return teleportPlayersColumn },
 }).Parse(teleportTemplate))
+
+// consoleLink is fe's name as a terminal hyperlink (OSC 8) to its web
+// console, for console messages. The console page checks the viewer's access;
+// terminals without hyperlink support just show the name.
+func consoleLink(fe *frontend.Frontend) string {
+	url := path.Join("/sv", fe.UUID, fe.Name, "console")
+	return "\x1b]8;;" + url + "\x1b\\" + fe.Name + "\x1b]8;;\x1b\\"
+}
 
 // wrapList wraps a ", "-separated list so no line goes past TeleportWidth when
 // it starts at column indent, breaking after a comma and indenting the lines
@@ -181,8 +190,8 @@ func Teleport(fe *frontend.Frontend) {
 			StuffPlayer(fe, p, cmd)
 			// tell both servers' console watchers; the destination's console
 			// only needs its own terminals lock, not f.Mu
-			fe.ConsoleBroadcast(Font([]int{ColorBrightCyan}, fmt.Sprintf("%s [%d] teleported to %s", p.Name, p.ClientID, f.Name)))
-			f.ConsoleBroadcast(Font([]int{ColorBrightCyan}, fmt.Sprintf("%s teleported from %s", p.Name, fe.Name)))
+			fe.ConsoleBroadcast(Font([]int{ColorBrightCyan}, fmt.Sprintf("%s [%d] teleported to %s", p.Name, p.ClientID, consoleLink(f))))
+			f.ConsoleBroadcast(Font([]int{ColorBrightCyan}, fmt.Sprintf("%s teleported from %s", p.Name, consoleLink(fe))))
 			p.LastTeleport = time.Now().Unix()
 			p.Teleports++
 			f.TeleportCount++
