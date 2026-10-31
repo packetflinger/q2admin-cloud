@@ -211,31 +211,3 @@ func TestAddRuleWizardRejectsBadCIDR(t *testing.T) {
 		t.Error("bare IP was not rejected")
 	}
 }
-
-func TestTeleportDestinationsSkipsBusyServers(t *testing.T) {
-	self := &frontend.Frontend{Name: "self", Trusted: true}
-	busy := &frontend.Frontend{Name: "busy", Trusted: true}
-	idle := &frontend.Frontend{Name: "idle", Trusted: true}
-	b := &Backend{frontends: []*frontend.Frontend{self, busy, idle}}
-	self.Mu.Lock() // as the connection loop holds it
-	busy.Mu.Lock() // mid-packet on another goroutine
-	defer self.Mu.Unlock()
-	defer busy.Mu.Unlock()
-
-	done := make(chan *pb.TeleportReply)
-	go func() {
-		r, _ := b.teleportDestinations(self)
-		done <- r
-	}()
-	select {
-	case r := <-done:
-		if r.GetEmptyServers() != "self,idle" {
-			t.Errorf("EmptyServers = %q, want %q", r.GetEmptyServers(), "self,idle")
-		}
-	case <-time.After(time.Second):
-		t.Fatal("teleportDestinations blocked on a locked frontend")
-	}
-	if !idle.Mu.TryLock() {
-		t.Error("idle frontend left locked")
-	}
-}

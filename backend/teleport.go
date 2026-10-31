@@ -24,12 +24,74 @@ Teleporting between servers
 Active servers:
   name                  map          players
   --------------------- ------------ ----------------------------------------
-  {{ if .ActiveServers }}{{ range .ActiveServers }}{{ printf "%-21s" .GetName}} {{printf "%-12s" .GetMap }} {{ .GetPlayers}}{{ end }}{{ end }} 
-
+{{ range .ActiveServers }}  {{ printf "%-21s" .GetName }} {{ printf "%-12s" .GetMap }} {{ wrap .GetPlayers playersColumn }}
+{{ end }}
 Empty servers:
-  {{ .GetEmptyServers }}
+  {{ wrap .GetEmptyServers 2 }}
 `
+
+	// teleportPlayersColumn is where the players column starts in
+	// teleportTemplate: the indent, then the name and map columns.
+	teleportPlayersColumn = 2 + 21 + 1 + 12 + 1
+
+	// MaxPrintLength is the most text sent to a player in one print. Quake 2
+	// formats a print into a 1024-byte buffer (MAX_STRING_CHARS), so longer
+	// output is sent as several prints.
+	MaxPrintLength = 1000
 )
+
+var teleTmpl = template.Must(template.New("teleout").Funcs(template.FuncMap{
+	"wrap":          wrapList,
+	"playersColumn": func() int { return teleportPlayersColumn },
+}).Parse(teleportTemplate))
+
+// wrapList wraps a ", "-separated list so no line goes past TeleportWidth when
+// it starts at column indent, breaking after a comma and indenting the lines
+// it adds. An item too long for a line gets a line of its own.
+func wrapList(list string, indent int) string {
+	width := max(TeleportWidth-indent, 1)
+	var lines []string
+	line := ""
+	for _, item := range strings.Split(list, ", ") {
+		switch {
+		case line == "":
+			line = item
+		case len(line)+len(", ")+len(item) > width:
+			lines = append(lines, line+",")
+			line = item
+		default:
+			line += ", " + item
+		}
+	}
+	lines = append(lines, line)
+	return strings.Join(lines, "\n"+strings.Repeat(" ", indent))
+}
+
+// chunkLines splits text into pieces of at most limit bytes, breaking between
+// lines. A single line longer than limit is cut.
+func chunkLines(text string, limit int) []string {
+	var chunks []string
+	chunk := ""
+	for _, line := range strings.SplitAfter(text, "\n") {
+		for len(line) > limit { // a line that can't fit in any chunk
+			if chunk != "" {
+				chunks = append(chunks, chunk)
+				chunk = ""
+			}
+			chunks = append(chunks, line[:limit])
+			line = line[limit:]
+		}
+		if len(chunk)+len(line) > limit {
+			chunks = append(chunks, chunk)
+			chunk = ""
+		}
+		chunk += line
+	}
+	if chunk != "" {
+		chunks = append(chunks, chunk)
+	}
+	return chunks
+}
 
 // Build the proto to render using the output template.
 func (s *Backend) teleportDestinations(self *frontend.Frontend) (*pb.TeleportReply, error) {
@@ -67,7 +129,7 @@ func (s *Backend) teleportDestinations(self *frontend.Frontend) (*pb.TeleportRep
 			empty = append(empty, fe.Name)
 		}
 	}
-	reply.EmptyServers = strings.Join(empty, ",")
+	reply.EmptyServers = strings.Join(empty, ", ")
 	reply.ReplyDate = time.Now().Unix()
 	return &reply, nil
 }
@@ -95,7 +157,6 @@ func Teleport(fe *frontend.Frontend) {
 		return
 	}
 	if target == "" {
-		teleTmpl := template.Must(template.New("teleout").Parse(teleportTemplate))
 		dests, err := sv.teleportDestinations(fe)
 		if err != nil {
 			sv.Logf(LogLevelInfo, "error collecting teleport destinations: %v\n", err)
@@ -105,7 +166,9 @@ func Teleport(fe *frontend.Frontend) {
 		if err := teleTmpl.Execute(&rendered, dests); err != nil {
 			sv.Logf(LogLevelInfo, "error executing teleport template: %v\n", err)
 		}
-		SayPlayer(fe, p, PRINT_CHAT, rendered.String())
+		for _, chunk := range chunkLines(rendered.String(), MaxPrintLength) {
+			SayPlayer(fe, p, PRINT_CHAT, chunk)
+		}
 		return
 	}
 

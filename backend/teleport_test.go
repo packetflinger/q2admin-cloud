@@ -1,0 +1,114 @@
+package backend
+
+import (
+	"bytes"
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/packetflinger/q2admind/frontend"
+	pb "github.com/packetflinger/q2admind/proto"
+)
+
+func TestTeleportDestinationsSkipsBusyServers(t *testing.T) {
+	self := &frontend.Frontend{Name: "self", Trusted: true}
+	busy := &frontend.Frontend{Name: "busy", Trusted: true}
+	idle := &frontend.Frontend{Name: "idle", Trusted: true}
+	b := &Backend{frontends: []*frontend.Frontend{self, busy, idle}}
+	self.Mu.Lock() // as the connection loop holds it
+	busy.Mu.Lock() // mid-packet on another goroutine
+	defer self.Mu.Unlock()
+	defer busy.Mu.Unlock()
+
+	done := make(chan *pb.TeleportReply)
+	go func() {
+		r, _ := b.teleportDestinations(self)
+		done <- r
+	}()
+	select {
+	case r := <-done:
+		if r.GetEmptyServers() != "self, idle" {
+			t.Errorf("EmptyServers = %q, want %q", r.GetEmptyServers(), "self, idle")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("teleportDestinations blocked on a locked frontend")
+	}
+	if !idle.Mu.TryLock() {
+		t.Error("idle frontend left locked")
+	}
+}
+
+func TestTeleportOutputOneServerPerLine(t *testing.T) {
+	reply := &pb.TeleportReply{
+		ActiveServers: []*pb.TeleportDestination{
+			{Name: "pf-dev", Map: "q2dm1", Players: "claire"},
+			{Name: "pf-tdm-dc", Map: "q2dm2", Players: "WallFly[BZZZ]"},
+			{Name: "pf-tdm-de", Map: "koldduel1", Players: "WallFly[BZZZ], piu-beer"},
+		},
+		EmptyServers: "pf-tdm-nj",
+	}
+	var out bytes.Buffer
+	if err := teleTmpl.Execute(&out, reply); err != nil {
+		t.Fatal(err)
+	}
+	want := `  pf-dev                q2dm1        claire
+  pf-tdm-dc             q2dm2        WallFly[BZZZ]
+  pf-tdm-de             koldduel1    WallFly[BZZZ], piu-beer
+
+Empty servers:
+  pf-tdm-nj`
+	if !strings.Contains(out.String(), want) {
+		t.Errorf("teleport output:\n%s", out.String())
+	}
+}
+
+func TestTeleportWrapsLongPlayerLists(t *testing.T) {
+	var names []string
+	for i := range 20 {
+		names = append(names, fmt.Sprintf("player%02d", i))
+	}
+	reply := &pb.TeleportReply{
+		ActiveServers: []*pb.TeleportDestination{{Name: "pf-dev", Map: "q2dm1", Players: strings.Join(names, ", ")}},
+		EmptyServers:  strings.Repeat("an-empty-server, ", 8) + "last",
+	}
+	var out bytes.Buffer
+	if err := teleTmpl.Execute(&out, reply); err != nil {
+		t.Fatal(err)
+	}
+	text := out.String()
+	for _, line := range strings.Split(text, "\n") {
+		if len(line) > TeleportWidth {
+			t.Errorf("line is %d characters, over %d:\n%s", len(line), TeleportWidth, line)
+		}
+	}
+	for _, name := range names {
+		if !strings.Contains(text, name) {
+			t.Errorf("%s is missing from the output", name)
+		}
+	}
+	// continuation lines line up under the players column
+	if !strings.Contains(text, ",\n"+strings.Repeat(" ", teleportPlayersColumn)+"player") {
+		t.Errorf("wrapped players aren't indented to the column:\n%s", text)
+	}
+}
+
+func TestChunkLines(t *testing.T) {
+	text := strings.Repeat("0123456789\n", 30) // 330 bytes in 11-byte lines
+	chunks := chunkLines(text, 100)
+	for _, c := range chunks {
+		if len(c) > 100 || !strings.HasSuffix(c, "\n") {
+			t.Errorf("chunk of %d bytes, or split mid-line: %q", len(c), c)
+		}
+	}
+	if strings.Join(chunks, "") != text {
+		t.Error("chunks don't add back up to the text")
+	}
+	long := strings.Repeat("x", 250)
+	if got := chunkLines(long, 100); len(got) != 3 || strings.Join(got, "") != long {
+		t.Errorf("an over-long line should be cut, got %d chunks", len(got))
+	}
+	if got := chunkLines("", 100); len(got) != 0 {
+		t.Errorf("empty text gave %q", got)
+	}
+}
