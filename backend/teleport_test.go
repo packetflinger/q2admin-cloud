@@ -3,6 +3,9 @@ package backend
 import (
 	"bytes"
 	"fmt"
+	"github.com/packetflinger/libq2/message"
+	"io"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -110,5 +113,37 @@ func TestChunkLines(t *testing.T) {
 	}
 	if got := chunkLines("", 100); len(got) != 0 {
 		t.Errorf("empty text gave %q", got)
+	}
+}
+
+func TestTeleportTellsBothConsoles(t *testing.T) {
+	from := &frontend.Frontend{Name: "pf-dev", AllowTeleport: true, Server: &be, Log: log.New(io.Discard, "", 0)}
+	from.Players = []frontend.Player{{}, {}, {}, {ClientID: 3, ConnectTime: 1, Name: "claire"}}
+	to := &frontend.Frontend{Name: "pf-tdm-dc", IPAddress: "100.64.1.2", Port: 27910}
+	saved := be.frontends
+	be.frontends = []*frontend.Frontend{from, to}
+	defer func() { be.frontends = saved }()
+	fromWatch, toWatch := make(chan string, 4), make(chan string, 4)
+	from.AddTerminal(&fromWatch)
+	to.AddTerminal(&toWatch)
+
+	from.Message = message.NewBuffer(append([]byte{3}, append([]byte("pf-tdm-dc"), 0)...))
+	Teleport(from)
+
+	for _, tc := range []struct {
+		watch chan string
+		want  string
+	}{
+		{fromWatch, "claire [3] teleported to pf-tdm-dc"},
+		{toWatch, "claire teleported from pf-dev"},
+	} {
+		select {
+		case got := <-tc.watch:
+			if !strings.Contains(got, tc.want) || !strings.Contains(got, fmt.Sprint(ColorBrightCyan)) {
+				t.Errorf("console got %q, want %q in cyan", got, tc.want)
+			}
+		default:
+			t.Errorf("console never got %q", tc.want)
+		}
 	}
 }

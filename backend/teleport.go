@@ -179,6 +179,10 @@ func Teleport(fe *frontend.Frontend) {
 
 			cmd := fmt.Sprintf("connect %s:%d\n", f.IPAddress, f.Port)
 			StuffPlayer(fe, p, cmd)
+			// tell both servers' console watchers; the destination's console
+			// only needs its own terminals lock, not f.Mu
+			fe.ConsoleBroadcast(Font([]int{ColorBrightCyan}, fmt.Sprintf("%s [%d] teleported to %s", p.Name, p.ClientID, f.Name)))
+			f.ConsoleBroadcast(Font([]int{ColorBrightCyan}, fmt.Sprintf("%s teleported from %s", p.Name, fe.Name)))
 			p.LastTeleport = time.Now().Unix()
 			p.Teleports++
 			f.TeleportCount++
