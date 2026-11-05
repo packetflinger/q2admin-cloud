@@ -65,6 +65,7 @@ var (
 		"datetime":   util.TimeDateString,
 		"online":     playersOnline,
 		"summarize":  summarize,
+		"versions":   softwareVersions,
 		"join":       strings.Join,
 		"userinfo":   frontend.UserinfoMap,
 		"lines":      func(l []string) string { return strings.Join(l, "\n") },
@@ -390,6 +391,32 @@ func summarize(fes []*frontend.Frontend) FrontendSummary {
 		s.Rules += len(fe.Rules)
 	}
 	return s
+}
+
+// SoftwareVersions is what a frontend runs, for the dashboard's versions
+// table. Empty fields are unknown.
+type SoftwareVersions struct {
+	Engine   string // the server binary, like "q2proded r3732~7b63f040 Sep 14 2026 Linux x86_64"
+	Q2Admin  string // like "r1306~c96d8e1"
+	Game     string // the game library q2admin wraps, like "baseq2"
+	GameDate string // the game library's build date
+}
+
+// softwareVersions reads fe's versions from the serverinfo fetched after it
+// connected, which stays around after it disconnects. q2admin's own version
+// falls back to the build number from its greeting. Call it from a template
+// rendered by executeLocked so fe is locked.
+func softwareVersions(fe *frontend.Frontend) SoftwareVersions {
+	v := SoftwareVersions{
+		Engine:   fe.ServerVars["version"],
+		Q2Admin:  fe.ServerVars["q2admin"],
+		Game:     fe.ServerVars["gamename"],
+		GameDate: fe.ServerVars["gamedate"],
+	}
+	if v.Q2Admin == "" && fe.Version > 0 {
+		v.Q2Admin = fmt.Sprintf("r%d", fe.Version)
+	}
+	return v
 }
 
 // parsePage loads a page template along with the shared header, footer,

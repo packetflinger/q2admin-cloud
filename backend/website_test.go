@@ -1008,3 +1008,42 @@ func TestConsoleStreamReplaysBacklog(t *testing.T) {
 		t.Errorf("resuming after id %s gave %v, want only what came after", ids[1], texts)
 	}
 }
+
+func TestSoftwareVersions(t *testing.T) {
+	fe := &frontend.Frontend{Version: 1306, ServerVars: map[string]string{
+		"version":  "q2proded r3732~7b63f040 Sep 14 2026 Linux x86_64",
+		"q2admin":  "r1306~c96d8e1",
+		"gamename": "baseq2",
+		"gamedate": "Nov 20 2023",
+	}}
+	want := SoftwareVersions{
+		Engine:   "q2proded r3732~7b63f040 Sep 14 2026 Linux x86_64",
+		Q2Admin:  "r1306~c96d8e1",
+		Game:     "baseq2",
+		GameDate: "Nov 20 2023",
+	}
+	if got := softwareVersions(fe); got != want {
+		t.Errorf("softwareVersions() = %+v, want %+v", got, want)
+	}
+
+	// no serverinfo yet: q2admin's comes from the greeting, the rest unknown
+	if got := softwareVersions(&frontend.Frontend{Version: 1306}); got != (SoftwareVersions{Q2Admin: "r1306"}) {
+		t.Errorf("without serverinfo got %+v", got)
+	}
+	if got := softwareVersions(&frontend.Frontend{}); got != (SoftwareVersions{}) {
+		t.Errorf("never connected got %+v", got)
+	}
+}
+
+func TestDashboardVersions(t *testing.T) {
+	data := samplePage()
+	data.Frontends[0].ServerVars["version"] = "r1q2ded b8012"
+	data.Frontends[0].ServerVars["q2admin"] = "r1306~c96d8e1"
+	data.Frontends[0].ServerVars["gamename"] = "openffa"
+	out := renderPage(t, "dashboard.tmpl", "dashboard", data)
+	for _, want := range []string{">Versions<", "r1q2ded b8012", "r1306~c96d8e1", "openffa"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("dashboard is missing %q", want)
+		}
+	}
+}

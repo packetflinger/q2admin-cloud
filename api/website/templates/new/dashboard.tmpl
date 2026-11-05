@@ -80,5 +80,27 @@
 <section class="mt-4" id="stats" aria-label="Activity across all servers">
 	{{template "stats" .Stats}}
 </section>
+
+{{if .Frontends}}
+<div class="q2a-panel mt-4">
+	<div class="q2a-panel-head">Versions</div>
+	<div class="table-responsive">
+		<table class="table table-hover align-middle">
+			<thead><tr><th>Server</th><th>Engine</th><th>q2admin</th><th>Game</th></tr></thead>
+			<tbody>
+			{{range .Frontends}}
+				{{$v := versions .}}
+				<tr>
+					<td><a href="/sv/{{.UUID}}/{{.Name}}" class="text-decoration-none">{{.Name}}</a></td>
+					<td class="q2a-mono small">{{or $v.Engine "-"}}</td>
+					<td class="q2a-mono small">{{or $v.Q2Admin "-"}}</td>
+					<td class="q2a-mono small">{{or $v.Game "-"}}{{with $v.GameDate}} <span class="text-body-secondary">({{.}})</span>{{end}}</td>
+				</tr>
+			{{end}}
+			</tbody>
+		</table>
+	</div>
+</div>
+{{end}}
 {{template "footer" .}}
 {{end}}
