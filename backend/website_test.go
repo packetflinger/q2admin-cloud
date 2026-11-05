@@ -1062,4 +1062,17 @@ func TestDashboardVersions(t *testing.T) {
 	if !strings.Contains(out, "(r158)") || strings.Contains(out, "Nov 20 2023") {
 		t.Error("dashboard should show OpenTDM's revision instead of the date")
 	}
+
+	// offline servers are left out, and with none online so is the table
+	offline := &frontend.Frontend{Name: "down", UUID: "dead", ServerVars: map[string]string{"version": "q2proded old"}}
+	data.Frontends = append(data.Frontends, offline)
+	out = renderPage(t, "dashboard.tmpl", "dashboard", data)
+	if strings.Contains(out, "q2proded old") {
+		t.Error("versions table lists an offline server")
+	}
+	data.Frontends = []*frontend.Frontend{offline}
+	out = renderPage(t, "dashboard.tmpl", "dashboard", data)
+	if strings.Contains(out, ">Versions<") {
+		t.Error("versions table shown with no servers online")
+	}
 }

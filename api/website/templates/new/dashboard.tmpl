@@ -81,7 +81,7 @@
 	{{template "stats" .Stats}}
 </section>
 
-{{if .Frontends}}
+{{if $sum.Online}}
 <div class="q2a-panel mt-4">
 	<div class="q2a-panel-head">Versions</div>
 	<div class="table-responsive">
@@ -89,6 +89,7 @@
 			<thead><tr><th>Server</th><th>Engine</th><th>q2admin</th><th>Game</th></tr></thead>
 			<tbody>
 			{{range .Frontends}}
+				{{if and .Connected .Trusted}}
 				{{$v := versions .}}
 				<tr>
 					<td><a href="/sv/{{.UUID}}/{{.Name}}" class="text-decoration-none">{{.Name}}</a></td>
@@ -96,6 +97,7 @@
 					<td class="q2a-mono small">{{or $v.Q2Admin "-"}}</td>
 					<td class="q2a-mono small">{{or $v.Game "-"}}{{if $v.GameRev}} <span class="text-body-secondary">(r{{$v.GameRev}})</span>{{else if $v.GameDate}} <span class="text-body-secondary">({{$v.GameDate}})</span>{{end}}</td>
 				</tr>
+				{{end}}
 			{{end}}
 			</tbody>
 		</table>
