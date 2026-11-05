@@ -1093,3 +1093,35 @@ func TestDashboardVersions(t *testing.T) {
 		t.Error("versions table shown with no servers online")
 	}
 }
+
+func TestSplitIPAddr(t *testing.T) {
+	tests := map[string]IPAddr{
+		"192.0.2.1":           {IP: "192.0.2.1"},
+		"192.0.2.1:27901":     {IP: "192.0.2.1", After: ":27901"},
+		"2001:db8::1":         {IP: "2001:db8::1"},
+		"[2001:db8::1]:27901": {Before: "[", IP: "2001:db8::1", After: "]:27901"},
+		"loopback":            {After: "loopback"},
+		"":                    {},
+	}
+	for in, want := range tests {
+		if got := splitIPAddr(in); got != want {
+			t.Errorf("splitIPAddr(%q) = %+v, want %+v", in, got, want)
+		}
+	}
+	if got := ipLensURL("2001:db8::1"); got != "https://lens.ipverse.net/2001:db8::1" {
+		t.Errorf("ipLensURL = %q", got)
+	}
+}
+
+func TestPlayerViewLinksIP(t *testing.T) {
+	data := samplePage()
+	data.Player.UserinfoMap = map[string]string{"ip": "192.0.2.1:27901", "name": "alpha"}
+	out := renderPage(t, "player-view.tmpl", "player-view", data)
+	link := `<a href="https://lens.ipverse.net/192.0.2.1" target="_blank" rel="noopener noreferrer">192.0.2.1</a>`
+	if n := strings.Count(out, link); n != 2 {
+		t.Errorf("found %d IP links, want 2 (connection and userinfo)", n)
+	}
+	if !strings.Contains(out, link+":27901") {
+		t.Error("userinfo ip lost its port")
+	}
+}

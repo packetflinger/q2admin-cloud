@@ -22,6 +22,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"path"
 	"regexp"
@@ -70,6 +71,8 @@ var (
 		"userinfo":   frontend.UserinfoMap,
 		"lines":      func(l []string) string { return strings.Join(l, "\n") },
 		"uilines":    userinfoLines,
+		"ipaddr":     splitIPAddr,
+		"iplens":     ipLensURL,
 		"spans":      func() any { return StatSpans },
 		"duration":   playDuration,
 		"pct":        slicePercent,
@@ -337,6 +340,35 @@ func userinfoLines(uis []*pb.UserInfo) string {
 		l = append(l, ui.GetProperty()+"="+ui.GetValue())
 	}
 	return strings.Join(l, "\n")
+}
+
+// IPAddr is an address split for display: the IP, which gets linked to a
+// lookup, and the text around it, like "[" and "]:27901".
+type IPAddr struct {
+	Before, IP, After string
+}
+
+// splitIPAddr splits "192.0.2.1:27901" or "[2001:db8::1]:27901" around the
+// IP. A bare IP has nothing around it. IP is empty if addr isn't one of
+// these, so nothing gets linked.
+func splitIPAddr(addr string) IPAddr {
+	if ip, err := netip.ParseAddr(addr); err == nil {
+		return IPAddr{IP: ip.String()}
+	}
+	ap, err := netip.ParseAddrPort(addr)
+	if err != nil {
+		return IPAddr{After: addr}
+	}
+	port := fmt.Sprintf(":%d", ap.Port())
+	if strings.HasPrefix(addr, "[") {
+		return IPAddr{Before: "[", IP: ap.Addr().String(), After: "]" + port}
+	}
+	return IPAddr{IP: ap.Addr().String(), After: port}
+}
+
+// ipLensURL is the IPverse Lens page about ip.
+func ipLensURL(ip string) string {
+	return "https://lens.ipverse.net/" + url.PathEscape(ip)
 }
 
 // slicePercent is v's share of all the slices, like "42%".
