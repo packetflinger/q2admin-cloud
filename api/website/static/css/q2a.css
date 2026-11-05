@@ -243,6 +243,7 @@ a:hover { color: var(--q2a-accent-hover); }
 }
 .q2a-chart { position: relative; height: 240px; }
 .q2a-pie { position: relative; height: 180px; }
+.q2a-bars { position: relative; height: calc(var(--q2a-bars, 1) * 2rem + 1.5rem); min-height: 6rem; }
 .q2a-swatch { width: .75rem; height: .75rem; border-radius: 2px; flex-shrink: 0; }
 .q2a-s0 { background: var(--q2a-series-1); } .q2a-s1 { background: var(--q2a-series-2); }
 .q2a-s2 { background: var(--q2a-series-3); } .q2a-s3 { background: var(--q2a-series-4); }

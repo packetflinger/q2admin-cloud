@@ -1,5 +1,6 @@
-// Activity charts: players and kills over time (lines), client versions and
-// weapons (pies). The data is the JSON the page embeds in #q2a-stats-data.
+// Activity charts: players, kills, teleports and invites over time (lines),
+// client versions and weapons (pies), teleport destinations and inviters
+// (bars). The data is the JSON the page embeds in #q2a-stats-data.
 (() => {
 	const el = document.getElementById("q2a-stats-data");
 	if (!el || !window.Chart) return;
@@ -65,10 +66,38 @@
 			}));
 		};
 
+		const bars = (id, slices, name) => {
+			const canvas = document.getElementById(id);
+			if (!canvas || !slices) return;
+			const color = css("--q2a-series-1");
+			charts.push(new Chart(canvas, {
+				type: "bar",
+				data: {
+					labels: slices.map((s) => s.Label),
+					datasets: [{ label: name, data: slices.map((s) => s.Value), backgroundColor: color, borderRadius: 3, maxBarThickness: 22 }],
+				},
+				options: {
+					indexAxis: "y", // horizontal, so long server and player names fit
+					maintainAspectRatio: false,
+					plugins: { legend: { display: false } },
+					scales: {
+						x: { beginAtZero: true, ticks: { color: text, precision: 0 }, grid: { color: grid } },
+						y: { ticks: { color: text, autoSkip: false }, grid: { display: false } },
+					},
+				},
+			}));
+		};
+
 		line("q2a-players-chart", st.Players.map((v) => (v === null ? null : Math.round(v * 10) / 10)), "Players");
 		line("q2a-kills-chart", st.Kills, "Kills");
 		pie("q2a-versions-chart", st.Versions);
 		pie("q2a-weapons-chart", st.Weapons);
+		if (st.Commands) {
+			line("q2a-teleports-chart", st.Commands.Teleports, "Teleports");
+			line("q2a-invites-chart", st.Commands.Invites, "Invites");
+			bars("q2a-destinations-chart", st.Commands.Destinations, "Teleports");
+			bars("q2a-inviters-chart", st.Commands.Inviters, "Invites");
+		}
 	};
 	draw();
 	document.addEventListener("q2a-theme", draw);

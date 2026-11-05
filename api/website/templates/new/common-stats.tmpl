@@ -52,6 +52,43 @@
 	</div>
 </div>
 
+{{with .Commands}}
+<div class="row g-3 mb-3">
+	<div class="col-12 col-xl-8">
+		<div class="q2a-panel h-100">
+			<div class="q2a-panel-head d-flex justify-content-between"><span>Teleports</span><span class="text-body-secondary fw-normal small">{{.TeleportUses}} used, {{.Teleported}} sent</span></div>
+			<div class="q2a-panel-body">
+				<div class="q2a-chart"><canvas id="q2a-teleports-chart" role="img" aria-label="Line chart of teleport commands used over the last {{$st.Span}}, {{.TeleportUses}} in total."></canvas></div>
+				<details class="small mt-2"><summary class="text-body-secondary">Show data</summary>
+					<table class="table table-sm mb-0"><thead><tr><th>From</th><th class="text-end">Teleports</th></tr></thead><tbody>
+					{{range $i, $t := $st.Times}}<tr><td>{{datetime $t}}</td><td class="text-end">{{index $st.Commands.Teleports $i}}</td></tr>{{end}}
+					</tbody></table>
+				</details>
+			</div>
+		</div>
+	</div>
+	<div class="col-12 col-md-6 col-xl-4">
+		{{template "stats-bars" (pieArgs "Teleport destinations" "q2a-destinations-chart" "teleports" .Destinations)}}
+	</div>
+	<div class="col-12 col-xl-8">
+		<div class="q2a-panel h-100">
+			<div class="q2a-panel-head d-flex justify-content-between"><span>Invites</span><span class="text-body-secondary fw-normal small">{{.InviteCount}} sent</span></div>
+			<div class="q2a-panel-body">
+				<div class="q2a-chart"><canvas id="q2a-invites-chart" role="img" aria-label="Line chart of invites sent over the last {{$st.Span}}, {{.InviteCount}} in total."></canvas></div>
+				<details class="small mt-2"><summary class="text-body-secondary">Show data</summary>
+					<table class="table table-sm mb-0"><thead><tr><th>From</th><th class="text-end">Invites</th></tr></thead><tbody>
+					{{range $i, $t := $st.Times}}<tr><td>{{datetime $t}}</td><td class="text-end">{{index $st.Commands.Invites $i}}</td></tr>{{end}}
+					</tbody></table>
+				</details>
+			</div>
+		</div>
+	</div>
+	<div class="col-12 col-md-6 col-xl-4">
+		{{template "stats-bars" (pieArgs "Top inviters" "q2a-inviters-chart" "invites" .Inviters)}}
+	</div>
+</div>
+{{end}}
+
 <div class="q2a-panel">
 	<div class="q2a-panel-head">Recent players</div>
 	{{if .Recent}}
@@ -91,6 +128,25 @@
 			<li class="d-flex align-items-center gap-2 py-1"><span class="q2a-swatch q2a-s{{$i}}"></span><span class="text-truncate">{{.Label}}</span><span class="ms-auto text-nowrap">{{.Value}} <span class="text-body-secondary">{{pct .Value $.Slices}}</span></span></li>
 			{{end}}
 		</ul>
+		{{else}}<div class="q2a-empty">No {{.Unit}} in this span.</div>{{end}}
+	</div>
+</div>
+{{end}}
+
+{{/* A ranking as horizontal bars, longest first. Takes pieArgs. */}}
+{{define "stats-bars"}}
+<div class="q2a-panel h-100">
+	<div class="q2a-panel-head">{{.Title}}</div>
+	<div class="q2a-panel-body">
+		{{if .Slices}}
+		<div class="q2a-bars" style="--q2a-bars: {{len .Slices}}"><canvas id="{{.ID}}" role="img" aria-label="Bar chart of {{.Title}}, listed below."></canvas></div>
+		<details class="small mt-2"><summary class="text-body-secondary">Show data</summary>
+			<ul class="list-unstyled mb-0 mt-2">
+				{{range .Slices}}
+				<li class="d-flex gap-2 py-1"><span class="text-truncate">{{.Label}}</span><span class="ms-auto text-nowrap">{{.Value}} <span class="text-body-secondary">{{pct .Value $.Slices}}</span></span></li>
+				{{end}}
+			</ul>
+		</details>
 		{{else}}<div class="q2a-empty">No {{.Unit}} in this span.</div>{{end}}
 	</div>
 </div>

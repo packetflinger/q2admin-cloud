@@ -49,7 +49,8 @@ type Stats struct {
 	UniquePlayers int
 	PeakPlayers   int
 	TotalKills    int
-	AvgSession    int64 // seconds, of sessions that ended
+	AvgSession    int64         // seconds, of sessions that ended
+	Commands      *CommandStats `json:",omitempty"` // teleports and invites, on the server page only
 }
 
 // Slice is one wedge of a pie chart.

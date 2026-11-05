@@ -577,6 +577,11 @@ func renderServerView(w http.ResponseWriter, user *pb.User, fe *frontend.Fronten
 		http.Error(w, "500 - unable to load stats", http.StatusInternalServerError)
 		return
 	}
+	if data.Stats.Commands, err = loadCommandStats(data.Stats, fe); err != nil {
+		log.Println(err)
+		http.Error(w, "500 - unable to load stats", http.StatusInternalServerError)
+		return
+	}
 	fe.Mu.Lock()
 	data.Head.Title = fe.Name + " | CloudAdmin"
 	fe.Mu.Unlock()

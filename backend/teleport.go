@@ -157,6 +157,7 @@ func Teleport(fe *frontend.Frontend) {
 		return
 	}
 	if target == "" {
+		logTeleport(fe, p, target, "")
 		dests, err := sv.teleportDestinations(fe)
 		if err != nil {
 			sv.Logf(LogLevelInfo, "error collecting teleport destinations: %v\n", err)
@@ -186,7 +187,9 @@ func Teleport(fe *frontend.Frontend) {
 			p.LastTeleport = time.Now().Unix()
 			p.Teleports++
 			f.TeleportCount++
+			logTeleport(fe, p, target, f.Name)
 			return
 		}
 	}
+	logTeleport(fe, p, target, "") // no server by that name
 }

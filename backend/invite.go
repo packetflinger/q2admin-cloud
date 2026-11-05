@@ -21,6 +21,7 @@ func Invite(fe *frontend.Frontend) {
 	if err != nil {
 		fe.Log.Println("invite problem:", err)
 		fe.ConsoleBroadcast("invite problem: " + err.Error())
+		return
 	}
 	if !fe.AllowInvite {
 		SayPlayer(fe, p, PRINT_CHAT, "This server doesn't allow invites.")
@@ -76,4 +77,5 @@ func Invite(fe *frontend.Frontend) {
 	p.InvitesAvailable--
 	fe.Invites.Tokens--
 	fe.Invites.UseCount++
+	logInvite(fe, p, text)
 }

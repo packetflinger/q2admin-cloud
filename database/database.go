@@ -92,6 +92,9 @@ func Open(filename string) (Database, error) {
 	if _, err := db.Exec(statsSchema); err != nil {
 		return database, fmt.Errorf("error creating stats tables: %v", err)
 	}
+	if _, err := db.Exec(commandSchema); err != nil {
+		return database, fmt.Errorf("error creating teleport and invite tables: %v", err)
+	}
 	for _, c := range columnAdditions {
 		if err := addColumnIfMissing(db, c.table, c.column, c.decl); err != nil {
 			return database, err
@@ -140,6 +143,32 @@ CREATE TABLE IF NOT EXISTS "frag_sample" (
 );
 CREATE INDEX IF NOT EXISTS "frag_sample_time" ON "frag_sample" ("time");
 CREATE INDEX IF NOT EXISTS "player_time" ON "player" ("time");`
+
+// commandSchema logs each use of the in-game teleport and invite commands,
+// for the server page's stats. name and ip are the player's at the time, and
+// args is what they typed after the command: for teleport a destination, or
+// nothing to list the servers, and for invite the message. destination is the
+// server a teleport sent them to, empty when it didn't send them anywhere.
+const commandSchema = `
+CREATE TABLE IF NOT EXISTS "teleport" (
+	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"time"	INTEGER NOT NULL,
+	"frontend_id"	INTEGER NOT NULL,
+	"name"	TEXT NOT NULL,
+	"ip"	TEXT NOT NULL,
+	"args"	TEXT NOT NULL,
+	"destination"	TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS "teleport_frontend_time" ON "teleport" ("frontend_id", "time");
+CREATE TABLE IF NOT EXISTS "invite" (
+	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"time"	INTEGER NOT NULL,
+	"frontend_id"	INTEGER NOT NULL,
+	"name"	TEXT NOT NULL,
+	"ip"	TEXT NOT NULL,
+	"args"	TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "invite_frontend_time" ON "invite" ("frontend_id", "time");`
 
 // columnAdditions are small schema changes applied to existing databases when
 // they're opened.
