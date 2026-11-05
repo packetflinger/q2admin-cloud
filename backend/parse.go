@@ -512,6 +512,11 @@ func ParsePlayerUpdate(fe *frontend.Frontend) {
 		// what we already have, even if q2admin never sends it.
 		return
 	}
+	// The engine only includes the address in the userinfo a player connects
+	// with, so keep the one we have if this update leaves it out.
+	if info["ip"] == "" && player.UserinfoMap["ip"] != "" {
+		info["ip"], info["port"] = player.UserinfoMap["ip"], player.UserinfoMap["port"]
+	}
 	player.UserinfoMap = info
 	player.Name = info["name"]
 	player.FOV, _ = strconv.Atoi(info["fov"])

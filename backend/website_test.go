@@ -1125,3 +1125,26 @@ func TestPlayerViewLinksIP(t *testing.T) {
 		t.Error("userinfo ip lost its port")
 	}
 }
+
+// Only the userinfo a player connects with has their address, so a later
+// update without it mustn't drop it from the userinfo box.
+func TestPlayerUpdateKeepsIP(t *testing.T) {
+	fe := &frontend.Frontend{MaxPlayers: 1}
+	fe.Players = []frontend.Player{{ClientID: 0, ConnectTime: 1, Name: "alpha", IP: "192.0.2.1", Port: 27901,
+		UserinfoMap: frontend.UserinfoMap(`\name\alpha\ip\192.0.2.1:27901`)}}
+	fe.Message = message.NewBuffer(append([]byte{0}, append([]byte(`\name\bravo\skin\male/grunt`), 0, 0)...))
+	ParsePlayerUpdate(fe)
+	p := fe.Players[0]
+	if p.Name != "bravo" || p.UserinfoMap["ip"] != "192.0.2.1" || p.UserinfoMap["port"] != "27901" || p.IP != "192.0.2.1" {
+		t.Errorf("after an update without ip: name %q, userinfo ip %q port %q, IP %q", p.Name, p.UserinfoMap["ip"], p.UserinfoMap["port"], p.IP)
+	}
+}
+
+func TestPlayerViewUnknownAddress(t *testing.T) {
+	data := samplePage()
+	data.Player.IP, data.Player.Port = "", 0
+	out := renderPage(t, "player-view.tmpl", "player-view", data)
+	if !strings.Contains(out, `<dt>Address</dt><dd class="q2a-mono">-</dd>`) {
+		t.Error("an unknown address should show as -")
+	}
+}
