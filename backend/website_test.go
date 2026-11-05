@@ -1030,6 +1030,13 @@ func TestSoftwareVersions(t *testing.T) {
 	if got := softwareVersions(&frontend.Frontend{Version: 1306}); got != (SoftwareVersions{Q2Admin: "r1306"}) {
 		t.Errorf("without serverinfo got %+v", got)
 	}
+	// OpenTDM's revision is kept only when it's a number
+	for rev, want := range map[string]string{"158": "158", "": "", "v1.2": "", "-3": ""} {
+		fe := &frontend.Frontend{ServerVars: map[string]string{"gamename": "opentdm", "revision": rev}}
+		if got := softwareVersions(fe).GameRev; got != want {
+			t.Errorf("revision %q: GameRev = %q, want %q", rev, got, want)
+		}
+	}
 	if got := softwareVersions(&frontend.Frontend{}); got != (SoftwareVersions{}) {
 		t.Errorf("never connected got %+v", got)
 	}
@@ -1045,5 +1052,14 @@ func TestDashboardVersions(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("dashboard is missing %q", want)
 		}
+	}
+
+	// a numeric revision replaces the build date
+	data.Frontends[0].ServerVars["gamename"] = "opentdm"
+	data.Frontends[0].ServerVars["gamedate"] = "Nov 20 2023"
+	data.Frontends[0].ServerVars["revision"] = "158"
+	out = renderPage(t, "dashboard.tmpl", "dashboard", data)
+	if !strings.Contains(out, "(r158)") || strings.Contains(out, "Nov 20 2023") {
+		t.Error("dashboard should show OpenTDM's revision instead of the date")
 	}
 }

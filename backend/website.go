@@ -400,11 +400,13 @@ type SoftwareVersions struct {
 	Q2Admin  string // like "r1306~c96d8e1"
 	Game     string // the game library q2admin wraps, like "baseq2"
 	GameDate string // the game library's build date
+	GameRev  string // the game library's revision number, only OpenTDM sets it
 }
 
 // softwareVersions reads fe's versions from the serverinfo fetched after it
 // connected, which stays around after it disconnects. q2admin's own version
-// falls back to the build number from its greeting. Call it from a template
+// falls back to the build number from its greeting. GameRev is only set when
+// "revision" is a number. Call it from a template
 // rendered by executeLocked so fe is locked.
 func softwareVersions(fe *frontend.Frontend) SoftwareVersions {
 	v := SoftwareVersions{
@@ -412,6 +414,11 @@ func softwareVersions(fe *frontend.Frontend) SoftwareVersions {
 		Q2Admin:  fe.ServerVars["q2admin"],
 		Game:     fe.ServerVars["gamename"],
 		GameDate: fe.ServerVars["gamedate"],
+	}
+	if rev := fe.ServerVars["revision"]; rev != "" {
+		if _, err := strconv.ParseUint(rev, 10, 64); err == nil {
+			v.GameRev = rev
+		}
 	}
 	if v.Q2Admin == "" && fe.Version > 0 {
 		v.Q2Admin = fmt.Sprintf("r%d", fe.Version)

@@ -94,7 +94,7 @@
 					<td><a href="/sv/{{.UUID}}/{{.Name}}" class="text-decoration-none">{{.Name}}</a></td>
 					<td class="q2a-mono small">{{or $v.Engine "-"}}</td>
 					<td class="q2a-mono small">{{or $v.Q2Admin "-"}}</td>
-					<td class="q2a-mono small">{{or $v.Game "-"}}{{with $v.GameDate}} <span class="text-body-secondary">({{.}})</span>{{end}}</td>
+					<td class="q2a-mono small">{{or $v.Game "-"}}{{if $v.GameRev}} <span class="text-body-secondary">(r{{$v.GameRev}})</span>{{else if $v.GameDate}} <span class="text-body-secondary">({{$v.GameDate}})</span>{{end}}</td>
 				</tr>
 			{{end}}
 			</tbody>
