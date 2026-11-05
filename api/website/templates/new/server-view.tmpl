@@ -53,10 +53,14 @@
 							<dt>Connected</dt><dd>{{ago $fe.ConnectTime}}</dd>
 							<dt>Map</dt><dd class="q2a-mono">{{$fe.CurrentMap}}{{if $fe.PreviousMap}} <span class="text-body-secondary">(previous: {{$fe.PreviousMap}})</span>{{end}}</dd>
 							<dt>Players</dt><dd>{{online $fe}} / {{$fe.MaxPlayers}}</dd>
-							<dt>q2admin</dt><dd>version {{$fe.Version}}</dd>
+							{{$v := versions $fe}}
+							<dt>Engine</dt><dd class="q2a-mono small">{{or $v.Engine "-"}}</dd>
+							<dt>q2admin</dt><dd class="q2a-mono">{{or $v.Q2Admin "-"}}</dd>
+							<dt>Game</dt><dd class="q2a-mono">{{or $v.Game "-"}}{{with $v.GameDate}} <span class="text-body-secondary">({{.}})</span>{{end}}{{with $v.GameRev}} <span class="text-body-secondary">r{{.}}</span>{{end}}</dd>
 							<dt>DM flags</dt><dd class="small">{{with index $fe.ServerVars "dmflags"}}{{dmflags .}}{{else}}-{{end}}</dd>
-							<dt>Teleports</dt><dd>{{$fe.TeleportCount}}</dd>
-							<dt>Invites</dt><dd>{{$fe.Invites.UseCount}}</dd>
+							<dt>Total Teleports</dt><dd>{{$fe.TeleportCount}}</dd>
+							<dt>Total Invites</dt><dd>{{$fe.Invites.UseCount}}</dd>
+							<dt>Invite tokens</dt><dd>{{$fe.Invites.Tokens}} / {{$fe.Invites.Max}}</dd>
 						</dl>
 					</div>
 				</div>

@@ -295,6 +295,23 @@ func TestServerViewStates(t *testing.T) {
 		}
 	}
 
+	// the status box's versions and invite counts
+	data.Frontend.ServerVars["version"] = "q2proded r3732~7b63f040"
+	data.Frontend.ServerVars["q2admin"] = "r1306~c96d8e1"
+	data.Frontend.ServerVars["gamename"] = "opentdm"
+	data.Frontend.ServerVars["gamedate"] = "Nov 20 2023"
+	data.Frontend.ServerVars["revision"] = "158"
+	data.Frontend.Invites = frontend.InviteBucket{Tokens: 2, Max: 3, UseCount: 7}
+	out = renderPage(t, "server-view.tmpl", "server-view", data)
+	for _, want := range []string{
+		"q2proded r3732~7b63f040", "r1306~c96d8e1", "opentdm", "(Nov 20 2023)", "r158",
+		"Total Teleports", "<dt>Total Invites</dt><dd>7</dd>", "<dt>Invite tokens</dt><dd>2 / 3</dd>",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("status box is missing %q", want)
+		}
+	}
+
 	data.Frontend.Connected = false
 	data.FormError = "port must be a number from 1 to 65535"
 	data.Notice = notices["saved"]
