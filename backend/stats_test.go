@@ -111,3 +111,15 @@ func TestStatsDataEmbedded(t *testing.T) {
 		t.Error("dashboard is missing the stats data or formatted durations")
 	}
 }
+
+// The averages are pointers (nil for no samples), so they need formatting
+// rather than printing the pointer.
+func TestStatsShowDataAverages(t *testing.T) {
+	out := renderPage(t, "dashboard.tmpl", "dashboard", samplePage())
+	if strings.Contains(out, "%!") {
+		t.Error("show data table has a formatting error")
+	}
+	if !strings.Contains(out, `<td class="text-end">1.5</td>`) || !strings.Contains(out, `<td class="text-end">-</td>`) {
+		t.Error("show data table should list 1.5 and - for the two buckets")
+	}
+}

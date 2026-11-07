@@ -75,6 +75,7 @@ var (
 		"iplens":     ipLensURL,
 		"spans":      func() any { return StatSpans },
 		"duration":   playDuration,
+		"avg":        formatAvg,
 		"pct":        slicePercent,
 		"pieArgs": func(title, id, unit string, slices []Slice) any {
 			return struct {
@@ -381,6 +382,15 @@ func slicePercent(v int, slices []Slice) string {
 		return ""
 	}
 	return fmt.Sprintf("%d%%", (v*100+total/2)/total)
+}
+
+// formatAvg formats an average to one decimal place, or "-" when there is
+// none (nil).
+func formatAvg(v *float64) string {
+	if v == nil {
+		return "-"
+	}
+	return strconv.FormatFloat(*v, 'f', 1, 64)
 }
 
 // playDuration formats seconds of play like "2h 05m" or "12m".

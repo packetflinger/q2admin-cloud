@@ -25,7 +25,7 @@
 				<div class="q2a-chart"><canvas id="q2a-players-chart" role="img" aria-label="Line chart of players connected over the last {{.Span}}. Peak {{.PeakPlayers}}."></canvas></div>
 				<details class="small mt-2"><summary class="text-body-secondary">Show data</summary>
 					<table class="table table-sm mb-0"><thead><tr><th>From</th><th class="text-end">Avg players</th></tr></thead><tbody>
-					{{range $i, $t := .Times}}<tr><td>{{datetime $t}}</td><td class="text-end">{{with index $st.Players $i}}{{printf "%.1f" .}}{{else}}-{{end}}</td></tr>{{end}}
+					{{range $i, $t := .Times}}<tr><td>{{datetime $t}}</td><td class="text-end">{{avg (index $st.Players $i)}}</td></tr>{{end}}
 					</tbody></table>
 				</details>
 			</div>
