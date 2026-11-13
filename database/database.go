@@ -95,6 +95,9 @@ func Open(filename string) (Database, error) {
 	if _, err := db.Exec(commandSchema); err != nil {
 		return database, fmt.Errorf("error creating teleport and invite tables: %v", err)
 	}
+	if _, err := db.Exec(connectionSchema); err != nil {
+		return database, fmt.Errorf("error creating connection history table: %v", err)
+	}
 	for _, c := range columnAdditions {
 		if err := addColumnIfMissing(db, c.table, c.column, c.decl); err != nil {
 			return database, err
@@ -169,6 +172,19 @@ CREATE TABLE IF NOT EXISTS "invite" (
 	"args"	TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS "invite_frontend_time" ON "invite" ("frontend_id", "time");`
+
+// connectionSchema logs each frontend's connections to the backend:
+// connected is 1 when one became trusted and 0 when it ended, with the reason
+// it ended.
+const connectionSchema = `
+CREATE TABLE IF NOT EXISTS "frontend_connection" (
+	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"time"	INTEGER NOT NULL,
+	"frontend_id"	INTEGER NOT NULL,
+	"connected"	INTEGER NOT NULL,
+	"reason"	TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS "frontend_connection_frontend_time" ON "frontend_connection" ("frontend_id", "time");`
 
 // columnAdditions are small schema changes applied to existing databases when
 // they're opened.

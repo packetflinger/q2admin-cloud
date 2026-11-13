@@ -242,6 +242,7 @@ a:hover { color: var(--q2a-accent-hover); }
 	--q2a-series-5: #d55181; --q2a-series-6: #008300; --q2a-series-7: #9085e9; --q2a-series-8: #e66767;
 }
 .q2a-chart { position: relative; height: 240px; }
+.q2a-chart-short { height: 140px; }
 .q2a-pie { position: relative; height: 180px; }
 .q2a-bars { position: relative; height: calc(var(--q2a-bars, 1) * 2rem + 1.5rem); min-height: 6rem; }
 .q2a-swatch { width: .75rem; height: .75rem; border-radius: 2px; flex-shrink: 0; }

@@ -125,11 +125,12 @@ type PageResponse struct {
 	SearchResults []frontend.SearchResult
 	SearchQuery   string
 	PlayerDBInfo  PlayerDatabaseInfo
-	Form          url.Values        // submitted form values, to refill a form after an error
-	FormError     string            // why the submitted form was rejected
-	Notice        *Notice           // result of the action that redirected here
-	ServerNames   map[string]string // UUID -> name of the user's servers
-	KeyPair       *KeyPair          // just generated, for the keys page
+	Form          url.Values         // submitted form values, to refill a form after an error
+	FormError     string             // why the submitted form was rejected
+	Notice        *Notice            // result of the action that redirected here
+	Connection    *ConnectionHistory // the server page's up/down chart, nil with no history
+	ServerNames   map[string]string  // UUID -> name of the user's servers
+	KeyPair       *KeyPair           // just generated, for the keys page
 	Groups        []*ServerGroup
 	Group         *ServerGroup
 	Stats         *Stats
@@ -622,6 +623,12 @@ func renderServerView(w http.ResponseWriter, user *pb.User, fe *frontend.Fronten
 	if data.Stats.Commands, err = loadCommandStats(data.Stats, fe); err != nil {
 		log.Println(err)
 		http.Error(w, "500 - unable to load stats", http.StatusInternalServerError)
+		return
+	}
+	_, length := spanFor(data.Stats.Span)
+	if data.Connection, err = loadConnectionHistory(fe, time.Now().Add(-length).Unix()); err != nil {
+		log.Println(err)
+		http.Error(w, "500 - unable to load connection history", http.StatusInternalServerError)
 		return
 	}
 	fe.Mu.Lock()

@@ -627,6 +627,7 @@ func (b *Backend) HandleConnection(c net.Conn) {
 	SendMessages(fe)
 	fe.Trusted = true
 	fe.ConnectTime = time.Now().Unix()
+	logConnection(fe, true, "")
 	fe.Players = make([]frontend.Player, fe.MaxPlayers)
 	fe.Invites = frontend.InviteBucket{
 		Tokens: MaxInviteTokens,
@@ -644,16 +645,19 @@ func (b *Backend) HandleConnection(c net.Conn) {
 	// - wait for input
 	// - parse any messages received, react as necessary
 	// - send any responses
+	var reason string // why the connection ended, for its history
 	for {
 		payload, err := ReadFrame(c)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				be.Logf(LogLevelInfo, "[%s] disconnected\n", fe.Name)
 				fe.Log.Println("frontend disconnected")
+				reason = "closed by the server"
 				break
 			}
 			be.Logf(LogLevelInfo, "[%s] read error: %v\n", fe.Name, err)
 			fe.Log.Println("read error:", err)
+			reason = "read error: " + err.Error()
 			break
 		}
 		if len(payload) == 0 {
@@ -669,6 +673,7 @@ func (b *Backend) HandleConnection(c net.Conn) {
 				// be opened either.
 				be.Logf(LogLevelNormal, "[%s] %v, disconnecting.\n", fe.Name, err)
 				fe.Log.Println("bad encrypted frame, disconnecting:", err)
+				reason = "bad encrypted frame"
 				break
 			}
 		}
@@ -678,6 +683,7 @@ func (b *Backend) HandleConnection(c net.Conn) {
 		SendMessages(fe)
 		fe.Mu.Unlock()
 	}
+	logConnection(fe, false, reason)
 	err = fe.Seen()
 	if err != nil {
 		be.Logln(LogLevelInfo, err)
@@ -800,6 +806,15 @@ func Shutdown() {
 			be.Logf(LogLevelNormal, "    error writing players for %q: %v", f.Name, err)
 		}
 	}
+	be.Logf(LogLevelNormal, "  Recording connected frontends as disconnected")
+	for _, f := range be.Frontends() {
+		f.Mu.Lock()
+		up := f.Connected && f.Trusted
+		f.Mu.Unlock()
+		if up {
+			logConnection(f, false, "CloudAdmin shut down")
+		}
+	}
 	be.Logf(LogLevelNormal, "  Closing database")
 	db.Handle.Close() // not sure if this is necessary
 }
@@ -849,6 +864,9 @@ func Startup(databaseFile string, foreground bool) {
 	be.config, err = be.LoadConfig()
 	if err != nil {
 		log.Fatalln(err)
+	}
+	if err := closeOpenConnections(); err != nil {
+		log.Println(err)
 	}
 
 	if !foreground {

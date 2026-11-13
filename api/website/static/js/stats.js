@@ -102,3 +102,63 @@
 	draw();
 	document.addEventListener("q2a-theme", draw);
 })();
+
+// A server's connection to CloudAdmin over the span: a step line that's up (1)
+// while connected and down (0) while not. The data is the JSON the server
+// page embeds in #q2a-connection-data.
+(() => {
+	const el = document.getElementById("q2a-connection-data");
+	const canvas = document.getElementById("q2a-connection-chart");
+	if (!el || !canvas || !window.Chart) return;
+	const h = JSON.parse(el.textContent);
+	const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+	const longSpan = h.End - h.Start > 2 * 86400;
+	const when = (t) => {
+		const d = new Date(t * 1000);
+		const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+		return longSpan ? `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${time}` : time;
+	};
+
+	let chart;
+	const draw = () => {
+		if (chart) chart.destroy();
+		const text = css("--bs-secondary-color");
+		const grid = css("--bs-border-color");
+		const color = css("--q2a-series-3");
+		chart = new Chart(canvas, {
+			type: "line",
+			data: {
+				datasets: [{
+					label: "Connection",
+					data: h.Points.map((p) => ({ x: p.T, y: p.Up })),
+					stepped: "after", // a state holds until the next change
+					borderColor: color,
+					backgroundColor: color + "33",
+					fill: "origin",
+					borderWidth: 2,
+					pointRadius: 0,
+					pointHoverRadius: 4,
+				}],
+			},
+			options: {
+				maintainAspectRatio: false,
+				interaction: { mode: "nearest", axis: "x", intersect: false },
+				plugins: {
+					legend: { display: false },
+					tooltip: {
+						callbacks: {
+							title: (items) => new Date(items[0].parsed.x * 1000).toLocaleString(),
+							label: (c) => (c.parsed.y ? "connected from here" : "disconnected from here"),
+						},
+					},
+				},
+				scales: {
+					x: { type: "linear", min: h.Start, max: h.End, ticks: { color: text, maxTicksLimit: 6, maxRotation: 0, callback: when }, grid: { display: false } },
+					y: { min: 0, max: 1, ticks: { color: text, stepSize: 1, callback: (v) => (v ? "Up" : "Down") }, grid: { color: grid } },
+				},
+			},
+		});
+	};
+	draw();
+	document.addEventListener("q2a-theme", draw);
+})();

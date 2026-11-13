@@ -98,6 +98,32 @@
 			<p class="small mb-0">Check that its q2admin config uses UUID <span class="q2a-mono">{{$fe.UUID}}</span> and that its public key is set on the Settings tab.</p>
 		</div>
 		{{end}}
+
+		<div class="q2a-panel mt-3" id="connection">
+			<div class="q2a-panel-head d-flex flex-wrap align-items-center justify-content-between gap-2">
+				<span>Connection to CloudAdmin</span>
+				<nav class="btn-group btn-group-sm" aria-label="Time span">
+					{{range spans}}<a class="btn btn-outline-secondary {{if eq .Key $.Stats.Span}}active{{end}}" href="?span={{.Key}}#connection" title="{{.Label}}" {{if eq .Key $.Stats.Span}}aria-current="true"{{end}}>{{.Key}}</a>{{end}}
+				</nav>
+			</div>
+			<div class="q2a-panel-body">
+				{{with .Connection}}
+				<div class="d-flex flex-wrap gap-4 mb-2 small">
+					<span><span class="text-body-secondary">Uptime</span> <strong>{{printf "%.1f" .Uptime}}%</strong></span>
+					<span><span class="text-body-secondary">Disconnects</span> <strong>{{.Drops}}</strong></span>
+				</div>
+				<div class="q2a-chart q2a-chart-short"><canvas id="q2a-connection-chart" role="img" aria-label="Step chart of when this server was connected to CloudAdmin over the last {{$.Stats.Span}}: {{printf "%.1f" .Uptime}}% uptime, {{.Drops}} disconnects."></canvas></div>
+				<details class="small mt-2"><summary class="text-body-secondary">Show data</summary>
+					{{if .Events}}
+					<table class="table table-sm mb-0"><thead><tr><th>When</th><th>Event</th><th>Reason</th></tr></thead><tbody>
+					{{range .Events}}<tr><td class="text-nowrap">{{datetime .Time}}</td><td>{{if .Connected}}<span class="text-success">connected</span>{{else}}<span class="text-danger">disconnected</span>{{end}}</td><td class="text-body-secondary">{{.Reason}}</td></tr>{{end}}
+					</tbody></table>
+					{{else}}<p class="text-body-secondary mb-0">No connects or disconnects in this span.</p>{{end}}
+				</details>
+				<script type="application/json" id="q2a-connection-data">{{.}}</script>
+				{{else}}<div class="q2a-empty">No connection history yet.</div>{{end}}
+			</div>
+		</div>
 	</div>
 
 	<!-- Players -->
