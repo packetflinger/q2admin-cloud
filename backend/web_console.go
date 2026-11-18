@@ -67,12 +67,24 @@ func ConsoleStreamHandler(w http.ResponseWriter, r *http.Request) {
 	defer fe.TerminalDisconnected(&stream)
 	keepalive := time.NewTicker(25 * time.Second)
 	defer keepalive.Stop()
+	statusCheck := time.NewTicker(consoleStatusEvery)
+	defer statusCheck.Stop()
 
 	send := func(line frontend.ConsoleLine) {
 		data, _ := json.Marshal(line) // one line, whatever the text contains
 		fmt.Fprintf(w, "id: %d\ndata: %s\n\n", line.Seq, data)
 	}
+	// the page header's map and player count, sent again whenever they change
+	var lastStatus consoleStatus
+	sendStatus := func() {
+		if st := consoleStatusOf(fe); st != lastStatus {
+			data, _ := json.Marshal(st)
+			fmt.Fprintf(w, "event: status\ndata: %s\n\n", data)
+			lastStatus = st
+		}
+	}
 	fmt.Fprint(w, ": connected\n\n")
+	sendStatus()
 	for _, line := range backlog {
 		send(line)
 	}
@@ -85,10 +97,34 @@ func ConsoleStreamHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-keepalive.C:
 			fmt.Fprint(w, ": keepalive\n\n")
+		case <-statusCheck.C:
+			sendStatus()
 		case line := <-stream:
 			send(line)
 		}
 	}
+}
+
+// consoleStatusEvery is how often the console stream checks for a new map or
+// player count.
+var consoleStatusEvery = 5 * time.Second // a var so tests can shorten it
+
+// consoleStatus is the console page header's view of its server.
+type consoleStatus struct {
+	Online  bool   `json:"online"`
+	Map     string `json:"map"`
+	Players int    `json:"players"`
+	Max     int    `json:"max"`
+}
+
+// consoleStatusOf reads fe's map and player count. It locks fe briefly.
+func consoleStatusOf(fe *frontend.Frontend) consoleStatus {
+	fe.Mu.Lock()
+	defer fe.Mu.Unlock()
+	if !(fe.Connected && fe.Trusted) {
+		return consoleStatus{}
+	}
+	return consoleStatus{Online: true, Map: fe.CurrentMap, Players: playersOnline(fe), Max: fe.MaxPlayers}
 }
 
 // validConsoleCommand checks a command typed by a user before it's sent to a

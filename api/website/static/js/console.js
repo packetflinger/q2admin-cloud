@@ -43,6 +43,19 @@
 	events.onopen = () => setStatus("live", "text-bg-success");
 	events.onerror = () => setStatus("reconnecting...", "text-bg-warning");
 	// each line carries the time it happened, so replayed history shows its real time
+	// the map and player count in the page header, sent when they change
+	const mapEl = document.getElementById("console-map");
+	const playersEl = document.getElementById("console-players");
+	events.addEventListener("status", (e) => {
+		const st = JSON.parse(e.data);
+		if (!st.online) {
+			setStatus("server offline", "text-bg-danger");
+			return;
+		}
+		if (status.textContent === "server offline") setStatus("live", "text-bg-success");
+		if (mapEl) mapEl.textContent = st.map || "-";
+		if (playersEl) playersEl.textContent = `${st.players}/${st.max}`;
+	});
 	events.onmessage = (e) => {
 		const line = JSON.parse(e.data);
 		term.writeln(`\x1b[90m${time(line.t)}\x1b[0m ${line.m.trimEnd()}`);

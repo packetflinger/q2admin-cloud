@@ -8,7 +8,13 @@
 		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/my-servers">Servers</a></li><li class="breadcrumb-item"><a href="{{$base}}">{{$fe.Name}}</a></li><li class="breadcrumb-item active" aria-current="page">Console</li></ol></nav>
 		<h1>Console</h1>
 	</div>
-	<span id="console-status" class="badge text-bg-secondary" role="status">connecting...</span>
+	<div class="d-flex flex-wrap align-items-center gap-2">
+		{{if and $fe.Connected $fe.Trusted}}
+		<span class="badge text-bg-dark q2a-mono" title="Current map"><i class="bi bi-map me-1" aria-hidden="true"></i><span class="visually-hidden">Map </span><span id="console-map">{{or $fe.CurrentMap "-"}}</span></span>
+		<span class="badge text-bg-dark" title="Players connected"><i class="bi bi-people me-1" aria-hidden="true"></i><span id="console-players">{{online $fe}}/{{$fe.MaxPlayers}}</span><span class="visually-hidden"> players</span></span>
+		{{end}}
+		<span id="console-status" class="badge text-bg-secondary" role="status">connecting...</span>
+	</div>
 </div>
 
 {{if and $fe.Connected $fe.Trusted}}
