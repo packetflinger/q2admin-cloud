@@ -47,7 +47,7 @@ Teleports:     {{ .TeleportCount }}
 num score name            vpn address
 --- ----- --------------- --- ------------------------------
 {{ range .Players }}{{ if .ConnectTime -}}
-{{ printf "%3d" .ClientID }} {{ printf "%5d" .Frags }} {{ printf "%-15s" .Name }}  {{ .VPN | checkMark | red }}  {{ .IP }}
+{{ printf "%3d" .ClientID }} {{ printf "%5d" .Frags }} {{ printf "%-15s" (q2 .Name) }}  {{ .VPN | checkMark | red }}  {{ .IP }}
 {{ end }}{{ end -}}
 {{ else -}}
 No UDP clients
@@ -59,7 +59,7 @@ Search results for "{{ .Query }}"
 name             server              seen  address
 ---------------  ---------------  -------  -------------------------
 {{ range .Results -}}
-{{ printf "%-15s" .Name }}  {{ printf "%-15s" .Server}}  {{ printf "%7s" .Ago }}  {{ .IP }}
+{{ printf "%-15s" (q2 .Name) }}  {{ printf "%-15s" .Server}}  {{ printf "%7s" .Ago }}  {{ .IP }}
 {{ end }}
 `
 	rulesTemplate = `
@@ -72,7 +72,7 @@ name             server              seen  address
 
 	whoisTemplate = `
 {{ printf "Player Information" | underline}}:
-  Name:    "{{ .Name }}"
+  Name:    "{{ q2 .Name }}"
   IP:       {{ .IP }} 
   DNS:      {{ .Hostname }}
   Version:  {{ .Version }}
@@ -119,6 +119,7 @@ var (
 		"magenta":   magenta,
 		"underline": underline,
 		"checkMark": checkMark,
+		"q2":        q2Plain, // game text, readable (see q2text.go)
 		"connected": connectionIndicator,
 		"online":    playersOnline,
 		"now":       func() int64 { return time.Now().Unix() },

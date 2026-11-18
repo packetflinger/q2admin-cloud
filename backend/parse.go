@@ -164,9 +164,9 @@ func ParseFrag(fe *frontend.Frontend) {
 	victim.Deaths++
 	fe.Log.Println("FRAG", aName, ">", victim.Name)
 	if attacker != nil {
-		aName = playerLink(fe, attacker, attacker.Name, 0)
+		aName = playerLink(fe, attacker, q2Text(attacker.Name, ColorDefault), 0)
 	}
-	fe.ConsoleBroadcast("FRAG " + aName + " > " + playerLink(fe, victim, victim.Name, 0))
+	fe.ConsoleBroadcast("FRAG " + aName + " > " + playerLink(fe, victim, q2Text(victim.Name, ColorDefault), 0))
 }
 
 // Received a ping from a client, send a pong to show we're alive
@@ -204,10 +204,10 @@ func ParsePrint(fe *frontend.Frontend) {
 	switch level {
 	case PRINT_CHAT:
 		fe.Log.Println("CHAT", stripped)
-		fe.ConsoleBroadcast(Font([]int{ColorGreen, WeightBold}, linkChatName(fe, stripped)))
+		fe.ConsoleBroadcast(Font([]int{ColorGreen, WeightBold}, linkChatName(fe, stripped, ColorGreen)))
 	case PRINT_HIGH:
 		fe.Log.Println("PRINT", stripped)
-		fe.ConsoleBroadcast(Font([]int{ColorBlack, bgcolor(ColorLightGray)}, stripped))
+		fe.ConsoleBroadcast(Font([]int{ColorBlack, bgcolor(ColorLightGray)}, q2Text(stripped, ColorBlack)))
 
 		// change the map
 		fmt.Println(stripped)
@@ -274,7 +274,7 @@ func ParseConnect(fe *frontend.Frontend) {
 
 		line := func(name string) string { return fmt.Sprintf("%-20s[%d] %s %s", "CONNECT:", p.ClientID, name, p.IP) }
 		fe.Log.Printf("%s", line(fmt.Sprintf("%-20q", p.Name)))
-		fe.ConsoleBroadcast(line(playerLink(fe, p, strconv.Quote(p.Name), 20)))
+		fe.ConsoleBroadcast(line(playerLink(fe, p, `"`+q2Text(p.Name, ColorDefault)+`"`, 20)))
 
 		// add a slight delay when processing rules
 		time.Sleep(1 * time.Second)
@@ -322,7 +322,7 @@ func ParseDisconnect(fe *frontend.Frontend) {
 		return fmt.Sprintf("%-20s[%d] %s %s", "DISCONNECT:", pl.ClientID, name, pl.IP)
 	}
 	fe.Log.Printf("%s", line(fmt.Sprintf("%-20q", pl.Name)))
-	fe.ConsoleBroadcast(line(playerLink(fe, pl, strconv.Quote(pl.Name), 20)))
+	fe.ConsoleBroadcast(line(playerLink(fe, pl, `"`+q2Text(pl.Name, ColorDefault)+`"`, 20)))
 	fe.RemovePlayer(clientnum)
 }
 
@@ -381,7 +381,7 @@ func ParseObituary(fe *frontend.Frontend, obit string) {
 		fe.Players[cidM].KDR = fe.CalculateKDR(cidM)
 	}
 	fe.Log.Printf("%s", deathLine(func(p *frontend.Player) string { return p.Name }))
-	fe.ConsoleBroadcast(deathLine(func(p *frontend.Player) string { return playerLink(fe, p, p.Name, 0) }))
+	fe.ConsoleBroadcast(deathLine(func(p *frontend.Player) string { return playerLink(fe, p, q2Text(p.Name, ColorDefault), 0) }))
 }
 
 // Client sent a playerlist message.

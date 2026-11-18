@@ -7,7 +7,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/packetflinger/q2admind/frontend"
 )
@@ -44,25 +43,26 @@ func consoleLink(fe *frontend.Frontend) string {
 	return osc8(path.Join("/sv", fe.UUID, fe.Name, "console"), fe.Name)
 }
 
-// playerLink is text (usually p's name) linked to p's player page on fe, then
-// padded with spaces to width visible characters so columns still line up.
+// playerLink is text (usually p's name, through q2Text) linked to p's player
+// page on fe, then padded with spaces to width visible characters so columns
+// still line up.
 // The link is to the player's client slot, so it shows whoever is in that slot
 // when it's opened.
 func playerLink(fe *frontend.Frontend, p *frontend.Player, text string, width int) string {
 	url := path.Join("/sv", fe.UUID, fe.Name, "player", strconv.Itoa(p.ClientID))
-	return osc8(url, text) + strings.Repeat(" ", max(width-utf8.RuneCountInString(text), 0))
+	return osc8(url, text) + strings.Repeat(" ", max(width-visibleWidth(text), 0))
 }
 
-// linkChatName links the speaker's name at the start of a chat line ("name:
-// text") when exactly one player has that name; otherwise the line is left as
-// it is.
-func linkChatName(fe *frontend.Frontend, line string) string {
+// linkChatName makes a chat line ("name: text") readable (see q2Text, fg is
+// the line's color) and links the speaker's name when exactly one player has
+// that name.
+func linkChatName(fe *frontend.Frontend, line string, fg int) string {
 	players, err := fe.GetPlayerFromPrint(line)
 	if err != nil || len(players) != 1 || !strings.HasPrefix(line, players[0].Name+": ") {
-		return line
+		return q2Text(line, fg)
 	}
 	p := players[0]
-	return playerLink(fe, p, p.Name, 0) + line[len(p.Name):]
+	return playerLink(fe, p, q2Text(p.Name, fg), 0) + q2Text(line[len(p.Name):], fg)
 }
 
 // Prevent the player from talking.
@@ -85,7 +85,7 @@ func MutePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 	(&cl.MessageOut).WriteByte(SCMDCommand)
 	(&cl.MessageOut).WriteString(cmd)
 	cl.Log.Printf("%s", line(fmt.Sprintf("%-20s", p.Name)))
-	cl.ConsoleBroadcast(line(playerLink(cl, p, p.Name, 20)))
+	cl.ConsoleBroadcast(line(playerLink(cl, p, q2Text(p.Name, ColorDefault), 20)))
 }
 
 // Throttle the player's talking.
@@ -117,7 +117,7 @@ func StiflePlayer(cl *frontend.Frontend, p *frontend.Player, seconds int) {
 
 	line := func(name string) string { return fmt.Sprintf("STIFLE[%d] %s [%d]\n", seconds, name, p.ClientID) }
 	cl.Log.Printf("%s", line(fmt.Sprintf("%-20s", p.Name)))
-	cl.ConsoleBroadcast(line(playerLink(cl, p, p.Name, 20)))
+	cl.ConsoleBroadcast(line(playerLink(cl, p, q2Text(p.Name, ColorDefault), 20)))
 }
 
 // Instruct a client to kick a player. The target player will receive a direct
@@ -140,7 +140,7 @@ func KickPlayer(cl *frontend.Frontend, p *frontend.Player, msg string) {
 
 	line := func(name string) string { return fmt.Sprintf("KICK %s [%d] %q\n", name, p.ClientID, msg) }
 	cl.Log.Println(line(fmt.Sprintf("%-20s", p.Name)))
-	cl.ConsoleBroadcast(line(playerLink(cl, p, p.Name, 20)))
+	cl.ConsoleBroadcast(line(playerLink(cl, p, q2Text(p.Name, ColorDefault), 20)))
 }
 
 // Issue a command as if you were typing it into the console. The command name

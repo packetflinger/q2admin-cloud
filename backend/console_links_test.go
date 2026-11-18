@@ -40,16 +40,16 @@ const claireLink = "\x1b]8;;/sv/u1/pf-dev/player/0\x1b\\"
 
 func TestChatNameLinks(t *testing.T) {
 	fe, _, _ := linkedFrontend(t)
-	if got := linkChatName(fe, "claire: gg all"); got != claireLink+"claire\x1b]8;;\x1b\\: gg all" {
+	if got := linkChatName(fe, "claire: gg all", ColorDefault); got != claireLink+"claire\x1b]8;;\x1b\\: gg all" {
 		t.Errorf("chat line = %q", got)
 	}
 	for _, line := range []string{"(claire): team chat", "nobody: hi", "claire said hi"} {
-		if got := linkChatName(fe, line); got != line {
+		if got := linkChatName(fe, line, ColorDefault); got != line {
 			t.Errorf("%q should be left alone, got %q", line, got)
 		}
 	}
 	fe.Players[1].Name = "claire" // two players with the same name
-	if got := linkChatName(fe, "claire: gg"); got != "claire: gg" {
+	if got := linkChatName(fe, "claire: gg", ColorDefault); got != "claire: gg" {
 		t.Errorf("an ambiguous name shouldn't be linked, got %q", got)
 	}
 }
