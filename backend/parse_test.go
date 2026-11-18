@@ -1,10 +1,11 @@
 package backend
 
 import (
-	"github.com/packetflinger/libq2/message"
-	"github.com/packetflinger/q2admind/crypto"
+	"strings"
 	"testing"
 
+	"github.com/packetflinger/libq2/message"
+	"github.com/packetflinger/q2admind/crypto"
 	"github.com/packetflinger/q2admind/frontend"
 )
 
@@ -42,5 +43,29 @@ func TestPlayerUpdateKeepsIP(t *testing.T) {
 	p := fe.Players[0]
 	if p.Name != "bravo" || p.UserinfoMap["ip"] != "192.0.2.1" || p.UserinfoMap["port"] != "27901" || p.IP != "192.0.2.1" {
 		t.Errorf("after an update without ip: name %q, userinfo ip %q port %q, IP %q", p.Name, p.UserinfoMap["ip"], p.UserinfoMap["port"], p.IP)
+	}
+}
+
+// An empty print used to crash cutting off its newline, and a print without
+// one lost its last character.
+func TestParsePrintTrimsNewline(t *testing.T) {
+	fe := connectedFrontend(t, "admin@example.com")
+	print := func(text string) string {
+		var m message.Buffer
+		m.WriteByte(PRINT_HIGH)
+		m.WriteString(text)
+		fe.Message = message.NewBuffer(m.Data)
+		ParsePrint(fe) // mustn't panic
+		ch := make(chan frontend.ConsoleLine, 1)
+		lines := fe.AddTerminal(&ch, 0)
+		fe.TerminalDisconnected(&ch)
+		return lines[len(lines)-1].Text
+	}
+	print("")
+	if got := print("hello\n"); !strings.Contains(got, "hello") || strings.Contains(got, "\n") {
+		t.Errorf(`"hello\n" became %q`, got)
+	}
+	if got := print("no newline"); !strings.Contains(got, "no newline") {
+		t.Errorf(`"no newline" became %q, want its last character kept`, got)
 	}
 }

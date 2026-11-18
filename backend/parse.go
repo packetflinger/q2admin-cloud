@@ -198,8 +198,8 @@ func ParsePrint(fe *frontend.Frontend) {
 	level := msg.ReadByte()
 	text := msg.ReadString()
 
-	// remove newline
-	stripped := text[0 : len(text)-1]
+	// remove the newline; an empty print has none
+	stripped := strings.TrimSuffix(text, "\n")
 
 	switch level {
 	case PRINT_CHAT:
