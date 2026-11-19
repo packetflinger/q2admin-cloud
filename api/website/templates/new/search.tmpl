@@ -28,7 +28,6 @@
 					<th>IP</th>
 					{{if not $.Frontend}}<th class="d-none d-sm-table-cell">Servers</th>{{end}}
 					<th class="d-none d-lg-table-cell">Hostname</th>
-					<th class="d-none d-xl-table-cell">Clients</th>
 					<th class="text-end d-none d-sm-table-cell">Visits</th>
 					<th class="d-none d-md-table-cell">Last seen</th>
 				</tr>
@@ -40,7 +39,6 @@
 					<td class="q2a-mono">{{.IP}}</td>
 					{{if not $.Frontend}}<td class="d-none d-sm-table-cell">{{range $i, $s := .Servers}}{{if $i}}, {{end}}{{index $.ServerNames $s}}{{end}}</td>{{end}}
 					<td class="d-none d-lg-table-cell q2a-mono small text-break">{{range .Hostnames}}<div>{{.}}</div>{{end}}</td>
-					<td class="d-none d-xl-table-cell">{{range .Versions}}<span class="badge text-bg-secondary q2a-mono fw-normal me-1">{{.}}</span>{{end}}</td>
 					<td class="text-end d-none d-sm-table-cell">{{.Visits}}</td>
 					<td class="d-none d-md-table-cell text-body-secondary text-nowrap" title="{{datetime .ConnectTime}}">{{ago .ConnectTime}}</td>
 				</tr>
