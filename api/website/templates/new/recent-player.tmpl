@@ -1,0 +1,41 @@
+{{define "recent-player"}}
+{{template "header" .}}
+{{with .RecentPlayer}}
+<div class="q2a-page-head">
+	<div class="min-w-0">
+		<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">Recent players</li></ol></nav>
+		<h1 class="text-break">{{.Name}}</h1>
+	</div>
+	<form method="get" class="d-flex align-items-center gap-2">
+		<label for="limit" class="small text-body-secondary text-nowrap">Show</label>
+		<select class="form-select form-select-sm" id="limit" name="limit" onchange="this.form.submit()">
+			{{range .Limits}}<option value="{{.}}"{{if eq . $.RecentPlayer.Limit}} selected{{end}}>{{.}}</option>{{end}}
+		</select>
+		<noscript><button class="btn btn-sm btn-outline-secondary" type="submit">Show</button></noscript>
+	</form>
+</div>
+
+<div class="q2a-panel">
+	<div class="q2a-panel-head">Servers joined, newest first</div>
+	{{if .Sessions}}
+	<div class="table-responsive">
+		<table class="table table-hover align-middle">
+			<thead><tr><th>Server</th><th>Joined</th><th class="text-end">Played</th><th class="text-end d-none d-sm-table-cell">Frags</th><th class="text-end">K:D</th></tr></thead>
+			<tbody>
+			{{range .Sessions}}
+				<tr>
+					<td>{{.Server}}{{if .Online}} <span class="badge text-bg-success">playing</span>{{end}}</td>
+					<td class="text-nowrap" title="{{ago .Start}}">{{datetime .Start}}</td>
+					<td class="text-end text-nowrap">{{duration .Duration}}</td>
+					<td class="text-end d-none d-sm-table-cell">{{.Frags}} / {{.Deaths}}</td>
+					<td class="text-end">{{printf "%.2f" .KDR}}</td>
+				</tr>
+			{{end}}
+			</tbody>
+		</table>
+	</div>
+	{{else}}<div class="q2a-empty">No visits to your servers by this player.</div>{{end}}
+</div>
+{{end}}
+{{template "footer" .}}
+{{end}}

@@ -115,9 +115,10 @@ func spanFor(key string) (string, time.Duration) {
 	return spanFor(defaultSpan)
 }
 
-// loadStats gathers the stats for fes over the span named by key. It locks
+// loadStats gathers the stats for fes over the span named by key, with each
+// player's recent visits combined into their latest if perPlayer. It locks
 // each frontend briefly, so call it before rendering, not during.
-func loadStats(fes []*frontend.Frontend, key string) (*Stats, error) {
+func loadStats(fes []*frontend.Frontend, key string, perPlayer bool) (*Stats, error) {
 	key, span := spanFor(key)
 	now := time.Now().Unix()
 	start := now - int64(span.Seconds())
@@ -130,19 +131,8 @@ func loadStats(fes []*frontend.Frontend, key string) (*Stats, error) {
 		return st, nil
 	}
 
-	var ids []any
-	for _, fe := range fes {
-		fe.Mu.Lock()
-		ids = append(ids, fe.ID)
-		for _, p := range fe.Players {
-			if p.ConnectTime > 0 {
-				st.Recent = append(st.Recent, Session{Name: p.Name, Server: fe.Name, Start: p.ConnectTime,
-					Duration: now - p.ConnectTime, Frags: p.Frags, Deaths: p.Deaths, KDR: frontend.KDR(p.Frags, p.Deaths), Online: true})
-			}
-		}
-		fe.Mu.Unlock()
-	}
-	in := "(" + strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",") + ")"
+	ids := frontendIDs(fes)
+	in := sqlIn(len(ids))
 	args := append([]any{start}, ids...)
 	bucket := func(t int64) int { return min(int((t-start)/width), statBuckets-1) }
 
@@ -219,7 +209,65 @@ func loadStats(fes []*frontend.Frontend, key string) (*Stats, error) {
 	if err := db.Handle.QueryRow("SELECT CAST(COALESCE(AVG(s.play_time), 0) AS INTEGER) "+ended, args...).Scan(&st.AvgSession); err != nil {
 		return nil, fmt.Errorf("averaging sessions: %v", err)
 	}
-	rows, err = db.Handle.Query("SELECT p.name, p.server, p.time, s.play_time, s.frags, s.deaths "+ended+" ORDER BY p.time DESC LIMIT ?", append(args, recentSessions)...)
+	st.Recent, err = loadSessions(fes, start, "", recentSessions, perPlayer)
+	return st, err
+}
+
+// frontendIDs returns the database IDs of fes, for a query's IN list.
+func frontendIDs(fes []*frontend.Frontend) []any {
+	var ids []any
+	for _, fe := range fes {
+		fe.Mu.Lock()
+		ids = append(ids, fe.ID)
+		fe.Mu.Unlock()
+	}
+	return ids
+}
+
+// sqlIn is an IN list of n placeholders.
+func sqlIn(n int) string {
+	return "(" + strings.TrimSuffix(strings.Repeat("?,", n), ",") + ")"
+}
+
+// loadSessions returns up to limit visits to fes since start: players still
+// connected first, then the latest to leave. With name, only that player's
+// visits; with perPlayer, only each player's latest visit. A player is a
+// name here, so the same name on different servers is one player. It locks
+// each frontend briefly, so call it before rendering, not during.
+func loadSessions(fes []*frontend.Frontend, start int64, name string, limit int, perPlayer bool) ([]Session, error) {
+	if len(fes) == 0 {
+		return nil, nil
+	}
+	now := time.Now().Unix()
+	var out []Session
+	var ids []any
+	for _, fe := range fes {
+		fe.Mu.Lock()
+		ids = append(ids, fe.ID)
+		for _, p := range fe.Players {
+			if p.ConnectTime > 0 && (name == "" || p.Name == name) {
+				out = append(out, Session{Name: p.Name, Server: fe.Name, Start: p.ConnectTime,
+					Duration: now - p.ConnectTime, Frags: p.Frags, Deaths: p.Deaths, KDR: frontend.KDR(p.Frags, p.Deaths), Online: true})
+			}
+		}
+		fe.Mu.Unlock()
+	}
+
+	// player.server holds the frontend name
+	from := "FROM player AS p JOIN frontend AS f ON f.name = p.server JOIN player_stat AS s ON s.player = p.id WHERE p.time >= ? AND f.id IN " + sqlIn(len(ids))
+	args := append([]any{start}, ids...)
+	if name != "" {
+		from += " AND p.name = ?"
+		args = append(args, name)
+	}
+	cols := "p.name, p.server, p.time, s.play_time, s.frags, s.deaths "
+	if perPlayer {
+		// SQLite takes the other columns from the row with the MAX
+		cols = "p.name, p.server, MAX(p.time), s.play_time, s.frags, s.deaths "
+		from += " GROUP BY p.name"
+	}
+	// enough that dropping the online players' older visits still leaves limit
+	rows, err := db.Handle.Query("SELECT "+cols+from+" ORDER BY 3 DESC LIMIT ?", append(args, limit+len(out))...)
 	if err != nil {
 		return nil, fmt.Errorf("reading sessions: %v", err)
 	}
@@ -230,10 +278,13 @@ func loadStats(fes []*frontend.Frontend, key string) (*Stats, error) {
 			return nil, err
 		}
 		s.KDR = frontend.KDR(s.Frags, s.Deaths)
-		st.Recent = append(st.Recent, s)
+		out = append(out, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	// players still connected first, then the latest to leave
-	slices.SortStableFunc(st.Recent, func(a, b Session) int {
+	slices.SortStableFunc(out, func(a, b Session) int {
 		if a.Online != b.Online {
 			if a.Online {
 				return -1
@@ -242,8 +293,15 @@ func loadStats(fes []*frontend.Frontend, key string) (*Stats, error) {
 		}
 		return cmp.Compare(b.Start, a.Start)
 	})
-	st.Recent = st.Recent[:min(len(st.Recent), recentSessions)]
-	return st, rows.Err()
+	if perPlayer {
+		seen := map[string]bool{}
+		out = slices.DeleteFunc(out, func(s Session) bool {
+			dup := seen[s.Name]
+			seen[s.Name] = true
+			return dup
+		})
+	}
+	return out[:min(len(out), limit)], nil
 }
 
 // pie sorts counts largest first, folding everything past pieSlices into

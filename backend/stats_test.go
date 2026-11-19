@@ -2,16 +2,27 @@ package backend
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/packetflinger/q2admind/frontend"
+
+	pb "github.com/packetflinger/q2admind/proto"
 )
 
-func TestStats(t *testing.T) {
-	owner := "admin@example.com"
-	up, down, theirs := groupTestSetup(t, owner) // fresh database with the stats tables
+// statsTestSetup is a fresh database with the stats tables, the frontend
+// and player_stat tables that the server and the game write, and five
+// visits: two by alpha on different servers, one by bravo, one on someone
+// else's server, and one too old for the 24 hour span. fe1 has a player
+// connected.
+func statsTestSetup(t *testing.T) (up, down, theirs *frontend.Frontend) {
+	t.Helper()
+	up, down, theirs = groupTestSetup(t, "admin@example.com")
 	up.Name, down.Name = "fe1", "fe2"
 	up.Players = []frontend.Player{{ClientID: 0, ConnectTime: time.Now().Unix() - 120, Name: "live", Frags: 4, Deaths: 2}}
 	for _, q := range []string{
@@ -24,8 +35,7 @@ func TestStats(t *testing.T) {
 		}
 	}
 	now := time.Now().Unix()
-	// two visits by one player with one client, one by another with a different client,
-	// one on someone else's server, and one too old to count
+	// alpha's visits use one client, bravo's another
 	visits := []struct {
 		server, name, ip, version string
 		ago, played               int64
@@ -40,6 +50,12 @@ func TestStats(t *testing.T) {
 		db.Handle.Exec(`INSERT INTO player (id, server, name, ip, version, time) VALUES (?, ?, ?, ?, ?, ?)`, i+1, v.server, v.name, v.ip, v.version, now-v.ago)
 		db.Handle.Exec(`INSERT INTO player_stat (player, frags, deaths, play_time) VALUES (?, 2, 1, ?)`, i+1, v.played)
 	}
+	return up, down, theirs
+}
+
+func TestStats(t *testing.T) {
+	up, down, theirs := statsTestSetup(t)
+	now := time.Now().Unix()
 	samples := []struct {
 		ago  int64
 		fe   *frontend.Frontend
@@ -58,7 +74,7 @@ func TestStats(t *testing.T) {
 		}
 	}
 
-	st, err := loadStats([]*frontend.Frontend{up, down}, "bogus") // falls back to 24h
+	st, err := loadStats([]*frontend.Frontend{up, down}, "bogus", false) // falls back to 24h
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,6 +104,108 @@ func TestStats(t *testing.T) {
 	db.Handle.QueryRow("SELECT COUNT(*) FROM server_sample WHERE players = 50").Scan(&n)
 	if n != 0 {
 		t.Error("samples older than 31 days weren't pruned")
+	}
+}
+
+// The dashboard shows each player once, at the latest server they joined,
+// with a player still connected counting as their latest.
+func TestStatsRecentPerPlayer(t *testing.T) {
+	up, down, _ := statsTestSetup(t)
+	recent := func() string {
+		t.Helper()
+		st, err := loadStats([]*frontend.Frontend{up, down}, "24h", true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var rows []string
+		for _, s := range st.Recent {
+			rows = append(rows, fmt.Sprintf("%s@%s %d", s.Name, s.Server, s.Duration))
+		}
+		return strings.Join(rows, ",")
+	}
+	if got := recent(); !strings.HasPrefix(got, "live@fe1 ") || !strings.HasSuffix(got, ",bravo@fe1 300,alpha@fe2 1200") {
+		t.Errorf("recent = %s; want alpha once, at fe2", got)
+	}
+	down.Players = []frontend.Player{{ClientID: 0, ConnectTime: time.Now().Unix() - 60, Name: "bravo"}}
+	if got := recent(); !strings.HasPrefix(got, "bravo@fe2 ") || strings.Contains(got, "bravo@fe1") {
+		t.Errorf("recent = %s; want bravo once, playing on fe2", got)
+	}
+}
+
+func TestLoadSessionsForPlayer(t *testing.T) {
+	up, down, theirs := statsTestSetup(t)
+	fes := []*frontend.Frontend{up, down, theirs}
+	servers := func(name string, limit int) string {
+		t.Helper()
+		ss, err := loadSessions(fes, 0, name, limit, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, s := range ss {
+			out = append(out, s.Server)
+		}
+		return strings.Join(out, ",")
+	}
+	if got := servers("alpha", 20); got != "fe2,fe1" {
+		t.Errorf("alpha's servers = %s, want fe2,fe1", got)
+	}
+	if got := servers("alpha", 1); got != "fe2" {
+		t.Errorf("alpha's latest server = %s, want fe2", got)
+	}
+	if got := servers("live", 20); got != "fe1" {
+		t.Errorf("a connected player's servers = %s, want fe1", got)
+	}
+	if got := servers("old", 20); got != "fe1" {
+		t.Errorf("old's servers = %s; the page isn't limited to a span", got)
+	}
+}
+
+func TestRecentPlayerPage(t *testing.T) {
+	statsTestSetup(t)
+	db.Handle.Exec(`INSERT INTO player (id, server, name, time) VALUES (10, 'fe1', 'a/b c', 100), (11, 'fe2', 'a/b c', 200)`)
+	db.Handle.Exec(`INSERT INTO player_stat (player, frags, deaths, play_time) VALUES (10, 3, 1, 60), (11, 1, 1, 60)`)
+	db.Handle.Exec(`INSERT INTO player (id, server, name, time) VALUES (12, 'theirs', 'a/b c', 300)`)
+	db.Handle.Exec(`INSERT INTO player_stat (player, frags, deaths, play_time) VALUES (12, 0, 0, 60)`)
+	srv := httptest.NewServer(LoadWebsiteRoutes())
+	defer srv.Close()
+	client := signedInClient(t, srv, &pb.User{Email: "admin@example.com"})
+	get := func(query string) string {
+		t.Helper()
+		res, err := client.Get(srv.URL + "/recent-players/" + url.PathEscape("a/b c") + query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		body, _ := io.ReadAll(res.Body)
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("status %d", res.StatusCode)
+		}
+		return string(body)
+	}
+	out := get("")
+	fe2, fe1 := strings.Index(out, "<td>fe2</td>"), strings.Index(out, "<td>fe1</td>")
+	if fe2 < 0 || fe1 < fe2 || strings.Contains(out, "<td>theirs</td>") {
+		t.Error("page should list fe2 then fe1, and not someone else's server")
+	}
+	if !strings.Contains(out, `<option value="20" selected>`) {
+		t.Error("the limit should default to 20")
+	}
+	out = get("?limit=10")
+	if !strings.Contains(out, `<option value="10" selected>`) {
+		t.Error("limit=10 isn't selected")
+	}
+	if out = get("?limit=1"); strings.Contains(out, `<option value="1" selected>`) || !strings.Contains(out, `<option value="20" selected>`) {
+		t.Error("a limit that isn't a choice should fall back to 20")
+	}
+}
+
+func TestRecentPlayersLinked(t *testing.T) {
+	data := samplePage()
+	data.Stats.Recent = []Session{{Name: "a/b c", Server: "pf-tdm"}}
+	out := renderPage(t, "dashboard.tmpl", "dashboard", data)
+	if !strings.Contains(out, `<a href="/recent-players/a%2Fb%20c"`) {
+		t.Error("recent player isn't linked to their page")
 	}
 }
 

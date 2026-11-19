@@ -98,7 +98,7 @@
 			<tbody>
 			{{range .Recent}}
 				<tr>
-					<td>{{.Name}}{{if .Online}} <span class="badge text-bg-success">playing</span>{{end}}</td>
+					<td><a href="/recent-players/{{pathesc .Name}}" class="text-decoration-none">{{.Name}}</a>{{if .Online}} <span class="badge text-bg-success">playing</span>{{end}}</td>
 					<td class="d-none d-md-table-cell">{{.Server}}</td>
 					<td class="d-none d-sm-table-cell text-body-secondary text-nowrap">{{ago .Start}}</td>
 					<td class="text-end text-nowrap">{{duration .Duration}}</td>

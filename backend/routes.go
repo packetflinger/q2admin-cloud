@@ -46,6 +46,7 @@ type WebRoutes struct {
 	RuleAdd          string
 	RuleDelete       string
 	ServerKeys       string
+	RecentPlayer     string
 }
 
 type APIRoutes struct {
@@ -85,6 +86,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	Routes.AuthGoogle = "/auth/google"
 	Routes.Dashboard = "/dashboard"
 	Routes.Servers = "/my-servers"
+	Routes.RecentPlayer = "/recent-players/{name:.+}" // names can have slashes
 	Routes.PlayerSearchView = "/player/{lookup}"
 	Routes.Privacy = "/privacy-policy"
 	Routes.RuleView = "/rules/{uuid}/view"
@@ -113,6 +115,7 @@ func LoadWebsiteRoutes() *mux.Router {
 	r.HandleFunc(Routes.AuthDiscord, ProcessDiscordLogin)
 	r.HandleFunc(Routes.AuthGoogle, ProcessGoogleLogin)
 	r.HandleFunc(Routes.Dashboard, WebsiteHandlerDashboard)
+	r.HandleFunc(Routes.RecentPlayer, RecentPlayerHandler)
 	r.HandleFunc(Routes.ServerRemove, WebDelServer).Methods("POST")
 	r.HandleFunc(Routes.ServerView, WebsiteHandlerServerView)
 	r.HandleFunc(Routes.ConnectedServers, WebsiteAPIGetConnectedServers)

@@ -72,7 +72,7 @@ func renderServerView(w http.ResponseWriter, user *pb.User, fe *frontend.Fronten
 	data.CanEdit = strings.EqualFold(fe.Owner, user.GetEmail()) // delegates can't change settings
 	fe.Mu.Unlock()
 	var err error
-	if data.Stats, err = loadStats([]*frontend.Frontend{fe}, span); err != nil {
+	if data.Stats, err = loadStats([]*frontend.Frontend{fe}, span, false); err != nil {
 		log.Println(err)
 		http.Error(w, "500 - unable to load stats", http.StatusInternalServerError)
 		return

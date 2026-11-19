@@ -55,6 +55,7 @@ var (
 		"uilines":    userinfoLines,
 		"ipaddr":     splitIPAddr,
 		"iplens":     ipLensURL,
+		"pathesc":    url.PathEscape,
 		"spans":      func() any { return StatSpans },
 		"duration":   playDuration,
 		"avg":        formatAvg,
@@ -122,6 +123,7 @@ type PageResponse struct {
 	Rule          *pb.Rule   // the rule to view/edit
 	Rules         []*pb.Rule // a list of rules (srv level)
 	Player        *frontend.Player
+	RecentPlayer  *RecentPlayerPage // one player's visits, for /recent-players
 }
 
 type ActiveServer struct {
