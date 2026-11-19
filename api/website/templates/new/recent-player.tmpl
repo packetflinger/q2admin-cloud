@@ -20,7 +20,7 @@
 	{{if .Sessions}}
 	<div class="table-responsive">
 		<table class="table table-hover align-middle">
-			<thead><tr><th>Server</th><th>IP</th><th class="d-none d-lg-table-cell">Hostname</th><th>Joined</th><th class="text-end">Played</th><th class="text-end d-none d-sm-table-cell">Frags</th><th class="text-end">K:D</th></tr></thead>
+			<thead><tr><th>Server</th><th>IP</th><th class="d-none d-lg-table-cell">Hostname</th><th>Joined</th><th class="text-end">Played</th><th class="text-end d-none d-md-table-cell">Frags</th><th class="text-end d-none d-md-table-cell">K:D</th></tr></thead>
 			<tbody>
 			{{range .Sessions}}
 				<tr>
@@ -29,8 +29,8 @@
 					<td class="d-none d-lg-table-cell q2a-mono small text-break">{{or .Hostname "-"}}</td>
 					<td class="text-nowrap" title="{{ago .Start}}">{{datetime .Start}}</td>
 					<td class="text-end text-nowrap">{{duration .Duration}}</td>
-					<td class="text-end d-none d-sm-table-cell">{{.Frags}} / {{.Deaths}}</td>
-					<td class="text-end">{{printf "%.2f" .KDR}}</td>
+					<td class="text-end d-none d-md-table-cell">{{.Frags}} / {{.Deaths}}</td>
+					<td class="text-end d-none d-md-table-cell">{{printf "%.2f" .KDR}}</td>
 				</tr>
 			{{end}}
 			</tbody>
