@@ -20,11 +20,13 @@
 	{{if .Sessions}}
 	<div class="table-responsive">
 		<table class="table table-hover align-middle">
-			<thead><tr><th>Server</th><th>Joined</th><th class="text-end">Played</th><th class="text-end d-none d-sm-table-cell">Frags</th><th class="text-end">K:D</th></tr></thead>
+			<thead><tr><th>Server</th><th>IP</th><th class="d-none d-lg-table-cell">Hostname</th><th>Joined</th><th class="text-end">Played</th><th class="text-end d-none d-sm-table-cell">Frags</th><th class="text-end">K:D</th></tr></thead>
 			<tbody>
 			{{range .Sessions}}
 				<tr>
 					<td>{{.Server}}{{if .Online}} <span class="badge text-bg-success">playing</span>{{end}}</td>
+					<td class="q2a-mono">{{with .IP}}<a href="{{iplens .}}" target="_blank" rel="noopener noreferrer">{{.}}</a>{{else}}<span class="text-body-secondary">-</span>{{end}}</td>
+					<td class="d-none d-lg-table-cell q2a-mono small text-break">{{or .Hostname "-"}}</td>
 					<td class="text-nowrap" title="{{ago .Start}}">{{datetime .Start}}</td>
 					<td class="text-end text-nowrap">{{duration .Duration}}</td>
 					<td class="text-end d-none d-sm-table-cell">{{.Frags}} / {{.Deaths}}</td>

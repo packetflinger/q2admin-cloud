@@ -163,7 +163,7 @@ func TestLoadSessionsForPlayer(t *testing.T) {
 
 func TestRecentPlayerPage(t *testing.T) {
 	statsTestSetup(t)
-	db.Handle.Exec(`INSERT INTO player (id, server, name, time) VALUES (10, 'fe1', 'a/b c', 100), (11, 'fe2', 'a/b c', 200)`)
+	db.Handle.Exec(`INSERT INTO player (id, server, name, ip, hostname, time) VALUES (10, 'fe1', 'a/b c', '198.51.100.7', 'host.example.net', 100), (11, 'fe2', 'a/b c', NULL, NULL, 200)`)
 	db.Handle.Exec(`INSERT INTO player_stat (player, frags, deaths, play_time) VALUES (10, 3, 1, 60), (11, 1, 1, 60)`)
 	db.Handle.Exec(`INSERT INTO player (id, server, name, time) VALUES (12, 'theirs', 'a/b c', 300)`)
 	db.Handle.Exec(`INSERT INTO player_stat (player, frags, deaths, play_time) VALUES (12, 0, 0, 60)`)
@@ -190,6 +190,9 @@ func TestRecentPlayerPage(t *testing.T) {
 	}
 	if !strings.Contains(out, `<option value="20" selected>`) {
 		t.Error("the limit should default to 20")
+	}
+	if !strings.Contains(out, `<a href="https://lens.ipverse.net/198.51.100.7" target="_blank" rel="noopener noreferrer">198.51.100.7</a>`) || !strings.Contains(out, "host.example.net") {
+		t.Error("page should show each visit's IP, linked, and hostname")
 	}
 	out = get("?limit=10")
 	if !strings.Contains(out, `<option value="10" selected>`) {

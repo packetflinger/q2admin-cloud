@@ -63,6 +63,8 @@ type Slice struct {
 type Session struct {
 	Name     string
 	Server   string
+	IP       string
+	Hostname string
 	Start    int64
 	Duration int64 // seconds
 	Frags    int
@@ -246,7 +248,7 @@ func loadSessions(fes []*frontend.Frontend, start int64, name string, limit int,
 		ids = append(ids, fe.ID)
 		for _, p := range fe.Players {
 			if p.ConnectTime > 0 && (name == "" || p.Name == name) {
-				out = append(out, Session{Name: p.Name, Server: fe.Name, Start: p.ConnectTime,
+				out = append(out, Session{Name: p.Name, Server: fe.Name, IP: p.IP, Hostname: p.Hostname, Start: p.ConnectTime,
 					Duration: now - p.ConnectTime, Frags: p.Frags, Deaths: p.Deaths, KDR: frontend.KDR(p.Frags, p.Deaths), Online: true})
 			}
 		}
@@ -260,21 +262,21 @@ func loadSessions(fes []*frontend.Frontend, start int64, name string, limit int,
 		from += " AND p.name = ?"
 		args = append(args, name)
 	}
-	cols := "p.name, p.server, p.time, s.play_time, s.frags, s.deaths "
+	cols := "p.name, p.server, COALESCE(p.ip, ''), COALESCE(p.hostname, ''), p.time, s.play_time, s.frags, s.deaths "
 	if perPlayer {
 		// SQLite takes the other columns from the row with the MAX
-		cols = "p.name, p.server, MAX(p.time), s.play_time, s.frags, s.deaths "
+		cols = "p.name, p.server, COALESCE(p.ip, ''), COALESCE(p.hostname, ''), MAX(p.time), s.play_time, s.frags, s.deaths "
 		from += " GROUP BY p.name"
 	}
 	// enough that dropping the online players' older visits still leaves limit
-	rows, err := db.Handle.Query("SELECT "+cols+from+" ORDER BY 3 DESC LIMIT ?", append(args, limit+len(out))...)
+	rows, err := db.Handle.Query("SELECT "+cols+from+" ORDER BY 5 DESC LIMIT ?", append(args, limit+len(out))...)
 	if err != nil {
 		return nil, fmt.Errorf("reading sessions: %v", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var s Session
-		if err := rows.Scan(&s.Name, &s.Server, &s.Start, &s.Duration, &s.Frags, &s.Deaths); err != nil {
+		if err := rows.Scan(&s.Name, &s.Server, &s.IP, &s.Hostname, &s.Start, &s.Duration, &s.Frags, &s.Deaths); err != nil {
 			return nil, err
 		}
 		s.KDR = frontend.KDR(s.Frags, s.Deaths)
