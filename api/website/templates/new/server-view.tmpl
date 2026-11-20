@@ -124,6 +124,11 @@
 				{{else}}<div class="q2a-empty">No connection history yet.</div>{{end}}
 			</div>
 		</div>
+
+		<div class="q2a-panel mt-3" id="signals">
+			<div class="q2a-panel-head">Latest signals</div>
+			{{template "signal-table" (signalArgs .Signals false)}}
+		</div>
 	</div>
 
 	<!-- Players -->
@@ -137,7 +142,7 @@
 					{{range $fe.Players}}{{if .ConnectTime}}
 						<tr>
 							<td class="q2a-mono">{{.ClientID}}</td>
-							<td><a href="{{$base}}/player/{{.ClientID}}" class="text-decoration-none">{{.Name}}</a>{{if .VPN}} <span class="badge text-bg-warning">VPN</span>{{end}}{{if .Muted}} <span class="badge text-bg-secondary">muted</span>{{end}}</td>
+							<td><a href="{{$base}}/player/{{.ClientID}}" class="text-decoration-none">{{.Name}}</a>{{if .VPN}} <span class="badge text-bg-warning">VPN</span>{{end}}{{if .Muted}} <span class="badge text-bg-secondary">muted</span>{{end}}{{if .SignalScore}} <span class="badge text-bg-danger" title="Signal score">{{.SignalScore}}{{with $fe.SignalLimit}}/{{.}}{{end}}</span>{{end}}</td>
 							<td class="d-none d-md-table-cell q2a-mono">{{.IP}}</td>
 							<td class="text-end">{{.Frags}}</td>
 							<td class="d-none d-sm-table-cell text-body-secondary">{{ago .ConnectTime}}</td>

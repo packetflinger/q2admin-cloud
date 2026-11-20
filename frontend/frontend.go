@@ -88,6 +88,7 @@ type Frontend struct {
 	RecvStream    *crypto.Stream      // decrypts frames from q2admin (when Encrypted)
 	Rules         []*pb.Rule          // bans, mutes, etc
 	Server        any                 // pointer for circular reference back
+	SignalLimit   int                 // q2admin's signal score that removes a player, 0 if off or not heard yet
 	SendMu        sync.Mutex          // serializes sends, so each frame gets the next nonce in wire order
 	SendStream    *crypto.Stream      // encrypts frames to q2admin (when Encrypted)
 	ServerVars    map[string]string   // public server cvars

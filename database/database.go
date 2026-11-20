@@ -98,6 +98,9 @@ func Open(filename string) (Database, error) {
 	if _, err := db.Exec(connectionSchema); err != nil {
 		return database, fmt.Errorf("error creating connection history table: %v", err)
 	}
+	if _, err := db.Exec(signalSchema); err != nil {
+		return database, fmt.Errorf("error creating signal history table: %v", err)
+	}
 	for _, c := range columnAdditions {
 		if err := addColumnIfMissing(db, c.table, c.column, c.decl); err != nil {
 			return database, err
@@ -185,6 +188,31 @@ CREATE TABLE IF NOT EXISTS "frontend_connection" (
 	"reason"	TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS "frontend_connection_frontend_time" ON "frontend_connection" ("frontend_id", "time");`
+
+// signalSchema logs the signals q2admin raises against players, which add
+// up to a score that gets a player removed at the server's threshold. event
+// is 0 when a signal was raised (or its points changed), 1 when it cleared,
+// and 2 when the player was removed; for a removal, signal_name lists every
+// signal that counted. points is what the signal added to the score, score
+// the player's total afterwards, and threshold the server's limit then (0 if
+// off). name and ip are the player's at the time.
+const signalSchema = `
+CREATE TABLE IF NOT EXISTS "player_signal" (
+	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"time"	INTEGER NOT NULL,
+	"frontend_id"	INTEGER NOT NULL,
+	"client"	INTEGER NOT NULL,
+	"event"	INTEGER NOT NULL,
+	"signal"	INTEGER NOT NULL,
+	"signal_name"	TEXT NOT NULL,
+	"points"	INTEGER NOT NULL,
+	"score"	INTEGER NOT NULL,
+	"threshold"	INTEGER NOT NULL,
+	"name"	TEXT NOT NULL,
+	"ip"	TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "player_signal_frontend_time" ON "player_signal" ("frontend_id", "time");
+CREATE INDEX IF NOT EXISTS "player_signal_name" ON "player_signal" ("name");`
 
 // columnAdditions are small schema changes applied to existing databases when
 // they're opened.

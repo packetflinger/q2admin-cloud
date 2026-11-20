@@ -66,6 +66,13 @@ var (
 				Slices          []Slice
 			}{title, id, unit, slices}
 		},
+		"signalArgs": func(events []SignalEvent, onePlayer bool) any {
+			return struct {
+				Events    []SignalEvent
+				OnePlayer bool // show the server, not the player
+			}{events, onePlayer}
+		},
+		"signals":     signalList,
 		"displayName": DisplayName,
 		"inGroup":     func(g *ServerGroup, fe *frontend.Frontend) bool { return slices.Contains(g.Members, fe) },
 	}
@@ -124,6 +131,7 @@ type PageResponse struct {
 	Rules         []*pb.Rule // a list of rules (srv level)
 	Player        *frontend.Player
 	RecentPlayer  *RecentPlayerPage // one player's visits, for /recent-players
+	Signals       []SignalEvent     // the server page's latest signals
 }
 
 type ActiveServer struct {

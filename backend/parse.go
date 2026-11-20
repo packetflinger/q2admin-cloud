@@ -61,6 +61,9 @@ func ParseMessage(fe *frontend.Frontend) {
 		case CMDCommand:
 			ParseCommand(fe)
 
+		case CMDSignal:
+			ParseSignal(fe)
+
 		case CMDKeyAck:
 			if !ParseKeyAck(fe) {
 				be.Logf(LogLevelNormal, "[%s] key ack without a key rotation, disconnecting\n", fe.Name)
@@ -70,6 +73,12 @@ func ParseMessage(fe *frontend.Frontend) {
 				}
 				return
 			}
+
+		default:
+			// Its data can't be skipped without knowing its layout, and
+			// reading it as more commands would only misread them.
+			fe.Log.Printf("unknown command %d, ignoring the rest of the frame\n", b)
+			return
 		}
 	}
 }
@@ -315,6 +324,9 @@ func ParseDisconnect(fe *frontend.Frontend) {
 	pl, err := fe.FindPlayer(clientnum)
 	if err != nil {
 		fe.Log.Println("error in ParseDisconnect():", err)
+		if fe.ValidPlayerID(clientnum) {
+			fe.Players[clientnum] = frontend.Player{} // signals from before they connected
+		}
 		return
 	}
 
@@ -442,6 +454,9 @@ func ParsePlayer(fe *frontend.Frontend) *frontend.Player {
 
 	fe.Log.Printf("PLAYER %d|%s|%s\n", clientnum, newplayer.UserInfoHash, userinfo)
 
+	// signals can come before the player does (see ParseSignal)
+	old := fe.Players[newplayer.ClientID]
+	newplayer.Signals, newplayer.SignalScore = old.Signals, old.SignalScore
 	fe.Players[newplayer.ClientID] = newplayer
 	fe.PlayerCount++
 

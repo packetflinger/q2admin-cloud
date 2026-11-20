@@ -151,3 +151,26 @@
 	</div>
 </div>
 {{end}}
+
+{{/* Signal events, newest first. Takes signalArgs: one player's across servers, or one server's. */}}
+{{define "signal-table"}}
+{{if .Events}}
+<div class="table-responsive">
+	<table class="table table-sm table-hover align-middle mb-0">
+		<thead><tr><th>When</th>{{if .OnePlayer}}<th>Server</th>{{else}}<th>Player</th>{{end}}<th>Event</th><th>Signal</th><th class="text-end d-none d-md-table-cell">Points</th><th class="text-end">Score</th></tr></thead>
+		<tbody>
+		{{range .Events}}
+			<tr>
+				<td class="text-nowrap" title="{{ago .Time}}">{{datetime .Time}}</td>
+				{{if $.OnePlayer}}<td>{{.Server}}</td>{{else}}<td><a href="/recent-players/{{pathesc .Name}}" class="text-decoration-none">{{.Name}}</a> <span class="q2a-mono small text-body-secondary d-none d-lg-inline">{{.IP}}</span></td>{{end}}
+				<td>{{if eq .Event 0}}<span class="badge text-bg-warning">raised</span>{{else if eq .Event 1}}<span class="badge text-bg-secondary">cleared</span>{{else}}<span class="badge text-bg-danger">removed</span>{{end}}</td>
+				<td class="q2a-mono small text-break">{{.SignalName}}</td>
+				<td class="text-end d-none d-md-table-cell">{{if eq .Event 0}}{{printf "%+d" .Points}}{{else}}<span class="text-body-secondary">-</span>{{end}}</td>
+				<td class="text-end text-nowrap">{{.Score}}{{if .Threshold}}<span class="text-body-secondary">/{{.Threshold}}</span>{{end}}</td>
+			</tr>
+		{{end}}
+		</tbody>
+	</table>
+</div>
+{{else}}<div class="q2a-empty">No signals yet.</div>{{end}}
+{{end}}

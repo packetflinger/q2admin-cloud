@@ -33,7 +33,9 @@ type Player struct {
 	Muted            bool  // is this player muted?
 	Name             string
 	Port             int
-	Rules            []*pb.Rule // rules that match this player
+	Rules            []*pb.Rule     // rules that match this player
+	Signals          map[string]int // q2admin signals matching now: name -> points
+	SignalScore      int            // q2admin's total of their signal points
 	Stifled          bool
 	StifleLength     int // seconds
 	Suicides         int

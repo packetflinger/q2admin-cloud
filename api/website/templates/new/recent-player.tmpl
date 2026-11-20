@@ -38,6 +38,11 @@
 	</div>
 	{{else}}<div class="q2a-empty">No visits to your servers by this player.</div>{{end}}
 </div>
+
+<div class="q2a-panel mt-3">
+	<div class="q2a-panel-head">Latest signals</div>
+	{{template "signal-table" (signalArgs .Signals true)}}
+</div>
 {{end}}
 {{template "footer" .}}
 {{end}}

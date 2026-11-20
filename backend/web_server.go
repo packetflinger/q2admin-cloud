@@ -82,6 +82,11 @@ func renderServerView(w http.ResponseWriter, user *pb.User, fe *frontend.Fronten
 		http.Error(w, "500 - unable to load stats", http.StatusInternalServerError)
 		return
 	}
+	if data.Signals, err = loadSignals([]*frontend.Frontend{fe}, "", signalsShown); err != nil {
+		log.Println(err)
+		http.Error(w, "500 - unable to load signals", http.StatusInternalServerError)
+		return
+	}
 	_, length := spanFor(data.Stats.Span)
 	if data.Connection, err = loadConnectionHistory(fe, time.Now().Add(-length).Unix()); err != nil {
 		log.Println(err)

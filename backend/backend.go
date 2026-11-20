@@ -90,6 +90,7 @@ const (
 	CMDPing
 	CMDAuth
 	CMDKeyAck // the frontend switched to the key from our last SCMDKey
+	CMDSignal // a player's signals changed, see ParseSignal
 )
 
 // Commands we send back to a frontend

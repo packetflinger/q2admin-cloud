@@ -124,6 +124,7 @@ type RecentPlayerPage struct {
 	Sessions []Session
 	Limit    int   // how many visits to show
 	Limits   []int // the choices for Limit
+	Signals  []SignalEvent
 }
 
 // RecentPlayerHandler lists the visits of the player the dashboard's recent
@@ -146,7 +147,13 @@ func RecentPlayerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "500 - unable to load the player's visits", http.StatusInternalServerError)
 		return
 	}
-	data := PageResponse{SessionUser: user, RecentPlayer: &RecentPlayerPage{Name: name, Sessions: sessions, Limit: limit, Limits: RecentPlayerLimits}}
+	signals, err := loadSignals(fes, name, signalsShown)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "500 - unable to load the player's signals", http.StatusInternalServerError)
+		return
+	}
+	data := PageResponse{SessionUser: user, RecentPlayer: &RecentPlayerPage{Name: name, Sessions: sessions, Limit: limit, Limits: RecentPlayerLimits, Signals: signals}}
 	data.Head.Title = name + " | CloudAdmin"
 	data.NavHighlight.Dashboard = "active"
 	tmpl, err := parsePage("recent-player.tmpl")
